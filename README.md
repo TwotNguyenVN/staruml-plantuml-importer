@@ -1,13 +1,14 @@
 # StarUML PlantUML Diagram Importer
 
-A StarUML extension that imports **Use Case Diagrams** and **Class Diagrams** from **PlantUML** syntax and auto-generates them as native UML elements inside StarUML.
+A StarUML extension that imports **Use Case Diagrams**, **Class Diagrams**, and **Sequence Diagrams** from **PlantUML** syntax and auto-generates them as native UML elements inside StarUML.
 
 ## ✨ Features
 
-- Parse PlantUML Use Case and Class Diagram syntax
-- Smart Grid layout for Class Diagrams and column distribution for Use Cases
+- Parse PlantUML Use Case, Class, and Sequence Diagram syntax
+- Smart Grid layout for Class Diagrams, column distribution for Use Case Diagrams, and chronological timeline layout for Sequence Diagrams
 - Support for attributes, operations, visibilities, and multiplicities (Class Diagram)
 - Support for `<<include>>`, `<<extend>>`, generalization, interface realization, associations, aggregations, and compositions
+- Support for lifelines (`actor`, `participant`, `boundary`, `control`, `entity`, `database`, `collections`) and message lines (`->`, `-->`, `->>`, `->*`, `->x`) in Sequence Diagrams
 - Compatible with **StarUML v7+**
 
 ## 📦 Installation
@@ -27,7 +28,7 @@ chmod +x install.sh
 
 ### Manual Installation
 
-Copy the entire `staruml-plantuml-importer` folder to:
+Copy the content of this repository (or the folder `staruml-plantuml-importer`) to:
 
 | OS      | Path                                                                   |
 |---------|------------------------------------------------------------------------|
@@ -43,6 +44,7 @@ Then restart StarUML.
 2. Create a Diagram:
    - For Use Case: `Model` → `Add Diagram` → `Use Case Diagram`
    - For Class: `Model` → `Add Diagram` → `Class Diagram`
+   - For Sequence: `Model` → `Add Diagram` → `Sequence Diagram`
 3. Go to `Tools` → `PlantUML Importer` → Select your import command
 4. Paste your PlantUML code in the dialog
 5. Click **OK** — the diagram will be generated automatically!
@@ -93,6 +95,22 @@ User <|-- Member
 @enduml
 ```
 
+### Sequence Diagram
+
+```plantuml
+@startuml
+actor User as U
+participant "Auth Service" as Auth
+database DB as DB
+
+U -> Auth : Login Request
+Auth -> DB : Query User
+DB --> Auth : User Data
+Auth --> U : Token / Response
+@enduml
+```
+
 ## 📄 License
 
 MIT
+
