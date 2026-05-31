@@ -35,6 +35,8 @@ function generateDiagram(diagram, text) {
   }
 
   // Parse PlantUML lines
+  var subjectName = "";
+
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i].trim();
 
@@ -46,10 +48,15 @@ function generateDiagram(diagram, text) {
       line.indexOf("@enduml") === 0 ||
       line.indexOf("left to right") === 0 ||
       line.indexOf("top to bottom") === 0 ||
-      line.indexOf("title ") === 0 ||
-      line.indexOf("rectangle ") === 0 ||
-      line.indexOf("package ") === 0
+      line.indexOf("title ") === 0
     ) {
+      continue;
+    }
+
+    // Parse Subject name (rectangle or package)
+    var matchSub = line.match(/^(rectangle|package)\s+(?:"([^"]+)"|([a-zA-Z0-9_\-]+))\s*\{?$/i);
+    if (matchSub) {
+      subjectName = matchSub[2] || matchSub[3];
       continue;
     }
 
@@ -176,6 +183,33 @@ function generateDiagram(diagram, text) {
   var parentModel = diagram._parent;
   if (!parentModel) {
     parentModel = app.project.getProject();
+  }
+
+  // Create Use Case Subject (System Boundary) if defined
+  if (subjectName) {
+    var subjectLeft = useCaseCols[0] - 30;
+    var subjectTop = 40;
+    var subjectWidth = useCaseCols[useCaseCols.length - 1] + 150 + 30 - subjectLeft;
+    var subjectHeight = 80 + ucRowCount * 95 - 40;
+
+    try {
+      app.factory.createModelAndView({
+        id: "UMLUseCaseSubject",
+        parent: parentModel,
+        diagram: diagram,
+        modelInitializer: function (model) {
+          model.name = subjectName;
+        },
+        viewInitializer: function (dgmView) {
+          dgmView.left = subjectLeft;
+          dgmView.top = subjectTop;
+          dgmView.width = subjectWidth;
+          dgmView.height = subjectHeight;
+        }
+      });
+    } catch (e) {
+      console.error("[usecase-parser] Failed to create UseCaseSubject:", subjectName, e);
+    }
   }
 
   // Create left actors
