@@ -318,6 +318,7 @@ function generateDiagram(diagram, text) {
               app.factory.createModel({
                 id: "UMLAttribute",
                 parent: model,
+                field: "attributes",
                 modelInitializer: function (attr) {
                   attr.name = attrData.name;
                   attr.type = attrData.type || "";
@@ -335,6 +336,7 @@ function generateDiagram(diagram, text) {
               var opModel = app.factory.createModel({
                 id: "UMLOperation",
                 parent: model,
+                field: "operations",
                 modelInitializer: function (op) {
                   op.name = opData.name;
                   op.type = opData.returnType || "";
@@ -347,6 +349,7 @@ function generateDiagram(diagram, text) {
                   app.factory.createModel({
                     id: "UMLParameter",
                     parent: opModel,
+                    field: "parameters",
                     modelInitializer: function (param) {
                       param.name = paramData.name;
                       param.type = paramData.type || "";
@@ -368,6 +371,7 @@ function generateDiagram(diagram, text) {
               app.factory.createModel({
                 id: "UMLEnumerationLiteral",
                 parent: model,
+                field: "literals",
                 modelInitializer: function (lit) {
                   lit.name = litName;
                 }
