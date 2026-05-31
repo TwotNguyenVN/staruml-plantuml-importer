@@ -1,0 +1,25 @@
+{
+  "menu": [
+    {
+      "id": "tools",
+      "submenu": [
+        {
+          "label": "PlantUML Importer",
+          "id": "plantuml-importer",
+          "submenu": [
+            {
+              "label": "Import Use Case Diagram...",
+              "id": "plantuml-importer:import-usecase",
+              "command": "plantuml-importer:import-usecase"
+            },
+            {
+              "label": "Import Class Diagram...",
+              "id": "plantuml-importer:import-classdiagram",
+              "command": "plantuml-importer:import-classdiagram"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
