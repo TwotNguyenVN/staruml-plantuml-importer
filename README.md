@@ -125,6 +125,15 @@ Auth --> U : Token / Response
 @enduml
 ```
 
+## 🗑️ Clean Uninstallation (macOS)
+
+If you need to completely remove StarUML and all of its configurations, caches, extensions, and logs from your macOS device, you can use the provided uninstaller script:
+
+```bash
+chmod +x clear.sh
+./clear.sh
+```
+
 ## 📄 License
 
 MIT
