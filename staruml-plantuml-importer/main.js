@@ -8,10 +8,40 @@ const dialogHelper = require("./utils/dialog-helper");
 const usecaseParser = require("./parsers/usecase-parser");
 const classParser = require("./parsers/class-parser");
 
+function injectCSS() {
+  try {
+    if (typeof document !== "undefined") {
+      var style = document.createElement("style");
+      style.id = "plantuml-importer-dialog-style";
+      style.innerHTML = [
+        ".dialog:has(textarea) {",
+        "  width: 750px !important;",
+        "}",
+        ".dialog:has(textarea) textarea {",
+        "  height: 400px !important;",
+        "  font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;",
+        "  font-size: 13px !important;",
+        "  line-height: 1.5 !important;",
+        "}"
+      ].join("\n");
+      
+      var oldStyle = document.getElementById(style.id);
+      if (oldStyle) {
+        oldStyle.remove();
+      }
+      document.head.appendChild(style);
+    }
+  } catch (e) {
+    console.error("[plantuml-importer] Failed to inject custom dialog CSS:", e);
+  }
+}
+
 function init() {
   if (typeof app === "undefined" || !app.commands) {
     return;
   }
+  
+  injectCSS();
   
   app.commands.register(
     "plantuml-importer:import-usecase",
