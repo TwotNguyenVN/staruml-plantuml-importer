@@ -3,7 +3,18 @@
   "version": "2.1.0",
   "title": "PlantUML Diagram Importer",
   "description": "Import and auto-layout multiple diagram types (Use Case, Class) from PlantUML code",
-  "author": "Antigravity",
+  "homepage": "https://github.com/TwotNguyenVN/staruml-plantuml-importer",
+  "author": {
+    "name": "Twot",
+    "url": "https://github.com/TwotNguyenVN"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TwotNguyenVN/staruml-plantuml-importer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TwotNguyenVN/staruml-plantuml-importer/issues"
+  },
   "engines": {
     "staruml": ">=6.0.0"
   }
