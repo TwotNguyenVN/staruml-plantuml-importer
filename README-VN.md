@@ -126,10 +126,15 @@ Auth --> U : Trả về Token / Kết quả
 @enduml
 ```
 
-## 🗑️ Gỡ cài đặt sạch sẽ (macOS)
+## 🗑️ Gỡ cài đặt sạch sẽ (Windows & macOS)
 
-Nếu bạn cần gỡ bỏ hoàn toàn StarUML và toàn bộ cấu hình, cache, extension cũng như log của nó khỏi thiết bị macOS, bạn có thể sử dụng script dọn dẹp được cung cấp sẵn:
+Nếu bạn cần gỡ bỏ hoàn toàn StarUML và toàn bộ cấu hình, cache, extension cũng như log của nó khỏi thiết bị của mình, bạn có thể sử dụng script dọn dẹp được cung cấp sẵn.
 
+#### Windows
+**Nhấp đúp** vào file `clear.bat` hoặc chạy nó qua Command Prompt.
+
+#### macOS
+Chạy lệnh sau:
 ```bash
 chmod +x clear.sh
 ./clear.sh
