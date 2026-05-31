@@ -1,39 +1,48 @@
 #!/bin/bash
 
-# ==============================================================================
-#  StarUML Clean Uninstaller for macOS
-# ==============================================================================
-# This script completely removes StarUML and all of its configurations,
-# extensions, cache files, and preferences from macOS.
-# ==============================================================================
+# Ensure script stops on critical failures
+set -e
 
-# ANSI color codes
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+echo "================================================="
+echo "   StarUML Uninstaller - Clean Uninstallation   "
+echo "================================================="
 
-echo -e "${BLUE}==================================================${NC}"
-echo -e "${BLUE}        StarUML Complete Uninstaller (macOS)      ${NC}"
-echo -e "${BLUE}==================================================${NC}"
-
-# 1. Verify Operating System
+# 1. Check Operating System
 if [[ "$OSTYPE" != "darwin"* ]]; then
-    echo -e "${RED}[ERROR] This script is only compatible with macOS.${NC}"
+    echo "[ERROR] Script này chỉ hỗ trợ hệ điều hành macOS!"
     exit 1
 fi
 
-# 2. Close StarUML if it is running
-if pgrep -f "StarUML" > /dev/null; then
-    echo -e "${YELLOW}[!] StarUML is running. Force closing...${NC}"
-    pkill -f "StarUML" 2>/dev/null
-    sleep 2
+# 2. User Confirmation
+read -p "[?] Bạn có chắc chắn muốn xóa triệt để StarUML và toàn bộ cấu hình? (y/N): " confirm
+if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo "[*] Đã hủy tác vụ."
+    exit 0
 fi
 
-# 3. Define paths to remove
-PATHS_TO_REMOVE=(
-    "/Applications/StarUML.app"
+# 3. Terminate running StarUML processes
+echo "[*] Đang tắt các tiến trình StarUML..."
+pkill -f "StarUML" 2>/dev/null || true
+sleep 1
+
+# 4. Remove main Application
+if [ -d "/Applications/StarUML.app" ]; then
+    echo "[*] Đang xóa ứng dụng chính trong /Applications..."
+    # Check write permission for /Applications directory
+    if [ -w "/Applications" ]; then
+        rm -rf "/Applications/StarUML.app"
+    else
+        echo "[!] Yêu cầu quyền Admin (sudo) để xóa ứng dụng trong thư mục Applications:"
+        sudo rm -rf "/Applications/StarUML.app"
+    fi
+else
+    echo "[*] Không tìm thấy ứng dụng StarUML.app trong /Applications."
+fi
+
+# 5. Remove configurations, caches, logs for current user
+echo "[*] Đang dọn dẹp dữ liệu cấu hình và cache..."
+
+paths_to_remove=(
     "$HOME/Library/Application Support/StarUML"
     "$HOME/Library/Caches/io.staruml.StarUML"
     "$HOME/Library/Caches/StarUML"
@@ -45,44 +54,34 @@ PATHS_TO_REMOVE=(
     "$HOME/Library/Saved Application State/com.staruml.StarUML.savedState"
 )
 
-echo -e "${BLUE}[*] Deleting application files and configurations...${NC}"
-for TARGET in "${PATHS_TO_REMOVE[@]}"; do
-    if [ -e "$TARGET" ]; then
-        echo -e "  - Removing: $TARGET"
-        rm -rf "$TARGET"
+for p in "${paths_to_remove[@]}"; do
+    if [ -e "$p" ]; then
+        echo "  - Đang xóa: $p"
+        rm -rf "$p"
     fi
 done
 
-# 4. Remove system crash reports related to StarUML
-CRASH_REPORTS_DIR="$HOME/Library/Application Support/CrashReporter"
-if [ -d "$CRASH_REPORTS_DIR" ]; then
-    echo -e "${BLUE}[*] Checking for system crash reports...${NC}"
-    find "$CRASH_REPORTS_DIR" -name "*StarUML*" -type f -exec rm -f {} \; -print | while read -r file; do
-        echo -e "  - Removed crash report: $file"
-    done
-fi
+# 6. Clean specific CrashReporter logs & Recent Document lists
+echo "[*] Đang tìm và xóa các file rác phát sinh..."
 
-# 5. Remove Recent Documents lists
-RECENT_DOCS_DIR="$HOME/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ApplicationRecentDocuments"
-if [ -d "$RECENT_DOCS_DIR" ]; then
-    echo -e "${BLUE}[*] Checking for application recent documents history...${NC}"
-    find "$RECENT_DOCS_DIR" -name "*staruml*" -type f -exec rm -f {} \; -print | while read -r file; do
-        echo -e "  - Removed recent doc file: $file"
-    done
-fi
+# Find and delete crash reports related to StarUML
+find "$HOME/Library/Application Support/CrashReporter" -iname "*staruml*" -exec rm -f {} \; 2>/dev/null || true
 
-# 6. Final verification
-echo -e "${BLUE}[*] Verifying if any StarUML files remain...${NC}"
-REMAINING_FILES=$(find "$HOME/Library" -iname "*staruml*" 2>/dev/null)
+# Find and delete recent document history files
+find "$HOME/Library/Application Support/com.apple.sharedfilelist" -iname "*staruml*" -exec rm -f {} \; 2>/dev/null || true
 
-if [ -z "$REMAINING_FILES" ]; then
-    echo -e "${GREEN}[OK] StarUML has been completely and cleanly uninstalled!${NC}"
+echo "[OK] Đã hoàn tất dọn dẹp!"
+
+# 7. Scan for any remaining files
+echo "[*] Đang quét kiểm tra các file còn lại..."
+# Exclude the workspace/script directory itself from the search
+remaining_files=$(find "$HOME/Library" -iname "*staruml*" 2>/dev/null | grep -v "staruml-plantuml-importer" || true)
+
+if [ -n "$remaining_files" ]; then
+    echo "[!] Phát hiện một số file có thể liên quan còn sót lại (vui lòng kiểm tra thủ công):"
+    echo "$remaining_files"
 else
-    echo -e "${YELLOW}[!] The following minor files could not be automatically deleted:${NC}"
-    echo "$REMAINING_FILES"
-    echo -e "${YELLOW}[!] You may delete them manually if desired.${NC}"
+    echo "[OK] StarUML đã được xóa sạch hoàn toàn khỏi hệ thống!"
 fi
 
-echo -e "${BLUE}==================================================${NC}"
-echo -e "${GREEN} Done! Restarting your Mac is recommended.${NC}"
-echo -e "${BLUE}==================================================${NC}"
+echo "================================================="
