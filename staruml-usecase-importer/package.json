@@ -1,0 +1,10 @@
+{
+  "name": "staruml-usecase-importer",
+  "version": "2.0.0",
+  "title": "Use Case Diagram Importer",
+  "description": "Import and auto-layout Use Case Diagrams from PlantUML code",
+  "author": "Antigravity",
+  "engines": {
+    "staruml": ">=6.0.0"
+  }
+}

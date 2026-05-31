@@ -1,0 +1,14 @@
+{
+  "menu": [
+    {
+      "id": "tools",
+      "submenu": [
+        {
+          "label": "Import Use Case from PlantUML...",
+          "id": "usecase-importer:import",
+          "command": "usecase-importer:import"
+        }
+      ]
+    }
+  ]
+}

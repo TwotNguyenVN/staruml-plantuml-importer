@@ -56,3 +56,20 @@ You can use the `--api-port=<port>` option to change the API server port for Sta
   }
 }
 ```
+
+## Use Case Diagram Importer (Extension)
+
+This repo also includes a **StarUML extension** that imports Use Case Diagrams from PlantUML syntax.
+
+### Quick Install
+
+- **Windows:** Double-click `staruml-usecase-importer\install.bat`
+- **macOS/Linux:** Run `chmod +x staruml-usecase-importer/install.sh && ./staruml-usecase-importer/install.sh`
+
+### Usage
+
+1. Open StarUML → Create a **Use Case Diagram**
+2. Go to `Tools` → **"Import Use Case from PlantUML..."**
+3. Paste your PlantUML code → Click **OK**
+
+See [`staruml-usecase-importer/README.md`](staruml-usecase-importer/README.md) for full documentation.
