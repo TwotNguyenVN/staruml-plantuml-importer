@@ -16,6 +16,11 @@
               "label": "Import Class Diagram...",
               "id": "plantuml-importer:import-classdiagram",
               "command": "plantuml-importer:import-classdiagram"
+            },
+            {
+              "label": "Import Sequence Diagram...",
+              "id": "plantuml-importer:import-sequencediagram",
+              "command": "plantuml-importer:import-sequencediagram"
             }
           ]
         }

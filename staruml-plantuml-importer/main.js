@@ -7,6 +7,7 @@
 const dialogHelper = require("./utils/dialog-helper");
 const usecaseParser = require("./parsers/usecase-parser");
 const classParser = require("./parsers/class-parser");
+const sequenceParser = require("./parsers/sequence-parser");
 
 function injectCSS() {
   try {
@@ -53,6 +54,12 @@ function init() {
     "plantuml-importer:import-classdiagram",
     handleImportClassDiagram,
     "Import Class Diagram from PlantUML Code"
+  );
+  
+  app.commands.register(
+    "plantuml-importer:import-sequencediagram",
+    handleImportSequenceDiagram,
+    "Import Sequence Diagram from PlantUML Code"
   );
 }
 
@@ -162,6 +169,57 @@ function handleImportClassDiagram() {
       });
   } catch (outerErr) {
     console.error("[plantuml-importer] handleImportClassDiagram error:", outerErr);
+  }
+}
+
+function handleImportSequenceDiagram() {
+  try {
+    var diagram = app.diagrams.getCurrentDiagram();
+    if (!diagram) {
+      app.dialogs.showAlertDialog("Please create and open a Sequence Diagram first.");
+      return;
+    }
+    if (diagram.getClassName() !== "UMLSequenceDiagram") {
+      app.dialogs.showAlertDialog(
+        "The current diagram is not a Sequence Diagram.\n" +
+        "Please open or create a UMLSequenceDiagram."
+      );
+      return;
+    }
+
+    var sampleCode = [
+      "@startuml",
+      "",
+      "actor User as U",
+      'participant "Auth Service" as Auth',
+      "database DB as DB",
+      "",
+      "U -> Auth : Login Request",
+      "Auth -> DB : Query User",
+      "DB --> Auth : User Data",
+      "Auth --> U : Token / Response",
+      "",
+      "@enduml"
+    ].join("\n");
+
+    dialogHelper.showImportDialog("Paste your PlantUML Sequence code below:", sampleCode)
+      .then(function (code) {
+        if (code !== null) {
+          try {
+            sequenceParser.generateDiagram(diagram, code);
+            app.dialogs.showInfoDialog("Sequence diagram imported successfully!");
+          } catch (e) {
+            app.dialogs.showAlertDialog(
+              "Error generating diagram:\n" + String(e && e.message ? e.message : e)
+            );
+          }
+        }
+      })
+      .catch(function (err) {
+        console.error("[plantuml-importer] Dialog error:", err);
+      });
+  } catch (outerErr) {
+    console.error("[plantuml-importer] handleImportSequenceDiagram error:", outerErr);
   }
 }
 

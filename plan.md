@@ -1,37 +1,35 @@
-# Kế hoạch triển khai: PlantUML Diagram Importer (vẽ Use Case & Class Diagram)
+# Kế hoạch triển khai: PlantUML Sequence Diagram Importer
 
-Kế hoạch này hướng dẫn cách cấu trúc lại extension hiện tại thành một extension đa năng: **`staruml-plantuml-importer`**, đồng thời hiện thực hóa bộ phân tích cú pháp **Class Diagram** quy mô lớn.
+Kế hoạch này hướng dẫn cách bổ sung module **Sequence Diagram Importer** vào extension **`staruml-plantuml-importer`** hiện tại.
 
 ---
 
-## 1. Cấu trúc thư mục mới đề xuất
+## 1. Cấu trúc thư mục cập nhật
 
-Chúng ta sẽ chuyển đổi thư mục `staruml-usecase-importer` thành `staruml-plantuml-importer` với cấu trúc sau:
+Chúng ta sẽ thêm file `sequence-parser.js` vào thư mục `parsers/` của extension:
 
 ```text
 staruml-plantuml-importer/
-├── package.json                  # Cập nhật thông tin extension mới
+├── package.json
 ├── menus/
-│   └── menu.json                 # Cấu hình menu Tools -> PlantUML Importer -> [Từng sơ đồ]
-├── main.js                       # Nhận sự kiện từ menu, gọi các module parser tương ứng
+│   └── menu.json                 # Đăng ký thêm menu "Import Sequence Diagram..."
+├── main.js                       # Thêm command và điều phối cho Sequence Diagram
 ├── utils/
-│   └── dialog-helper.js          # Module hiển thị hộp thoại nhập mã (chung)
+│   └── dialog-helper.js
 └── parsers/
-    ├── usecase-parser.js         # Module phân tích cú pháp Use Case
-    └── class-parser.js           # Module phân tích cú pháp Class Diagram
+    ├── usecase-parser.js
+    ├── class-parser.js
+    └── sequence-parser.js        # [NEW] Module phân tích cú pháp Sequence Diagram
 ```
 
 ---
 
 ## 2. Kế hoạch chi tiết từng bước
 
-### Bước 2.1: Cập nhật cấu hình và Menu
+### Bước 2.1: Cập nhật Menu cấu hình
 
-#### [MODIFY] [package.json](file:///d:/Documents/CODE/staruml-mcp-server/staruml-usecase-importer/package.json)
-Cập nhật tên extension thành `staruml-plantuml-importer` và mô tả hỗ trợ nhiều sơ đồ.
-
-#### [NEW] [menu.json](file:///d:/Documents/CODE/staruml-mcp-server/staruml-usecase-importer/menus/menu.json)
-Thay thế `usecase-menu.json` bằng cấu trúc menu phân tầng:
+#### [MODIFY] [menu.json](file:///d:/Documents/CODE/staruml-mcp-server/staruml-plantuml-importer/menus/menu.json)
+Đăng ký thêm lệnh import Sequence Diagram trong menu:
 ```json
 {
   "menu": [
@@ -51,6 +49,11 @@ Thay thế `usecase-menu.json` bằng cấu trúc menu phân tầng:
               "label": "Import Class Diagram...",
               "id": "plantuml-importer:import-classdiagram",
               "command": "plantuml-importer:import-classdiagram"
+            },
+            {
+              "label": "Import Sequence Diagram...",
+              "id": "plantuml-importer:import-sequencediagram",
+              "command": "plantuml-importer:import-sequencediagram"
             }
           ]
         }
@@ -60,71 +63,61 @@ Thay thế `usecase-menu.json` bằng cấu trúc menu phân tầng:
 }
 ```
 
-#### [DELETE] [usecase-menu.json](file:///d:/Documents/CODE/staruml-mcp-server/staruml-usecase-importer/menus/usecase-menu.json)
-Xóa file cấu hình menu cũ.
-
 ---
 
-### Bước 2.2: Xây dựng Module tiện ích chung (`utils/dialog-helper.js`)
+### Bước 2.2: Xây dựng Module phân tích Sequence Diagram (`parsers/sequence-parser.js`)
 
-Tách phần hiển thị dialog nhập mã PlantUML ra một file riêng để dùng chung cho tất cả các loại sơ đồ.
-*   **Tham số:** `title` (Tiêu đề dialog), `sampleCode` (Mã mẫu hiển thị sẵn).
-*   **Đầu ra:** Trả về `Promise` chứa chuỗi PlantUML do người dùng paste vào.
+Module này sẽ đảm nhận 2 nhiệm vụ chính:
 
----
+1.  **Phân tích cú pháp (Parsing):**
+    *   **Lifelines (Đối tượng tham gia):** Nhận diện các từ khóa `actor`, `participant`, `boundary`, `control`, `entity`, `database`, `collections` kèm alias (ví dụ: `actor User as U`).
+    *   **Messages (Thông điệp):** Nhận diện các mũi tên liên kết giữa các Lifelines:
+        *   `->`: Đồng bộ (Synchronous Call - `messageSort = synchCall`)
+        *   `->>`: Không đồng bộ (Asynchronous Call - `messageSort = asynchCall`)
+        *   `-->`: Phản hồi (Reply - `messageSort = reply`)
+        *   `->*`: Tạo đối tượng (Create - `messageSort = createMessage`)
+        *   `->x`: Hủy đối tượng (Delete - `messageSort = deleteMessage`)
+    *   Đọc nhãn thông điệp sau dấu hai chấm `:` (ví dụ: `U -> Auth : Login Request`).
 
-### Bước 2.3: Di chuyển code Use Case sang `parsers/usecase-parser.js`
-
-Chuyển logic parse Use Case hiện có từ `main.js` sang module độc lập `parsers/usecase-parser.js` để làm sạch file chính.
-
----
-
-### Bước 2.4: Xây dựng bộ phân tích Class Diagram (`parsers/class-parser.js`)
-
-Đây là phần lõi mới. Bộ phân tích Class Diagram cần xử lý:
-1.  **Parser dòng lệnh:**
-    *   Nhận dạng `class`, `abstract class`, `interface`, `enum`.
-    *   Đọc các thuộc tính bên trong lớp: Phạm vi (`+`, `-`, `#`, `~`), tên thuộc tính, kiểu dữ liệu.
-    *   Đọc các phương thức bên trong lớp: Tên phương thức, danh sách tham số, kiểu trả về.
-    *   Đọc các quan hệ bên ngoài: Kế thừa (`<|--`), Hiện thực hóa (`..|>`), Kết tập (`o--`), Hợp thành (`*--`), Phụ thuộc (`..>`), Liên kết thường (`--`).
-    *   Đọc số lượng đầu quan hệ (Multiplicity) ví dụ: `"1" -- "0..*"`
 2.  **Thuật toán Sắp xếp Vị trí (Layout Engine):**
-    *   Sử dụng **Grid Layout** thông minh phân bổ theo hàng/cột để không chồng lấn.
-    *   Ước lượng chiều rộng (`width`) và chiều cao (`height`) của mỗi Class/Enum dựa trên độ dài tên lớp, số lượng thuộc tính và phương thức để tránh chữ bị tràn.
-    *   Phân loại:
-        *   Hàng 0: Enums (rộng vừa phải, xếp góc hoặc hàng đầu).
-        *   Hàng 1: Abstract classes / Interfaces / Core Entities (ví dụ: `User`, `Library`, `Book`).
-        *   Hàng 2: Subclasses / Detail Entities (ví dụ: `Member`, `Staff`, `Admin`, `BookCopy`, `Branch`).
-        *   Hàng 3: Transactions / Logs (ví dụ: `Loan`, `Reservation`, `Fine`, `Payment`, `Review`, `Notification`, `ImportReceipt`).
-        *   Hàng 4: Services (ví dụ: `SearchService`, `AuthService`, `DashboardService`).
+    *   **Lifelines X-Coordinate:** Sắp xếp các Lifeline nằm ngang từ trái qua phải với khoảng cách cố định (ví dụ: `spacingX = 220px`). Đầu Lifeline nằm ở `y = 50`.
+    *   **Lifelines Height (Chiều dài lifeline stem):** Tự động tính chiều cao của Lifeline dựa trên số lượng message: `lifelineHeight = totalMessages * 45 + 120`. Điều này đảm bảo đường nét đứt kéo dài đủ để chứa tất cả thông điệp.
+    *   **Messages Y-Coordinate:** Mỗi thông điệp sẽ được gán tọa độ Y tăng dần theo thứ tự thời gian (ví dụ: `messageY = 120 + index * 45`).
+    *   **Trục kết nối Message:** Thiết lập các điểm nối (`points`) của message nối thẳng hàng ngang giữa 2 Lifeline tương ứng:
+        *   `x1 = tailLifelineView.left + tailLifelineView.width / 2`
+        *   `x2 = headLifelineView.left + headLifelineView.width / 2`
+        *   `y = currentY`
 
 ---
 
-### Bước 2.5: Cập nhật `main.js` để quản lý các Module
+### Bước 2.3: Cập nhật file điều phối `main.js`
 
-`main.js` mới sẽ cực kỳ tinh gọn, chỉ làm nhiệm vụ:
-1.  Đăng ký 2 command mới: `plantuml-importer:import-usecase` và `plantuml-importer:import-classdiagram`.
-2.  Gọi `dialog-helper` hiển thị form tương ứng với từng command.
-3.  Truyền dữ liệu cho module `usecase-parser.js` hoặc `class-parser.js` xử lý.
-
----
-
-### Bước 2.6: Cập nhật file cài đặt và đổi tên thư mục
-
-1.  Cập nhật file [install.bat](file:///d:/Documents/CODE/staruml-mcp-server/staruml-usecase-importer/install.bat) và [install.sh](file:///d:/Documents/CODE/staruml-mcp-server/staruml-usecase-importer/install.sh) để tự động xóa extension cũ (`staruml-usecase-importer`) và cài đặt thư mục extension mới (`staruml-plantuml-importer`).
-2.  Đổi tên thư mục dự án cục bộ từ `staruml-usecase-importer` thành `staruml-plantuml-importer`.
+#### [MODIFY] [main.js](file:///d:/Documents/CODE/staruml-mcp-server/staruml-plantuml-importer/main.js)
+1.  Đăng ký command mới: `plantuml-importer:import-sequencediagram`.
+2.  Viết hàm `handleImportSequenceDiagram()` kiểm tra loại biểu đồ hiện tại (`UMLSequenceDiagram`), mở dialog nhập mã, và truyền dữ liệu cho `sequence-parser.js`.
 
 ---
 
 ## 3. Kế hoạch Xác minh (Verification Plan)
 
 ### Kiểm thử thủ công:
-1.  **Bước 1:** Chạy script cài đặt `install.bat` để cập nhật extension trên máy.
-2.  **Bước 2:** Mở StarUML, tạo một **Class Diagram** mới.
-3.  **Bước 3:** Vào `Tools` -> `PlantUML Importer` -> Chọn **`Import Class Diagram...`**.
-4.  **Bước 4:** Paste đoạn mã Class Diagram của hệ thống thư viện ở trên và nhấn **OK**.
+1.  **Bước 1:** Chạy script cài đặt `install.bat` để cập nhật extension.
+2.  **Bước 2:** Mở StarUML, tạo một **Sequence Diagram** trống (`Model` -> `Add Diagram` -> `Sequence Diagram`).
+3.  **Bước 3:** Vào `Tools` -> `PlantUML Importer` -> Chọn **`Import Sequence Diagram...`**.
+4.  **Bước 4:** Paste đoạn mã PlantUML mẫu sau và nhấn **OK**:
+    ```plantuml
+    @startuml
+    actor User as U
+    participant "Auth Service" as Auth
+    database DB as DB
+
+    U -> Auth : Login Request
+    Auth -> DB : Query User
+    DB --> Auth : User Data
+    Auth --> U : Token / Response
+    @enduml
+    ```
 5.  **Bước 5:** Xác minh:
-    *   Tất cả Class, Interface, Enum được tạo đúng kiểu phần tử trong StarUML Model Explorer.
-    *   Các thuộc tính, phương thức hiển thị đúng phạm vi truy cập (Public, Private).
-    *   Các đường quan hệ (Inheritance, Aggregation, Association) hiển thị đúng chiều mũi tên và không bị đứt gãy.
-    *   Bố cục tự động hiển thị gọn gàng, không đè lấp lên nhau.
+    *   Tất cả Lifelines hiển thị nằm ngang, không bị đè nhau.
+    *   Các thông điệp vẽ nối ngang từ trái sang phải / phải sang trái theo đúng trình tự Y tăng dần.
+    *   Mũi tên thông điệp đồng bộ nét liền và thông điệp phản hồi nét đứt hiển thị đúng chuẩn UML.
