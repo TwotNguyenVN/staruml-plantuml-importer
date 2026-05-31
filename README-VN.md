@@ -4,6 +4,19 @@
 
 Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các loại **Sơ đồ Use Case**, **Sơ đồ lớp (Class Diagram)**, và **Sơ đồ tuần tự (Sequence Diagram)** từ cú pháp **PlantUML**, từ đó tự động sinh chúng thành các phần tử UML gốc bên trong StarUML.
 
+## 📊 Sơ đồ hỗ trợ & Kế hoạch phát triển
+
+| Loại sơ đồ | Trạng thái | Ghi chú |
+|:---|:---|:---|
+| **Use Case Diagram** (Biểu đồ Use Case) | ✅ Đã hỗ trợ | Phân phối dạng cột, bọc hệ thống |
+| **Class Diagram** (Biểu đồ lớp) | ✅ Đã hỗ trợ | Bố cục dạng lưới, đầy đủ thuộc tính/phương thức & quan hệ |
+| **Sequence Diagram** (Biểu đồ tuần tự) | ✅ Đã hỗ trợ | Sắp xếp theo trình tự thời gian, loại thông điệp, icon tác nhân |
+| **Flowchart** (Sơ đồ dòng chảy / Lưu đồ) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai |
+| **ER Diagram** (Biểu đồ ERD) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai |
+| **Mindmap** (Sơ đồ tư duy) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai |
+| **Requirement Diagram** (Biểu đồ yêu cầu) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai |
+| **State Diagram** (Biểu đồ trạng thái) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai |
+
 ## ✨ Các tính năng nổi bật
 
 - Phân tích cú pháp PlantUML cho biểu đồ Use Case, Class và Sequence.
