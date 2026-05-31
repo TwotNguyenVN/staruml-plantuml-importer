@@ -59,7 +59,20 @@ You can use the `--api-port=<port>` option to change the API server port for Sta
 
 ## PlantUML Diagram Importer (Extension)
 
-This repository also includes a **StarUML extension** that imports **Use Case Diagrams**, **Class Diagrams**, and **Sequence Diagrams** from **PlantUML** syntax and auto-generates them as native UML elements inside StarUML.
+This repository also includes a **StarUML extension** that imports various diagram types from PlantUML syntax and auto-generates them as native UML elements inside StarUML.
+
+### 📊 Supported & Planned Diagrams / Sơ đồ hỗ trợ & Kế hoạch phát triển
+
+| Diagram Type / Loại sơ đồ | Status / Trạng thái | Notes / Ghi chú |
+|:---|:---|:---|
+| **Use Case Diagram** (Biểu đồ Use Case) | ✅ Supported (Đã hỗ trợ) | Column layout, system boundary |
+| **Class Diagram** (Biểu đồ lớp) | ✅ Supported (Đã hỗ trợ) | Grid layout, full attributes/methods & associations |
+| **Sequence Diagram** (Biểu đồ tuần tự) | ✅ Supported (Đã hỗ trợ) | Chronological layout, message types, actor icons |
+| **Flowchart** (Sơ đồ dòng chảy / Lưu đồ) | ⏳ Planned (Sắp hỗ trợ) | Planned for future update |
+| **ER Diagram** (Biểu đồ ERD) | ⏳ Planned (Sắp hỗ trợ) | Planned for future update |
+| **Mindmap** (Sơ đồ tư duy) | ⏳ Planned (Sắp hỗ trợ) | Planned for future update |
+| **Requirement Diagram** (Biểu đồ yêu cầu) | ⏳ Planned (Sắp hỗ trợ) | Planned for future update |
+| **State Diagram** (Biểu đồ trạng thái) | ⏳ Planned (Sắp hỗ trợ) | Planned for future update |
 
 ### ✨ Features
 
