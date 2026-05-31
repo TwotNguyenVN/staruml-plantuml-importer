@@ -4,6 +4,19 @@
 
 A StarUML extension that imports **Use Case Diagrams**, **Class Diagrams**, and **Sequence Diagrams** from **PlantUML** syntax and auto-generates them as native UML elements inside StarUML.
 
+## 📊 Supported & Planned Diagrams
+
+| Diagram Type | Status | Notes |
+|:---|:---|:---|
+| **Use Case Diagram** | ✅ Supported | Column layout, system boundary |
+| **Class Diagram** | ✅ Supported | Grid layout, full attributes/methods & associations |
+| **Sequence Diagram** | ✅ Supported | Chronological layout, message types, actor icons |
+| **Flowchart** | ⏳ Planned | Planned for future update |
+| **ER Diagram** | ⏳ Planned | Planned for future update |
+| **Mindmap** | ⏳ Planned | Planned for future update |
+| **Requirement Diagram** | ⏳ Planned | Planned for future update |
+| **State Diagram** | ⏳ Planned | Planned for future update |
+
 ## ✨ Features
 
 - Parse PlantUML Use Case, Class, and Sequence Diagram syntax
