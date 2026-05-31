@@ -1,5 +1,7 @@
 # StarUML PlantUML Diagram Importer
 
+🌍 **Language:** [English](README.md) | [Tiếng Việt](README-VN.md)
+
 A StarUML extension that imports **Use Case Diagrams**, **Class Diagrams**, and **Sequence Diagrams** from **PlantUML** syntax and auto-generates them as native UML elements inside StarUML.
 
 ## ✨ Features
