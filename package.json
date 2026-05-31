@@ -1,11 +1,13 @@
 {
-  "name": "staruml-plantuml-importer",
+  "name": "twot.staruml-plantuml-importer",
   "version": "2.1.0",
   "title": "PlantUML Diagram Importer",
-  "description": "Import and auto-layout multiple diagram types (Use Case, Class) from PlantUML code",
+  "description": "Import and auto-layout multiple diagram types (Use Case, Class, Sequence) from PlantUML code",
   "homepage": "https://github.com/TwotNguyenVN/staruml-plantuml-importer",
+  "issues": "https://github.com/TwotNguyenVN/staruml-plantuml-importer/issues",
   "author": {
     "name": "Twot",
+    "email": "twot@example.com",
     "url": "https://github.com/TwotNguyenVN"
   },
   "repository": {
