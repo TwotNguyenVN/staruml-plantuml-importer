@@ -2,6 +2,8 @@
 
 # StarUML MCP Server
 
+🌍 **Language:** [English](README.md) | [Tiếng Việt](README-VN.md)
+
 [StarUML](https://staruml.io) is a sophisticated modeler for agile and concise modeling. **StarUML MCP Server** enables you to create diagrams or generate codes from diagrams in StarUML via prompts.
 
 ## Setup

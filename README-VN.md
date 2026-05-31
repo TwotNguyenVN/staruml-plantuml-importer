@@ -1,5 +1,7 @@
 # StarUML MCP Server (Tài liệu Tiếng Việt)
 
+🌍 **Ngôn ngữ:** [English](README.md) | [Tiếng Việt](README-VN.md)
+
 [StarUML](https://staruml.io) là một công cụ mô hình hóa mạnh mẽ và tinh gọn cho phát triển phần mềm linh hoạt (agile). **StarUML MCP Server** cho phép bạn tạo sơ đồ hoặc sinh mã nguồn từ sơ đồ trong StarUML thông qua các câu lệnh (prompts) từ mô hình ngôn ngữ lớn (LLM).
 
 ## Thiết lập
