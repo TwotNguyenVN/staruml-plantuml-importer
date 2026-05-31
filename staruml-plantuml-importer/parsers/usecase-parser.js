@@ -1,106 +1,6 @@
 /**
- * StarUML Use Case Diagram Importer Extension (v2.0)
- * Compatible with StarUML v7+
- * Imports Use Case diagrams from PlantUML syntax
+ * Use Case Diagram Parser & Generator Module
  */
-
-// Guard: only run in StarUML renderer process
-function init() {
-  if (typeof app === "undefined" || !app.commands) {
-    return;
-  }
-  app.commands.register(
-    "usecase-importer:import",
-    handleImport,
-    "Import Use Case Diagram from PlantUML Code"
-  );
-}
-
-function handleImport() {
-  try {
-    var diagram = app.diagrams.getCurrentDiagram();
-    if (!diagram) {
-      app.dialogs.showAlertDialog("Please create and open a Use Case Diagram first.");
-      return;
-    }
-    if (diagram.getClassName() !== "UMLUseCaseDiagram") {
-      app.dialogs.showAlertDialog(
-        "The current diagram is not a Use Case Diagram.\n" +
-        "Please open or create a UMLUseCaseDiagram."
-      );
-      return;
-    }
-
-    var sampleCode = [
-      "@startuml",
-      "",
-      'actor "Guest" as Guest',
-      'actor "Member" as Member',
-      'actor "Librarian" as Librarian',
-      'actor "Admin" as Admin',
-      "",
-      "Member --|> Guest",
-      "Admin --|> Librarian",
-      "",
-      'rectangle "Library System" {',
-      '    usecase "Register" as UC1',
-      '    usecase "Login" as UC2',
-      '    usecase "Search Books" as UC3',
-      '    usecase "Borrow Book" as UC4',
-      '    usecase "Return Book" as UC5',
-      '    usecase "Manage Books" as UC6',
-      '    usecase "Manage Members" as UC7',
-      '    usecase "View Reports" as UC8',
-      "}",
-      "",
-      "Guest --> UC1",
-      "Guest --> UC3",
-      "",
-      "Member --> UC2",
-      "Member --> UC4",
-      "Member --> UC5",
-      "",
-      "Librarian --> UC6",
-      "Librarian --> UC7",
-      "",
-      "Admin --> UC8",
-      "",
-      "UC4 ..> UC2 : <<include>>",
-      "UC5 ..> UC2 : <<include>>",
-      "",
-      "@enduml"
-    ].join("\n");
-
-    app.dialogs
-      .showTextDialog("Paste your PlantUML Use Case code below:", sampleCode)
-      .then(function (result) {
-        if (result.buttonId === "ok") {
-          try {
-            generateDiagram(diagram, result.returnValue || "");
-            app.dialogs.showInfoDialog(
-              "Use Case diagram imported successfully!"
-            );
-          } catch (e) {
-            app.dialogs.showAlertDialog(
-              "Error generating diagram:\n" + String(e && e.message ? e.message : e)
-            );
-          }
-        }
-      })
-      .catch(function (err) {
-        console.error("[usecase-importer] Dialog error:", err);
-      });
-  } catch (outerErr) {
-    console.error("[usecase-importer] handleImport error:", outerErr);
-    try {
-      app.dialogs.showAlertDialog(
-        "Unexpected error:\n" + String(outerErr && outerErr.message ? outerErr.message : outerErr)
-      );
-    } catch (_) {
-      // silently fail if even alert fails
-    }
-  }
-}
 
 function sanitizeName(name) {
   if (!name) return "";
@@ -273,13 +173,12 @@ function generateDiagram(diagram, text) {
   var leftSpacing = leftActors.length > 0 ? Math.floor(diagramHeight / (leftActors.length + 1)) : 160;
   var rightSpacing = rightActors.length > 0 ? Math.floor(diagramHeight / (rightActors.length + 1)) : 160;
 
-  // Use diagram._parent as model container, fallback to project root
   var parentModel = diagram._parent;
   if (!parentModel) {
     parentModel = app.project.getProject();
   }
 
-  // Create left actors using viewInitializer (StarUML v7 API)
+  // Create left actors
   leftActors.forEach(function (actor, index) {
     var posX = leftActorX;
     var posY = leftSpacing + index * leftSpacing - 40;
@@ -401,4 +300,6 @@ function generateDiagram(diagram, text) {
   });
 }
 
-exports.init = init;
+module.exports = {
+  generateDiagram: generateDiagram
+};

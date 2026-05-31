@@ -57,40 +57,42 @@ You can use the `--api-port=<port>` option to change the API server port for Sta
 }
 ```
 
-## Use Case Diagram Importer (Extension)
+## PlantUML Diagram Importer (Extension)
 
-This repository also includes a **StarUML extension** that imports **Use Case Diagrams** from **PlantUML** syntax and auto-generates them as native UML elements inside StarUML.
+This repository also includes a **StarUML extension** that imports **Use Case Diagrams** and **Class Diagrams** from **PlantUML** syntax and auto-generates them as native UML elements inside StarUML.
 
 ### ✨ Features
 
-- Parse PlantUML Use Case syntax (actors, use cases, relationships)
-- Auto-layout with smart column distribution
-- Support for `<<include>>`, `<<extend>>`, and generalization relationships
-- Separate primary actors (left) and secondary/system actors (right)
+- Parse PlantUML Use Case and Class Diagram syntax
+- Smart Grid layout for Class Diagrams and column distribution for Use Cases
+- Support for attributes, operations, visibilities, and multiplicities (Class Diagram)
+- Support for `<<include>>`, `<<extend>>`, generalization, interface realization, associations, aggregations, and compositions
 - Compatible with **StarUML v7+**
 
 ### 📦 Installation
 
 #### Quick Install
-- **Windows:** Double-click `staruml-usecase-importer\install.bat`
-- **macOS / Linux:** Run `chmod +x staruml-usecase-importer/install.sh && ./staruml-usecase-importer/install.sh`
+- **Windows:** Double-click `staruml-plantuml-importer\install.bat`
+- **macOS / Linux:** Run `chmod +x staruml-plantuml-importer/install.sh && ./staruml-plantuml-importer/install.sh`
 
 #### Manual Installation
-Copy the entire `staruml-usecase-importer` folder to:
+Copy the entire `staruml-plantuml-importer` folder to:
 
 | OS      | Path                                                                   |
 |---------|------------------------------------------------------------------------|
-| Windows | `%APPDATA%\StarUML\extensions\user\staruml-usecase-importer`           |
-| macOS   | `~/Library/Application Support/StarUML/extensions/user/staruml-usecase-importer` |
-| Linux   | `~/.config/StarUML/extensions/user/staruml-usecase-importer`           |
+| Windows | `%APPDATA%\StarUML\extensions\user\staruml-plantuml-importer`           |
+| macOS   | `~/Library/Application Support/StarUML/extensions/user/staruml-plantuml-importer` |
+| Linux   | `~/.config/StarUML/extensions/user/staruml-plantuml-importer`           |
 
 Then restart StarUML.
 
 ### 🚀 How to Use
 
 1. Open StarUML
-2. Create a **Use Case Diagram**: `Model` → `Add Diagram` → `Use Case Diagram`
-3. Go to `Tools` → **"Import Use Case from PlantUML..."**
+2. Create a Diagram:
+   - For Use Case: `Model` → `Add Diagram` → `Use Case Diagram`
+   - For Class: `Model` → `Add Diagram` → `Class Diagram`
+3. Go to `Tools` → `PlantUML Importer` → Select your import command
 4. Paste your PlantUML code in the dialog
 5. Click **OK** — the diagram will be generated automatically!
 
