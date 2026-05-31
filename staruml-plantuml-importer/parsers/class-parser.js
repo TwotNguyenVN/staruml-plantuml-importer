@@ -299,9 +299,22 @@ function generateDiagram(diagram, text) {
           modelInitializer: function (model) {
             model.name = el.name;
             if (el.isAbstract) model.isAbstract = true;
-            
-            // Add attributes
-            el.attributes.forEach(function (attrData) {
+          },
+          viewInitializer: function (dgmView) {
+            dgmView.left = posX;
+            dgmView.top = posY;
+            dgmView.width = width;
+            dgmView.height = height;
+          }
+        });
+        
+        if (view && view.model) {
+          elementsMap[el.alias] = view;
+          var model = view.model;
+          
+          // Add attributes
+          el.attributes.forEach(function (attrData) {
+            try {
               app.factory.createModel({
                 id: "UMLAttribute",
                 parent: model,
@@ -311,10 +324,14 @@ function generateDiagram(diagram, text) {
                   attr.visibility = attrData.visibility;
                 }
               });
-            });
-            
-            // Add operations
-            el.operations.forEach(function (opData) {
+            } catch (errAttr) {
+              console.error("[class-parser] Failed to create attribute:", attrData.name, errAttr);
+            }
+          });
+          
+          // Add operations
+          el.operations.forEach(function (opData) {
+            try {
               var opModel = app.factory.createModel({
                 id: "UMLOperation",
                 parent: model,
@@ -326,20 +343,28 @@ function generateDiagram(diagram, text) {
               });
               
               opData.parameters.forEach(function (paramData) {
-                app.factory.createModel({
-                  id: "UMLParameter",
-                  parent: opModel,
-                  modelInitializer: function (param) {
-                    param.name = paramData.name;
-                    param.type = paramData.type || "";
-                    param.direction = "in";
-                  }
-                });
+                try {
+                  app.factory.createModel({
+                    id: "UMLParameter",
+                    parent: opModel,
+                    modelInitializer: function (param) {
+                      param.name = paramData.name;
+                      param.type = paramData.type || "";
+                      param.direction = "in";
+                    }
+                  });
+                } catch (errParam) {
+                  console.error("[class-parser] Failed to create parameter:", paramData.name, errParam);
+                }
               });
-            });
-            
-            // Add literals (for enums)
-            el.literals.forEach(function (litName) {
+            } catch (errOp) {
+              console.error("[class-parser] Failed to create operation:", opData.name, errOp);
+            }
+          });
+          
+          // Add literals (for enums)
+          el.literals.forEach(function (litName) {
+            try {
               app.factory.createModel({
                 id: "UMLEnumerationLiteral",
                 parent: model,
@@ -347,18 +372,10 @@ function generateDiagram(diagram, text) {
                   lit.name = litName;
                 }
               });
-            });
-          },
-          viewInitializer: function (dgmView) {
-            dgmView.left = posX;
-            dgmView.top = posY;
-            dgmView.width = width;
-            dgmView.height = height;
-          }
-        });
-        
-        if (view) {
-          elementsMap[el.alias] = view;
+            } catch (errLit) {
+              console.error("[class-parser] Failed to create literal:", litName, errLit);
+            }
+          });
         }
       } catch (e) {
         console.error("[class-parser] Failed to create element:", el.name, e);
