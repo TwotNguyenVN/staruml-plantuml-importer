@@ -13,7 +13,7 @@ tasklist /FI "IMAGENAME eq StarUML.exe" 2>nul | find /I "StarUML.exe" >nul
 if not errorlevel 1 (
     echo [!] StarUML is running. Closing...
     taskkill /F /IM StarUML.exe >nul 2>&1
-    timeout /t 2 /nobreak >nul
+    ping 127.0.0.1 -n 3 >nul
 )
 
 :: Clean up old extension
@@ -39,6 +39,7 @@ copy /Y "%~dp0menus\menu.json" "%TARGET%\menus\menu.json" >nul
 copy /Y "%~dp0utils\dialog-helper.js" "%TARGET%\utils\dialog-helper.js" >nul
 copy /Y "%~dp0parsers\usecase-parser.js" "%TARGET%\parsers\usecase-parser.js" >nul
 copy /Y "%~dp0parsers\class-parser.js" "%TARGET%\parsers\class-parser.js" >nul
+copy /Y "%~dp0parsers\sequence-parser.js" "%TARGET%\parsers\sequence-parser.js" >nul
 
 echo [OK] Installation complete!
 echo.

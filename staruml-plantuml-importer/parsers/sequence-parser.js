@@ -69,12 +69,12 @@ function generateDiagram(diagram, text) {
     // Parse Lifelines: actor/participant/database/etc. Name as Alias
     var matchLife = line.match(/^(actor|participant|boundary|control|entity|database|collections)\s+(?:"([^"]+)"|([a-zA-Z0-9_\-]+))\s*(?:as\s+(\w+))?$/i);
     if (matchLife) {
-      var type = matchLife[1].toLowerCase();
+      var lifeType = matchLife[1].toLowerCase();
       var name = matchLife[2] || matchLife[3];
       var alias = matchLife[4] || name;
       
       parsedLifelines.push({
-        type: type,
+        type: lifeType,
         name: name,
         alias: alias
       });
@@ -107,82 +107,138 @@ function generateDiagram(diagram, text) {
   var totalMessages = parsedMessages.length;
   var lifelineHeight = Math.max(300, totalMessages * 45 + 120);
 
-  var parentModel = diagram._parent || app.project.getProject();
+  var interaction = diagram._parent;
+  var collaboration = interaction ? interaction._parent : null;
+  if (!collaboration) {
+    collaboration = app.project.getProject();
+  }
 
-  // Create Lifelines
-  parsedLifelines.forEach(function (life, index) {
-    var posX = index * spacingX + 100;
-    var posY = 50;
-    var nameClean = sanitizeName(life.name);
+  // Use app.type explicitly to prevent any variable shadowing issues (e.g. from local `type` variables)
+  var types = app.type;
 
-    try {
-      var view = app.factory.createModelAndView({
-        id: "UMLLifeline",
-        parent: parentModel,
-        diagram: diagram,
-        modelInitializer: function (model) {
-          model.name = nameClean;
-        },
-        viewInitializer: function (dgmView) {
-          dgmView.left = posX;
-          dgmView.top = posY;
-          dgmView.width = 100;
-          dgmView.height = lifelineHeight;
-        }
-      });
+  // Prepare repository operation builder
+  var builder = app.repository.getOperationBuilder();
+  builder.begin("Import Sequence Diagram");
 
-      if (view) {
-        elementsMap[life.alias] = view;
+  try {
+    // Create Lifelines
+    parsedLifelines.forEach(function (life, index) {
+      var posX = index * spacingX + 100;
+      var posY = 50;
+      var nameClean = sanitizeName(life.name);
+      var isActor = life.type === "actor";
+
+      // Create Actor model if type is actor
+      var actorModel = null;
+      if (isActor) {
+        actorModel = new types.UMLActor();
+        actorModel.name = nameClean;
+        actorModel._parent = collaboration;
+        builder.insert(actorModel);
+        builder.fieldInsert(collaboration, "ownedElements", actorModel);
       }
-    } catch (e) {
-      console.error("[sequence-parser] Failed to create lifeline:", life.name, e);
-    }
-  });
 
-  // Create Messages
-  parsedMessages.forEach(function (msg, index) {
-    var tailView = elementsMap[msg.from];
-    var headView = elementsMap[msg.to];
-
-    if (!tailView || !headView) {
-      console.warn(
-        "[sequence-parser] Skipping message: " +
-        msg.from + " -> " + msg.to + " (missing lifeline)"
-      );
-      return;
-    }
-
-    var x1 = tailView.left + tailView.width / 2;
-    var x2 = headView.left + headView.width / 2;
-    var y = 120 + index * 45;
-
-    try {
-      var view = app.factory.createModelAndView({
-        id: "UMLMessage",
-        parent: parentModel,
-        diagram: diagram,
-        tailView: tailView,
-        headView: headView,
-        tailModel: tailView.model,
-        headModel: headView.model,
-        modelInitializer: function (model) {
-          model.name = msg.label;
-          model.messageSort = msg.sort;
-        }
-      });
-
-      if (view && view.points) {
-        view.points.clear();
-        view.points.add({ x: x1, y: y });
-        view.points.add({ x: x2, y: y });
+      // Create Role (Attribute)
+      var roleModel = new types.UMLAttribute();
+      roleModel.name = nameClean + "Role";
+      if (isActor) {
+        roleModel.type = actorModel;
       }
-    } catch (e) {
-      console.error(
-        "[sequence-parser] Failed to create message:",
-        msg.label, msg.from, "->", msg.to, e
-      );
-    }
-  });
+      roleModel._parent = collaboration;
+      builder.insert(roleModel);
+      builder.fieldInsert(collaboration, "attributes", roleModel);
+
+      // Create Lifeline model
+      var lifelineModel = new types.UMLLifeline();
+      lifelineModel.name = nameClean;
+      lifelineModel.represent = roleModel;
+      lifelineModel._parent = interaction;
+      builder.insert(lifelineModel);
+      builder.fieldInsert(interaction, "participants", lifelineModel);
+
+      // Create LifelineView
+      var lifelineView = new types.UMLSeqLifelineView();
+      lifelineView._parent = diagram;
+      lifelineView.model = lifelineModel;
+      if (isActor) {
+        lifelineView.stereotypeDisplay = types.UMLGeneralNodeView.SD_ICON;
+      }
+      lifelineView.initialize(null, posX, posY, posX + 100, posY + lifelineHeight);
+      builder.insert(lifelineView);
+      builder.fieldInsert(diagram, "ownedViews", lifelineView);
+
+      elementsMap[life.alias] = {
+        model: lifelineModel,
+        view: lifelineView
+      };
+    });
+
+    // Create Messages
+    parsedMessages.forEach(function (msg, index) {
+      var tailData = elementsMap[msg.from];
+      var headData = elementsMap[msg.to];
+
+      if (!tailData || !headData) {
+        console.warn(
+          "[sequence-parser] Skipping message: " +
+          msg.from + " -> " + msg.to + " (missing lifeline)"
+        );
+        return;
+      }
+
+      var tailView = tailData.view;
+      var headView = headData.view;
+      var tailModel = tailData.model;
+      var headModel = headData.model;
+
+      var y = 120 + index * 45;
+
+      // Create Message model
+      var msgModel = new types.UMLMessage();
+      msgModel.name = msg.label;
+      msgModel.messageSort = msg.sort;
+      msgModel.source = tailModel;
+      msgModel.target = headModel;
+      msgModel._parent = interaction;
+      builder.insert(msgModel);
+      builder.fieldInsert(interaction, "messages", msgModel);
+
+      // Create UMLSeqMessageView
+      var msgView = new types.UMLSeqMessageView();
+      msgView._parent = diagram;
+      msgView.model = msgModel;
+      msgView.tail = tailView.linePart;
+      msgView.head = headView.linePart;
+      msgView.activation.height = 0;
+
+      var x1 = tailView.left + tailView.width / 2;
+      var x2 = headView.left + headView.width / 2;
+
+      msgView.initialize(null, x1, y, x2, y);
+
+      // Adjust points to be exactly horizontal at Y
+      if (msgView.points && msgView.points.points) {
+        msgView.points.points.forEach(function (point) {
+          point.y = y;
+        });
+      }
+
+      builder.insert(msgView);
+      builder.fieldInsert(diagram, "ownedViews", msgView);
+    });
+
+    // Execute the bulk repository operation
+    builder.end();
+    var cmd = builder.getOperation();
+    app.repository.doOperation(cmd);
+
+    // Refresh display
+    app.diagrams.setCurrentDiagram(diagram);
+  } catch (e) {
+    builder.discard();
+    console.error("[sequence-parser] Failed to import sequence diagram:", e);
+    throw e;
+  }
 }
 
 module.exports = {

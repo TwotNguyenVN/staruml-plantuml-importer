@@ -47,6 +47,7 @@ cp "$SCRIPT_DIR/menus/menu.json" "$TARGET/menus/menu.json"
 cp "$SCRIPT_DIR/utils/dialog-helper.js" "$TARGET/utils/dialog-helper.js"
 cp "$SCRIPT_DIR/parsers/usecase-parser.js" "$TARGET/parsers/usecase-parser.js"
 cp "$SCRIPT_DIR/parsers/class-parser.js" "$TARGET/parsers/class-parser.js"
+cp "$SCRIPT_DIR/parsers/sequence-parser.js" "$TARGET/parsers/sequence-parser.js"
 
 echo "[OK] Installation complete!"
 echo ""
