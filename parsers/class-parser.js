@@ -144,11 +144,11 @@ function generateDiagram(diagram, text) {
     }
     
     // Check start of class/interface/enum block
-    var matchBlock = line.match(/^(abstract\s+class|class|interface|enum)\s+(\w+)(?:\s+as\s+(\w+))?\s*\{?$/);
+    var matchBlock = line.match(/^(abstract\s+class|class|interface|enum)\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))(?:\s+as\s+(\w+))?\s*\{?$/);
     if (matchBlock) {
       var blockType = matchBlock[1];
-      var blockName = matchBlock[2];
-      var alias = matchBlock[3] || blockName;
+      var blockName = matchBlock[2] || matchBlock[3];
+      var alias = matchBlock[4] || blockName;
       
       var type = "UMLClass";
       var isAbstract = false;
