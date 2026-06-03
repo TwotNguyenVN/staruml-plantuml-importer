@@ -126,6 +126,18 @@ function showImportDialog(title, sampleCode) {
       }
     });
 
+    // Cancel button click handler
+    $dlg.find('[data-button-id="cancel"]').on("click", function (e) {
+      e.preventDefault();
+      dialog.close("cancel");
+    });
+
+    // Import button click handler
+    $dlg.find('[data-button-id="ok"]').on("click", function (e) {
+      e.preventDefault();
+      dialog.close("ok");
+    });
+
     // 3. Get Brackets promise and resolve value on close
     var promise = dialog.getPromise ? dialog.getPromise() : dialog;
     return promise.then(function (buttonId) {
