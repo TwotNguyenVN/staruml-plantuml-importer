@@ -230,7 +230,11 @@ function generateDiagram(diagram, text) {
           model.end2.cardinality = rel.rightCardinality;
           
           if (rel.label) {
-            model.name = rel.label;
+            var cleanLabel = rel.label.trim();
+            if (cleanLabel.indexOf('"') === 0 && cleanLabel.lastIndexOf('"') === cleanLabel.length - 1) {
+              cleanLabel = cleanLabel.substring(1, cleanLabel.length - 1);
+            }
+            model.name = cleanLabel;
           }
         }
       });
