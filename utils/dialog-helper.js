@@ -167,6 +167,7 @@ function showImportDialog(title, sampleCode) {
       reject(dialogErr);
     }
   });
+}
 
 module.exports = {
   showImportDialog: showImportDialog,
