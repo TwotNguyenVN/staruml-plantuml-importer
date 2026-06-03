@@ -28,7 +28,7 @@ function injectCSS() {
         "  line-height: 1.5 !important;",
         "}",
         ".plantuml-preview-dialog {",
-        "  width: 850px !important;",
+        "  width: 1050px !important;",
         "}"
       ].join("\n");
       
