@@ -63,10 +63,17 @@ function showImportDialog(title, sampleCode) {
     '      <textarea class="plantuml-code-input" style="flex: 1; font-family: monospace; font-size: 13px; resize: none; padding: 8px; line-height: 1.5;">' + sampleCode + '</textarea>',
     '    </div>',
     '    <div style="flex: 2; display: flex; flex-direction: column; border-left: 1px solid #ccc; padding-left: 15px; min-width: 0;">',
-    '      <label style="font-weight: bold; margin-bottom: 5px;">Server Preview:</label>',
-    '      <div class="preview-container" style="flex: 1; background: #fafafa; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; overflow: auto; min-height: 0;">',
+    '      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">',
+    '        <label style="font-weight: bold; margin: 0;">Server Preview:</label>',
+    '        <div class="preview-controls" style="display: flex; gap: 5px;">',
+    '          <button class="btn btn-zoom-out" style="padding: 2px 8px;" title="Zoom Out">-</button>',
+    '          <button class="btn btn-zoom-reset" style="padding: 2px 8px; font-size: 11px;" title="Reset Zoom">Fit</button>',
+    '          <button class="btn btn-zoom-in" style="padding: 2px 8px;" title="Zoom In">+</button>',
+    '        </div>',
+    '      </div>',
+    '      <div class="preview-container" style="flex: 1; background: #fafafa; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; overflow: auto; min-height: 0; cursor: grab; position: relative;">',
     '        <span class="preview-placeholder" style="color: #666; font-size: 12px; text-align: center; padding: 10px;">Loading preview...</span>',
-    '        <img class="preview-img" style="display: none; max-width: 100%; max-height: 100%; object-fit: contain;" />',
+    '        <img class="preview-img" style="display: none; max-width: 100%; max-height: 100%; object-fit: contain; user-select: none;" />',
     '      </div>',
     '    </div>',
     '  </div>',
@@ -84,8 +91,17 @@ function showImportDialog(title, sampleCode) {
       var $dlg = dialog.getElement();
 
       var $textarea = $dlg.find(".plantuml-code-input");
+      var $previewContainer = $dlg.find(".preview-container");
       var $previewPlaceholder = $dlg.find(".preview-placeholder");
       var $previewImg = $dlg.find(".preview-img");
+
+      var $btnZoomIn = $dlg.find(".btn-zoom-in");
+      var $btnZoomOut = $dlg.find(".btn-zoom-out");
+      var $btnZoomReset = $dlg.find(".btn-zoom-reset");
+
+      var imgNaturalWidth = 0;
+      var imgNaturalHeight = 0;
+      var currentScale = 1.0;
 
       var debounceTimeout = null;
       function updatePreview() {
@@ -107,6 +123,19 @@ function showImportDialog(title, sampleCode) {
           $previewImg.off("load").on("load", function () {
             $previewPlaceholder.hide();
             $previewImg.show();
+            
+            // Reset scale on load
+            currentScale = 1.0;
+            $previewImg.css({
+              "max-width": "100%",
+              "max-height": "100%",
+              "width": "auto",
+              "height": "auto"
+            });
+
+            // Store natural dimensions
+            imgNaturalWidth = this.naturalWidth || $previewImg.prop("naturalWidth");
+            imgNaturalHeight = this.naturalHeight || $previewImg.prop("naturalHeight");
           });
           $previewImg.off("error").on("error", function () {
             $previewPlaceholder.text("Failed to load image from PlantUML server.").show();
@@ -133,12 +162,104 @@ function showImportDialog(title, sampleCode) {
       // Initial update when dialog opens
       updatePreview();
 
+      // Zoom Controls handlers
+      function applyZoom() {
+        if (!imgNaturalWidth || !imgNaturalHeight) return;
+        $previewImg.css({
+          "max-width": "none",
+          "max-height": "none",
+          "width": (imgNaturalWidth * currentScale) + "px",
+          "height": (imgNaturalHeight * currentScale) + "px"
+        });
+      }
+
+      $btnZoomIn.on("click", function (e) {
+        e.preventDefault();
+        if (!$previewImg.is(":visible")) return;
+        
+        if (currentScale === 1.0) {
+          var renderedWidth = $previewImg.width();
+          if (renderedWidth && imgNaturalWidth) {
+            currentScale = renderedWidth / imgNaturalWidth;
+          }
+        }
+        currentScale = Math.min(currentScale * 1.25, 5.0);
+        applyZoom();
+      });
+
+      $btnZoomOut.on("click", function (e) {
+        e.preventDefault();
+        if (!$previewImg.is(":visible")) return;
+
+        if (currentScale === 1.0) {
+          var renderedWidth = $previewImg.width();
+          if (renderedWidth && imgNaturalWidth) {
+            currentScale = renderedWidth / imgNaturalWidth;
+          }
+        }
+        currentScale = Math.max(currentScale / 1.25, 0.1);
+        applyZoom();
+      });
+
+      $btnZoomReset.on("click", function (e) {
+        e.preventDefault();
+        if (!$previewImg.is(":visible")) return;
+
+        currentScale = 1.0;
+        $previewImg.css({
+          "max-width": "100%",
+          "max-height": "100%",
+          "width": "auto",
+          "height": "auto"
+        });
+      });
+
+      // Mouse Drag Panning handlers
+      var isDragging = false;
+      var startX, startY, startScrollLeft, startScrollTop;
+
+      $previewContainer.on("mousedown", function (e) {
+        if ($previewImg.is(":visible")) {
+          isDragging = true;
+          $previewContainer.css("cursor", "grabbing");
+          startX = e.clientX;
+          startY = e.clientY;
+          startScrollLeft = $previewContainer.scrollLeft();
+          startScrollTop = $previewContainer.scrollTop();
+          e.preventDefault();
+        }
+      });
+
+      $previewImg.on("dragstart", function (e) {
+        e.preventDefault();
+      });
+
+      $(window).on("mousemove.plantuml-pan", function (e) {
+        if (!isDragging) return;
+        var dx = e.clientX - startX;
+        var dy = e.clientY - startY;
+        $previewContainer.scrollLeft(startScrollLeft - dx);
+        $previewContainer.scrollTop(startScrollTop - dy);
+      });
+
+      $(window).on("mouseup.plantuml-pan", function () {
+        if (isDragging) {
+          isDragging = false;
+          $previewContainer.css("cursor", "grab");
+        }
+      });
+
+      function cleanUpEvents() {
+        $(window).off(".plantuml-pan");
+      }
+
       var isResolved = false;
 
       // Cancel button click handler
       $dlg.find('[data-button-id="cancel"]').on("click", function (e) {
         e.preventDefault();
         isResolved = true;
+        cleanUpEvents();
         dialog.close("cancel");
         resolve(null);
       });
@@ -148,6 +269,7 @@ function showImportDialog(title, sampleCode) {
         e.preventDefault();
         var valueToReturn = $textarea.val() || "";
         isResolved = true;
+        cleanUpEvents();
         dialog.close("ok");
         resolve(valueToReturn);
       });
@@ -158,6 +280,7 @@ function showImportDialog(title, sampleCode) {
         promise.done(function (buttonId) {
           if (!isResolved) {
             isResolved = true;
+            cleanUpEvents();
             resolve(buttonId === "ok" ? ($textarea.val() || "") : null);
           }
         });
@@ -165,6 +288,7 @@ function showImportDialog(title, sampleCode) {
         promise.then(function (buttonId) {
           if (!isResolved) {
             isResolved = true;
+            cleanUpEvents();
             resolve(buttonId === "ok" ? ($textarea.val() || "") : null);
           }
         });
