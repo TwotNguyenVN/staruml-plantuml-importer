@@ -34,6 +34,45 @@ function generateDiagram(diagram, text) {
     });
   }
 
+  // Helper to clean up colons and parentheses from aliases
+  function cleanEndpoint(str) {
+    if (!str) return "";
+    var cleaned = str.trim();
+    // Remove starting/ending colons for actors: :Actor: -> Actor
+    if (cleaned.indexOf(":") === 0 && cleaned.lastIndexOf(":") === cleaned.length - 1 && cleaned.length > 1) {
+      cleaned = cleaned.substring(1, cleaned.length - 1).trim();
+    }
+    // Remove starting/ending parentheses for use cases: (UseCase) -> UseCase
+    if (cleaned.indexOf("(") === 0 && cleaned.lastIndexOf(")") === cleaned.length - 1 && cleaned.length > 1) {
+      cleaned = cleaned.substring(1, cleaned.length - 1).trim();
+    }
+    // Strip quotes if any
+    if (cleaned.indexOf('"') === 0 && cleaned.lastIndexOf('"') === cleaned.length - 1 && cleaned.length > 1) {
+      cleaned = cleaned.substring(1, cleaned.length - 1).trim();
+    }
+    return cleaned;
+  }
+
+  function ensureElementRegistered(alias, rawStr, forceUC) {
+    if (!alias) return;
+    var isActor = parsedActors.some(function(a) { return a.alias === alias; });
+    var isUC = parsedUseCases.some(function(u) { return u.alias === alias; });
+
+    if (!isActor && !isUC) {
+      if (forceUC || rawStr.indexOf("(") === 0) {
+        parsedUseCases.push({ name: alias, alias: alias, stereotype: "" });
+      } else if (rawStr.indexOf(":") === 0) {
+        parsedActors.push({ name: alias, alias: alias, stereotype: "" });
+      } else {
+        if (/^uc/i.test(alias) || /usecase/i.test(alias)) {
+          parsedUseCases.push({ name: alias, alias: alias, stereotype: "" });
+        } else {
+          parsedActors.push({ name: alias, alias: alias, stereotype: "" });
+        }
+      }
+    }
+  }
+
   // Parse PlantUML lines
   var subjectName = "";
 
@@ -74,75 +113,109 @@ function generateDiagram(diagram, text) {
     if (line.toLowerCase().indexOf("actor ") === 0) {
       var nameAct = "";
       var aliasAct = "";
+      var stereotypeAct = "";
       var matchAct;
 
-      if ((matchAct = line.match(/actor\s+"([^"]+)"\s+as\s+(\w+)/i))) {
+      if ((matchAct = line.match(/actor\s+"([^"]+)"\s+as\s+(\w+)(?:\s+<<([^>]+)>>)?/i))) {
         nameAct = matchAct[1];
         aliasAct = matchAct[2];
-      } else if ((matchAct = line.match(/actor\s+(\w+)\s+as\s+"([^"]+)"/i))) {
+        stereotypeAct = matchAct[3] || "";
+      } else if ((matchAct = line.match(/actor\s+(\w+)\s+as\s+"([^"]+)"(?:\s+<<([^>]+)>>)?/i))) {
         aliasAct = matchAct[1];
         nameAct = matchAct[2];
-      } else if ((matchAct = line.match(/actor\s+"([^"]+)"/i))) {
+        stereotypeAct = matchAct[3] || "";
+      } else if ((matchAct = line.match(/actor\s+"([^"]+)"(?:\s+<<([^>]+)>>)?/i))) {
         nameAct = matchAct[1];
         aliasAct = matchAct[1];
-      } else if ((matchAct = line.match(/actor\s+(\w+)/i))) {
+        stereotypeAct = matchAct[2] || "";
+      } else if ((matchAct = line.match(/actor\s+(\w+)(?:\s+<<([^>]+)>>)?/i))) {
         nameAct = matchAct[1];
         aliasAct = matchAct[1];
+        stereotypeAct = matchAct[2] || "";
       }
 
       if (aliasAct) {
-        parsedActors.push({ name: nameAct, alias: aliasAct });
+        parsedActors.push({ name: nameAct, alias: aliasAct, stereotype: stereotypeAct });
       }
       continue;
     }
 
     // Parse use cases
-    if (line.toLowerCase().indexOf("usecase ") === 0) {
-      var nameUC = "";
-      var aliasUC = "";
-      var matchUC;
+    var isUseCaseLine = false;
+    var nameUC = "";
+    var aliasUC = "";
+    var stereotypeUC = "";
+    var matchUC;
 
-      if ((matchUC = line.match(/usecase\s+"([^"]+)"\s+as\s+(\w+)/i))) {
+    if (line.toLowerCase().indexOf("usecase ") === 0) {
+      isUseCaseLine = true;
+      if ((matchUC = line.match(/usecase\s+"([^"]+)"\s+as\s+(\w+)(?:\s+<<([^>]+)>>)?/i))) {
         nameUC = matchUC[1];
         aliasUC = matchUC[2];
-      } else if ((matchUC = line.match(/usecase\s+(\w+)\s+as\s+"([^"]+)"/i))) {
+        stereotypeUC = matchUC[3] || "";
+      } else if ((matchUC = line.match(/usecase\s+(\w+)\s+as\s+"([^"]+)"(?:\s+<<([^>]+)>>)?/i))) {
         aliasUC = matchUC[1];
         nameUC = matchUC[2];
-      } else if ((matchUC = line.match(/usecase\s+"([^"]+)"/i))) {
+        stereotypeUC = matchUC[3] || "";
+      } else if ((matchUC = line.match(/usecase\s+"([^"]+)"(?:\s+<<([^>]+)>>)?/i))) {
         nameUC = matchUC[1];
         aliasUC = matchUC[1];
-      } else if ((matchUC = line.match(/usecase\s+(\w+)/i))) {
+        stereotypeUC = matchUC[2] || "";
+      } else if ((matchUC = line.match(/usecase\s+(\w+)(?:\s+<<([^>]+)>>)?/i))) {
         nameUC = matchUC[1];
         aliasUC = matchUC[1];
+        stereotypeUC = matchUC[2] || "";
       }
+    } else if (line.match(/^\(([^)]+)\)(?:\s+as\s+(\w+))?(?:\s+<<([^>]+)>>)?$/i)) {
+      matchUC = line.match(/^\(([^)]+)\)(?:\s+as\s+(\w+))?(?:\s+<<([^>]+)>>)?$/i);
+      isUseCaseLine = true;
+      nameUC = matchUC[1];
+      aliasUC = matchUC[2] || matchUC[1];
+      stereotypeUC = matchUC[3] || "";
+    }
 
-      if (aliasUC) {
-        parsedUseCases.push({ name: nameUC, alias: aliasUC });
-      }
+    if (isUseCaseLine && aliasUC) {
+      parsedUseCases.push({ name: nameUC, alias: aliasUC, stereotype: stereotypeUC });
       continue;
     }
 
     // Parse relations
-    var matchRel;
-    // Generalization: A --|> B
-    if ((matchRel = line.match(/^(\w+)\s*--\|>\s*(\w+)$/))) {
-      relations.push({ type: "UMLGeneralization", from: matchRel[1], to: matchRel[2] });
-    }
-    // Generalization reverse: A <|-- B
-    else if ((matchRel = line.match(/^(\w+)\s*<\|--\s*(\w+)$/))) {
-      relations.push({ type: "UMLGeneralization", from: matchRel[2], to: matchRel[1] });
-    }
-    // Include/Extend: A ..> B : <<include>>
-    else if ((matchRel = line.match(/^(\w+)\s*(?:\.\.>|\.>)\s*(\w+)(?:\s*:\s*(.+))?$/))) {
-      var stereo = matchRel[3] ? matchRel[3].replace(/<<|>>/g, "").trim().toLowerCase() : "";
-      var relType = "UMLAssociation";
-      if (stereo === "include") relType = "UMLInclude";
-      else if (stereo === "extend") relType = "UMLExtend";
-      relations.push({ type: relType, from: matchRel[1], to: matchRel[2] });
-    }
-    // Association: A --> B or A -> B or A -- B
-    else if ((matchRel = line.match(/^(\w+)\s*(?:-->|->|--)\s*(\w+)(?:\s*:\s*(.+))?$/))) {
-      relations.push({ type: "UMLAssociation", from: matchRel[1], to: matchRel[2] });
+    var arrowRegex = /\s*(--\|>|<\|--|\.\.>|\.>|-->|->|--)\s*/;
+    var parts = line.split(arrowRegex);
+    if (parts.length >= 3) {
+      var leftStr = parts[0].trim();
+      var arrow = parts[1].trim();
+      var rightWithLabel = parts.slice(2).join("");
+      var rightStr = rightWithLabel;
+      var label = "";
+      var colonIndex = rightWithLabel.indexOf(":");
+      if (colonIndex !== -1) {
+        rightStr = rightWithLabel.substring(0, colonIndex).trim();
+        label = rightWithLabel.substring(colonIndex + 1).trim();
+      }
+
+      var fromAlias = cleanEndpoint(leftStr);
+      var toAlias = cleanEndpoint(rightStr);
+
+      if (fromAlias && toAlias) {
+        var fromIsUC = leftStr.indexOf("(") === 0;
+        var toIsUC = rightStr.indexOf("(") === 0;
+
+        ensureElementRegistered(fromAlias, leftStr, fromIsUC);
+        ensureElementRegistered(toAlias, rightStr, toIsUC);
+
+        var relType = "UMLAssociation";
+        if (arrow === "--|>" || arrow === "<|--") {
+          var realFrom = (arrow === "--|>") ? fromAlias : toAlias;
+          var realTo = (arrow === "--|>") ? toAlias : fromAlias;
+          relations.push({ type: "UMLGeneralization", from: realFrom, to: realTo });
+        } else {
+          var stereo = label ? label.replace(/<<|>>/g, "").trim().toLowerCase() : "";
+          if (stereo === "include") relType = "UMLInclude";
+          else if (stereo === "extend") relType = "UMLExtend";
+          relations.push({ type: relType, from: fromAlias, to: toAlias });
+        }
+      }
     }
   }
 
@@ -225,6 +298,9 @@ function generateDiagram(diagram, text) {
         diagram: diagram,
         modelInitializer: function (model) {
           model.name = actorName;
+          if (actor.stereotype) {
+            model.stereotype = actor.stereotype;
+          }
         },
         viewInitializer: function (dgmView) {
           dgmView.left = posX;
@@ -254,6 +330,9 @@ function generateDiagram(diagram, text) {
         diagram: diagram,
         modelInitializer: function (model) {
           model.name = actorName;
+          if (actor.stereotype) {
+            model.stereotype = actor.stereotype;
+          }
         },
         viewInitializer: function (dgmView) {
           dgmView.left = posX;
@@ -285,6 +364,9 @@ function generateDiagram(diagram, text) {
         diagram: diagram,
         modelInitializer: function (model) {
           model.name = ucName;
+          if (uc.stereotype) {
+            model.stereotype = uc.stereotype;
+          }
         },
         viewInitializer: function (dgmView) {
           dgmView.left = posX;
