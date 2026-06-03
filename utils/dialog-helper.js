@@ -53,16 +53,16 @@ function showImportDialog(title, sampleCode) {
 
   // 1. HTML Dialog Template
   var template = [
-    '<div class="dialog plantuml-preview-dialog" style="width: 1050px; display: flex; flex-direction: column;">',
+    '<div class="dialog plantuml-preview-dialog" style="width: 1400px; display: flex; flex-direction: column;">',
     '  <div class="modal-header">',
     '    <span class="dialog-title">' + title + '</span>',
     '  </div>',
-    '  <div class="modal-body" style="display: flex; gap: 15px; padding: 15px; height: 500px;">',
+    '  <div class="modal-body" style="display: flex; gap: 15px; padding: 15px; height: 700px;">',
     '    <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">',
     '      <label style="font-weight: bold; margin-bottom: 5px;">PlantUML Code:</label>',
     '      <textarea class="plantuml-code-input" style="flex: 1; font-family: monospace; font-size: 13px; resize: none; padding: 8px; line-height: 1.5;">' + sampleCode + '</textarea>',
     '    </div>',
-    '    <div style="flex: 1; display: flex; flex-direction: column; border-left: 1px solid #ccc; padding-left: 15px; min-width: 0;">',
+    '    <div style="flex: 2; display: flex; flex-direction: column; border-left: 1px solid #ccc; padding-left: 15px; min-width: 0;">',
     '      <label style="font-weight: bold; margin-bottom: 5px;">Server Preview:</label>',
     '      <div class="preview-container" style="flex: 1; background: #fafafa; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; overflow: auto; min-height: 0;">',
     '        <span class="preview-placeholder" style="color: #666; font-size: 12px; text-align: center; padding: 10px;">Click Preview button to render</span>',
