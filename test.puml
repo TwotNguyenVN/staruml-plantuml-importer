@@ -1,0 +1,110 @@
+@startuml
+title Activity Diagram - Quá trình mượn sách thư viện
+
+|Độc giả|
+start
+:Yêu cầu mượn sách;
+
+|Thủ thư|
+:Yêu cầu cung cấp thông tin độc giả;
+
+|Độc giả|
+:Cung cấp thông tin độc giả;
+
+|Thủ thư|
+:Tiếp nhận thông tin độc giả;
+
+|Hệ thống|
+:Kiểm tra thông tin độc giả;
+
+if (Độc giả hợp lệ?) then (Có)
+
+  |Thủ thư|
+  :Yêu cầu cung cấp thông tin sách mượn;
+
+  |Độc giả|
+  :Cung cấp thông tin sách mượn;
+
+  |Thủ thư|
+  :Chọn sách;
+
+  |Hệ thống|
+  :Kiểm tra sách mượn;
+
+  if (Sách còn khả dụng?) then (Có)
+
+    :Kiểm tra số lượng sách đang mượn;
+
+    if (Vượt quá số lượng cho phép?) then (Có)
+
+      :Hủy cuốn vừa chọn;
+
+      |Thủ thư|
+      :Thông báo hết quyền mượn;
+
+      |Độc giả|
+      :Nhận thông báo không được mượn;
+
+      stop
+
+    else (Không)
+
+      |Hệ thống|
+      :Lập phiếu mượn;
+
+      fork
+        :Lưu phiếu mượn;
+      fork again
+        :Lưu chi tiết phiếu mượn;
+      fork again
+        :Cập nhật sách mượn;
+      end fork
+
+      :In phiếu mượn;
+
+      |Thủ thư|
+      :Giao sách;
+
+      |Độc giả|
+      :Nhận sách và phiếu mượn;
+
+      stop
+
+    endif
+
+  else (Không)
+
+    |Thủ thư|
+    :Thông báo hết sách;
+
+    |Độc giả|
+    if (Muốn chọn sách khác?) then (Có)
+
+      :Cung cấp thông tin sách mượn;
+
+      |Thủ thư|
+      :Chọn sách;
+
+      |Hệ thống|
+      :Kiểm tra sách mượn;
+
+    else (Không)
+      :Kết thúc yêu cầu mượn;
+      stop
+    endif
+
+  endif
+
+else (Không)
+
+  |Thủ thư|
+  :Thông báo không được mượn;
+
+  |Độc giả|
+  :Nhận thông báo không được mượn;
+
+  stop
+
+endif
+
+@enduml

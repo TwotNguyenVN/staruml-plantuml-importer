@@ -8,6 +8,8 @@ const dialogHelper = require("./utils/dialog-helper");
 const usecaseParser = require("./parsers/usecase-parser");
 const classParser = require("./parsers/class-parser");
 const sequenceParser = require("./parsers/sequence-parser");
+const activityParser = require("./parsers/activity-parser");
+const stateParser = require("./parsers/state-parser");
 
 function injectCSS() {
   try {
@@ -60,6 +62,18 @@ function init() {
     "plantuml-importer:import-sequencediagram",
     handleImportSequenceDiagram,
     "Import Sequence Diagram from PlantUML Code"
+  );
+  
+  app.commands.register(
+    "plantuml-importer:import-activitydiagram",
+    handleImportActivityDiagram,
+    "Import Activity Diagram from PlantUML Code"
+  );
+  
+  app.commands.register(
+    "plantuml-importer:import-statechart",
+    handleImportStatechartDiagram,
+    "Import State Diagram from PlantUML Code"
   );
 }
 
@@ -220,6 +234,107 @@ function handleImportSequenceDiagram() {
       });
   } catch (outerErr) {
     console.error("[plantuml-importer] handleImportSequenceDiagram error:", outerErr);
+  }
+}
+
+function handleImportActivityDiagram() {
+  try {
+    var diagram = app.diagrams.getCurrentDiagram();
+    if (!diagram) {
+      app.dialogs.showAlertDialog("Please create and open an Activity Diagram first.");
+      return;
+    }
+    if (diagram.getClassName() !== "UMLActivityDiagram") {
+      app.dialogs.showAlertDialog(
+        "The current diagram is not an Activity Diagram.\n" +
+        "Please open or create a UMLActivityDiagram."
+      );
+      return;
+    }
+
+    var sampleCode = [
+      "@startuml",
+      "|Độc giả|",
+      "start",
+      ":Yêu cầu mượn sách;",
+      "|Thủ thư|",
+      ":Chọn sách;",
+      "|Hệ thống|",
+      "if (Sách còn không?) then (Có)",
+      "  :Lập phiếu mượn;",
+      "else (Không)",
+      "  :Thông báo hết sách;",
+      "endif",
+      "stop",
+      "@enduml"
+    ].join("\n");
+
+    dialogHelper.showImportDialog("Paste your PlantUML Activity code below:", sampleCode)
+      .then(function (code) {
+        if (code !== null) {
+          try {
+            activityParser.generateDiagram(diagram, code);
+            app.dialogs.showInfoDialog("Activity diagram imported successfully!");
+          } catch (e) {
+            app.dialogs.showAlertDialog(
+              "Error generating diagram:\n" + String(e && e.message ? e.message : e)
+            );
+          }
+        }
+      })
+      .catch(function (err) {
+        console.error("[plantuml-importer] Dialog error:", err);
+      });
+  } catch (outerErr) {
+    console.error("[plantuml-importer] handleImportActivityDiagram error:", outerErr);
+  }
+}
+
+function handleImportStatechartDiagram() {
+  try {
+    var diagram = app.diagrams.getCurrentDiagram();
+    if (!diagram) {
+      app.dialogs.showAlertDialog("Please create and open a State Diagram first.");
+      return;
+    }
+    if (diagram.getClassName() !== "UMLStatechartDiagram") {
+      app.dialogs.showAlertDialog(
+        "The current diagram is not a State Diagram.\n" +
+        "Please open or create a UMLStatechartDiagram."
+      );
+      return;
+    }
+
+    var sampleCode = [
+      "@startuml",
+      "[*] --> Active",
+      "state Active {",
+      "  [*] --> Idle",
+      "  Idle --> Processing : startEvent",
+      "  Processing --> Idle : finishEvent",
+      "}",
+      "Active --> [*] : shutdown",
+      "@enduml"
+    ].join("\n");
+
+    dialogHelper.showImportDialog("Paste your PlantUML State code below:", sampleCode)
+      .then(function (code) {
+        if (code !== null) {
+          try {
+            stateParser.generateDiagram(diagram, code);
+            app.dialogs.showInfoDialog("State diagram imported successfully!");
+          } catch (e) {
+            app.dialogs.showAlertDialog(
+              "Error generating diagram:\n" + String(e && e.message ? e.message : e)
+            );
+          }
+        }
+      })
+      .catch(function (err) {
+        console.error("[plantuml-importer] Dialog error:", err);
+      });
+  } catch (outerErr) {
+    console.error("[plantuml-importer] handleImportStatechartDiagram error:", outerErr);
   }
 }
 

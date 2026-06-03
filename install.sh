@@ -48,6 +48,8 @@ cp "$SCRIPT_DIR/utils/dialog-helper.js" "$TARGET/utils/dialog-helper.js"
 cp "$SCRIPT_DIR/parsers/usecase-parser.js" "$TARGET/parsers/usecase-parser.js"
 cp "$SCRIPT_DIR/parsers/class-parser.js" "$TARGET/parsers/class-parser.js"
 cp "$SCRIPT_DIR/parsers/sequence-parser.js" "$TARGET/parsers/sequence-parser.js"
+cp "$SCRIPT_DIR/parsers/activity-parser.js" "$TARGET/parsers/activity-parser.js"
+cp "$SCRIPT_DIR/parsers/state-parser.js" "$TARGET/parsers/state-parser.js"
 
 echo "[OK] Installation complete!"
 echo ""
