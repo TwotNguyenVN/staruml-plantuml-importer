@@ -27,8 +27,11 @@ function injectCSS() {
         "  font-size: 13px !important;",
         "  line-height: 1.5 !important;",
         "}",
-        ".plantuml-preview-dialog {",
-        "  width: 1050px !important;",
+        ".dialog.plantuml-preview-dialog {",
+        "  width: 1400px !important;",
+        "}",
+        ".dialog.plantuml-preview-dialog textarea {",
+        "  height: 100% !important;",
         "}"
       ].join("\n");
       
