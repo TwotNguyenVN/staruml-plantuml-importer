@@ -60,7 +60,10 @@ function showImportDialog(title, sampleCode) {
     '  <div class="modal-body" style="display: flex; gap: 15px; padding: 15px; height: 700px;">',
     '    <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">',
     '      <label style="font-weight: bold; margin-bottom: 5px;">PlantUML Code:</label>',
-    '      <textarea class="plantuml-code-input" style="flex: 1; font-family: monospace; font-size: 13px; resize: none; padding: 8px; line-height: 1.5;">' + sampleCode + '</textarea>',
+    '      <textarea class="plantuml-code-input" style="flex: 1; font-family: monospace; font-size: 13px; resize: none; padding: 8px; line-height: 1.5; margin-bottom: 10px;">' + sampleCode + '</textarea>',
+    '      <div style="display: flex; justify-content: flex-end; margin-bottom: 5px;">',
+    '        <button class="btn btn-default btn-clear-code" style="padding: 4px 12px;">Clear Code</button>',
+    '      </div>',
     '    </div>',
     '    <div style="flex: 2; display: flex; flex-direction: column; border-left: 1px solid #ccc; padding-left: 15px; min-width: 0;">',
     '      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">',
@@ -161,6 +164,15 @@ function showImportDialog(title, sampleCode) {
 
       // Initial update when dialog opens
       updatePreview();
+
+      // Clear Code button handler
+      var $btnClearCode = $dlg.find(".btn-clear-code");
+      $btnClearCode.on("click", function (e) {
+        e.preventDefault();
+        $textarea.val("");
+        updatePreview();
+        $textarea.focus();
+      });
 
       // Zoom Controls handlers
       $btnZoomIn.on("click", function (e) {
