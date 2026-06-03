@@ -77,12 +77,10 @@ function showImportDialog(title, sampleCode) {
     '      </div>',
     '    </div>',
     '  </div>',
-    '  <div class="modal-footer" style="padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #3c3c3c; background: #282828;">',
+    '  <div class="modal-footer" style="padding: 12px 20px; display: flex; justify-content: flex-end; align-items: center; gap: 8px; border-top: 1px solid #3c3c3c; background: #282828;">',
     '    <button class="btn btn-clear-code" style="padding: 6px 14px; background: #2d2d2d; color: #ccc; border: 1px solid #3c3c3c; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; font-family: sans-serif; transition: background 0.2s;">Clear Code</button>',
-    '    <div style="display: flex; gap: 10px;">',
-    '      <button class="btn btn-default" data-button-id="cancel" style="padding: 6px 16px; background: #2d2d2d; color: #ccc; border: 1px solid #3c3c3c; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 13px; font-family: sans-serif; transition: background 0.2s;">Cancel</button>',
-    '      <button class="btn btn-primary" data-button-id="ok" style="padding: 6px 20px; background: #007acc; color: #fff; border: 1px solid #0062a3; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: background 0.2s;">Import</button>',
-    '    </div>',
+    '    <button class="btn btn-default" data-button-id="cancel" style="padding: 6px 16px; background: #2d2d2d; color: #ccc; border: 1px solid #3c3c3c; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 13px; font-family: sans-serif; transition: background 0.2s;">Cancel</button>',
+    '    <button class="btn btn-primary" data-button-id="ok" style="padding: 6px 20px; background: #007acc; color: #fff; border: 1px solid #0062a3; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: background 0.2s;">Import</button>',
     '  </div>',
     '</div>'
   ].join("\n");
