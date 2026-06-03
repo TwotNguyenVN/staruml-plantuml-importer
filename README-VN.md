@@ -2,7 +2,7 @@
 
 🌍 **Ngôn ngữ:** [English](README.md) | [Tiếng Việt](README-VN.md)
 
-Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các loại **Sơ đồ Use Case**, **Sơ đồ lớp (Class Diagram)**, và **Sơ đồ tuần tự (Sequence Diagram)** từ cú pháp **PlantUML**, từ đó tự động sinh chúng thành các phần tử UML gốc bên trong StarUML.
+Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các loại biểu đồ **Use Case, Class, Sequence, Activity, State và ER Diagrams** từ cú pháp **PlantUML**, từ đó tự động sinh chúng thành các phần tử UML gốc bên trong StarUML.
 
 ## 📊 Sơ đồ hỗ trợ & Kế hoạch phát triển
 
@@ -10,20 +10,22 @@ Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các
 |:---|:---|:---|
 | **Use Case Diagram** (Biểu đồ Use Case) | ✅ Đã hỗ trợ | Phân phối dạng cột, bọc hệ thống |
 | **Class Diagram** (Biểu đồ lớp) | ✅ Đã hỗ trợ | Bố cục dạng lưới, đầy đủ thuộc tính/phương thức & quan hệ |
-| **Sequence Diagram** (Biểu đồ tuần tự) | ✅ Đã hỗ trợ | Sắp xếp theo trình tự thời gian, loại thông điệp, icon tác nhân |
-| **Flowchart** (Sơ đồ dòng chảy / Lưu đồ) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai |
-| **ER Diagram** (Biểu đồ ERD) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai |
+| **Sequence Diagram** (Biểu đồ tuần tự) | ✅ Đã hỗ trợ | Sắp xếp theo trình tự thời gian, loại thông điệp, lifelines |
+| **Activity Diagram** (Biểu đồ hoạt động) | ✅ Đã hỗ trợ | Phân chia swimlanes (làn bơi), các luồng hành động và rẽ nhánh |
+| **State Diagram** (Biểu đồ trạng thái) | ✅ Đã hỗ trợ | Hỗ trợ composite state, phân vùng region con, các pseudostate |
+| **ER Diagram** (Biểu đồ ERD) | ✅ Đã hỗ trợ | Thực thể, kiểu dữ liệu cột (PK/FK/Nullable), quan hệ chân chim |
 | **Mindmap** (Sơ đồ tư duy) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai |
 | **Requirement Diagram** (Biểu đồ yêu cầu) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai |
-| **State Diagram** (Biểu đồ trạng thái) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai |
 
 ## ✨ Các tính năng nổi bật
 
-- Phân tích cú pháp PlantUML cho biểu đồ Use Case, Class và Sequence.
-- Thuật toán bố cục tự động: Bố cục lưới thông minh cho Class Diagram, căn cột ngang cho Use Case, và xếp chồng thông điệp theo trục thời gian đứng trên Sequence Diagram.
+- **Xem trước trực tuyến (Live Server Preview):** Hộp thoại chia đôi màn hình cho phép dán code bên trái và bấm **Preview** để xem trước ảnh render sơ đồ từ máy chủ PlantUML bên phải trước khi import.
+- Phân tích cú pháp PlantUML cho biểu đồ Use Case, Class, Sequence, Activity, State và ERD.
+- Thuật toán bố cục tự động: Bố cục lưới thông minh cho Class Diagram, căn cột ngang cho Use Case, xếp chồng trục đứng đứng trên Sequence, ánh xạ làn bơi (swimlanes) cho Activity và lồng phân tầng cho State.
 - Hỗ trợ đầy đủ các thuộc tính, phương thức, phạm vi truy cập (visibility) và bội số (multiplicities) trên Class Diagram.
 - Hỗ trợ các quan hệ: `<<include>>`, `<<extend>>`, thừa kế (generalization), hiện thực hóa giao diện (interface realization), liên kết (association), thu nạp (aggregation) và hợp thành (composition).
 - Hỗ trợ đầy đủ các loại lifeline (`actor`, `participant`, `boundary`, `control`, `entity`, `database`, `collections`) và đường thông điệp (`->`, `-->`, `->>`, `->*`, `->x`) trên Sequence Diagram.
+- Hỗ trợ đầy đủ định nghĩa cột ERD (Khóa chính PK, Khóa ngoại FK, Nullable) và các chân quan hệ chân chim chuẩn xác.
 - Tương thích tốt với **StarUML v7+**.
 
 ## 📦 Cài đặt
@@ -61,9 +63,12 @@ Sau đó khởi động lại StarUML.
    - Sơ đồ Use Case: `Model` → `Add Diagram` → `Use Case Diagram`
    - Sơ đồ Class: `Model` → `Add Diagram` → `Class Diagram`
    - Sơ đồ Sequence: `Model` → `Add Diagram` → `Sequence Diagram`
+   - Sơ đồ Activity: `Model` → `Add Diagram` → `Activity Diagram`
+   - Sơ đồ State: `Model` → `Add Diagram` → `Statechart Diagram`
+   - Sơ đồ ERD: `Model` → `Add Diagram` → `ER Diagram`
 3. Truy cập: **`Tools` → `PlantUML Importer` → Chọn lệnh nhập tương ứng**.
 4. Dán đoạn mã PlantUML vào hộp thoại.
-5. Nhấp **OK** — sơ đồ sẽ được tự động vẽ ra trên canvas!
+5. Nhấp **Preview** để xem trước ảnh render trực tuyến từ server, sau đó nhấp **Import** để tự động sinh sơ đồ lên canvas!
 
 ## 📝 Cú pháp PlantUML được hỗ trợ
 
@@ -123,6 +128,54 @@ U -> Auth : Yêu cầu đăng nhập
 Auth -> DB : Truy vấn người dùng
 DB --> Auth : Thông tin người dùng
 Auth --> U : Trả về Token / Kết quả
+@enduml
+```
+
+### Biểu đồ Activity (Hoạt động)
+
+```plantuml
+@startuml
+|Actor|
+start
+:Hành động 1;
+if (Lựa chọn?) then (có)
+  :Hành động 2;
+else (không)
+  :Hành động 3;
+endif
+stop
+@enduml
+```
+
+### Biểu đồ State (Trạng thái)
+
+```plantuml
+@startuml
+[*] --> Active
+state Active {
+  [*] --> Idle
+  Idle --> Processing : trigger
+}
+Active --> [*] : shutdown
+@enduml
+```
+
+### Biểu đồ ERD (Thực thể - Quan hệ)
+
+```plantuml
+@startuml
+entity User {
+  * user_id : number <<generated>>
+  --
+  * username : varchar(50)
+  email : varchar(100)
+}
+entity Order {
+  * order_id : number
+  --
+  * user_id : number <<FK>>
+}
+User ||--o{ Order
 @enduml
 ```
 
