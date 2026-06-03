@@ -236,19 +236,21 @@ function showImportDialog(title, sampleCode) {
         }
       });
 
-      // Mouse Wheel Zoom
+      // Mouse Wheel Zoom (requires Ctrl key)
       $previewContainer.on("wheel", function (e) {
         if (!$previewImg.is(":visible")) return;
-        e.preventDefault();
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
 
-        var delta = e.originalEvent.deltaY;
-        var factor = delta < 0 ? 1.15 : 0.85;
+          var delta = e.originalEvent.deltaY;
+          var factor = delta < 0 ? 1.15 : 0.85;
 
-        var newScale = currentScale * factor;
-        newScale = Math.max(0.15, Math.min(newScale, 8.0));
-        
-        currentScale = newScale;
-        applyTransform(true);
+          var newScale = currentScale * factor;
+          newScale = Math.max(0.15, Math.min(newScale, 8.0));
+          
+          currentScale = newScale;
+          applyTransform(true);
+        }
       });
 
       // Keyboard Ctrl + +/- Zoom
