@@ -71,9 +71,9 @@ function showImportDialog(title, sampleCode) {
     '          <button class="btn btn-zoom-in" style="padding: 2px 8px;" title="Zoom In">+</button>',
     '        </div>',
     '      </div>',
-    '      <div class="preview-container" style="flex: 1; background: #fafafa; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; overflow: auto; min-height: 0; cursor: grab; position: relative;">',
+    '      <div class="preview-container" style="flex: 1; background: #fafafa; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 0; cursor: grab; position: relative;">',
     '        <span class="preview-placeholder" style="color: #666; font-size: 12px; text-align: center; padding: 10px;">Loading preview...</span>',
-    '        <img class="preview-img" style="display: none; max-width: 100%; max-height: 100%; object-fit: contain; user-select: none;" />',
+    '        <img class="preview-img" style="display: none; max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; transform-origin: center center;" />',
     '      </div>',
     '    </div>',
     '  </div>',
@@ -99,9 +99,16 @@ function showImportDialog(title, sampleCode) {
       var $btnZoomOut = $dlg.find(".btn-zoom-out");
       var $btnZoomReset = $dlg.find(".btn-zoom-reset");
 
-      var imgNaturalWidth = 0;
-      var imgNaturalHeight = 0;
       var currentScale = 1.0;
+      var translateX = 0;
+      var translateY = 0;
+
+      function applyTransform(animate) {
+        $previewImg.css({
+          "transition": animate ? "transform 0.15s ease-out" : "none",
+          "transform": "translate(" + translateX + "px, " + translateY + "px) scale(" + currentScale + ")"
+        });
+      }
 
       var debounceTimeout = null;
       function updatePreview() {
@@ -124,18 +131,11 @@ function showImportDialog(title, sampleCode) {
             $previewPlaceholder.hide();
             $previewImg.show();
             
-            // Reset scale on load
+            // Reset transforms on load
             currentScale = 1.0;
-            $previewImg.css({
-              "max-width": "100%",
-              "max-height": "100%",
-              "width": "auto",
-              "height": "auto"
-            });
-
-            // Store natural dimensions
-            imgNaturalWidth = this.naturalWidth || $previewImg.prop("naturalWidth");
-            imgNaturalHeight = this.naturalHeight || $previewImg.prop("naturalHeight");
+            translateX = 0;
+            translateY = 0;
+            applyTransform(false);
           });
           $previewImg.off("error").on("error", function () {
             $previewPlaceholder.text("Failed to load image from PlantUML server.").show();
@@ -163,60 +163,34 @@ function showImportDialog(title, sampleCode) {
       updatePreview();
 
       // Zoom Controls handlers
-      function applyZoom() {
-        if (!imgNaturalWidth || !imgNaturalHeight) return;
-        $previewImg.css({
-          "max-width": "none",
-          "max-height": "none",
-          "width": (imgNaturalWidth * currentScale) + "px",
-          "height": (imgNaturalHeight * currentScale) + "px"
-        });
-      }
-
       $btnZoomIn.on("click", function (e) {
         e.preventDefault();
         if (!$previewImg.is(":visible")) return;
-        
-        if (currentScale === 1.0) {
-          var renderedWidth = $previewImg.width();
-          if (renderedWidth && imgNaturalWidth) {
-            currentScale = renderedWidth / imgNaturalWidth;
-          }
-        }
-        currentScale = Math.min(currentScale * 1.25, 5.0);
-        applyZoom();
+        currentScale = Math.min(currentScale * 1.25, 8.0);
+        applyTransform(true);
       });
 
       $btnZoomOut.on("click", function (e) {
         e.preventDefault();
         if (!$previewImg.is(":visible")) return;
-
-        if (currentScale === 1.0) {
-          var renderedWidth = $previewImg.width();
-          if (renderedWidth && imgNaturalWidth) {
-            currentScale = renderedWidth / imgNaturalWidth;
-          }
-        }
-        currentScale = Math.max(currentScale / 1.25, 0.1);
-        applyZoom();
+        currentScale = Math.max(currentScale / 1.25, 0.15);
+        applyTransform(true);
       });
 
       $btnZoomReset.on("click", function (e) {
         e.preventDefault();
         if (!$previewImg.is(":visible")) return;
-
         currentScale = 1.0;
-        $previewImg.css({
-          "max-width": "100%",
-          "max-height": "100%",
-          "width": "auto",
-          "height": "auto"
-        });
+        translateX = 0;
+        translateY = 0;
+        applyTransform(true);
       });
 
       // Mouse Drag Panning handlers
       var isDragging = false;
-      var startX, startY, startScrollLeft, startScrollTop;
+      var startX, startY;
+      var startTranslateX = 0;
+      var startTranslateY = 0;
 
       $previewContainer.on("mousedown", function (e) {
         if ($previewImg.is(":visible")) {
@@ -224,8 +198,8 @@ function showImportDialog(title, sampleCode) {
           $previewContainer.css("cursor", "grabbing");
           startX = e.clientX;
           startY = e.clientY;
-          startScrollLeft = $previewContainer.scrollLeft();
-          startScrollTop = $previewContainer.scrollTop();
+          startTranslateX = translateX;
+          startTranslateY = translateY;
           e.preventDefault();
         }
       });
@@ -238,14 +212,52 @@ function showImportDialog(title, sampleCode) {
         if (!isDragging) return;
         var dx = e.clientX - startX;
         var dy = e.clientY - startY;
-        $previewContainer.scrollLeft(startScrollLeft - dx);
-        $previewContainer.scrollTop(startScrollTop - dy);
+        translateX = startTranslateX + dx;
+        translateY = startTranslateY + dy;
+        applyTransform(false);
       });
 
       $(window).on("mouseup.plantuml-pan", function () {
         if (isDragging) {
           isDragging = false;
           $previewContainer.css("cursor", "grab");
+        }
+      });
+
+      // Mouse Wheel Zoom
+      $previewContainer.on("wheel", function (e) {
+        if (!$previewImg.is(":visible")) return;
+        e.preventDefault();
+
+        var delta = e.originalEvent.deltaY;
+        var factor = delta < 0 ? 1.15 : 0.85;
+
+        var newScale = currentScale * factor;
+        newScale = Math.max(0.15, Math.min(newScale, 8.0));
+        
+        currentScale = newScale;
+        applyTransform(true);
+      });
+
+      // Keyboard Ctrl + +/- Zoom
+      $(window).on("keydown.plantuml-pan", function (e) {
+        if (e.ctrlKey || e.metaKey) {
+          var key = e.which || e.keyCode;
+          var zoomType = null;
+          if (key === 187 || key === 61 || key === 107) {
+            zoomType = "in";
+          } else if (key === 189 || key === 173 || key === 109) {
+            zoomType = "out";
+          }
+
+          if (zoomType) {
+            e.preventDefault();
+            if (!$previewImg.is(":visible")) return;
+
+            var factor = zoomType === "in" ? 1.25 : 0.8;
+            currentScale = Math.max(0.15, Math.min(currentScale * factor, 8.0));
+            applyTransform(true);
+          }
         }
       });
 
@@ -274,7 +286,7 @@ function showImportDialog(title, sampleCode) {
         resolve(valueToReturn);
       });
 
-      // Fallback in case the dialog is closed by pressing escape or clicking Brackets close (x) button
+      // Fallback in case the dialog is closed by pressing escape or clicking close (x) button
       var promise = dialog.getPromise ? dialog.getPromise() : dialog;
       if (promise && promise.done) {
         promise.done(function (buttonId) {
