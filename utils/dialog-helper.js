@@ -126,6 +126,8 @@ function showImportDialog(title, sampleCode) {
       }
     });
 
+    var valueToReturn = null;
+
     // Cancel button click handler
     $dlg.find('[data-button-id="cancel"]').on("click", function (e) {
       e.preventDefault();
@@ -135,6 +137,7 @@ function showImportDialog(title, sampleCode) {
     // Import button click handler
     $dlg.find('[data-button-id="ok"]').on("click", function (e) {
       e.preventDefault();
+      valueToReturn = $textarea.val() || "";
       dialog.close("ok");
     });
 
@@ -142,7 +145,7 @@ function showImportDialog(title, sampleCode) {
     var promise = dialog.getPromise ? dialog.getPromise() : dialog;
     return promise.then(function (buttonId) {
       if (buttonId === "ok") {
-        return $textarea.val() || "";
+        return valueToReturn;
       }
       return null;
     });
