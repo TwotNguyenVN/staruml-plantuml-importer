@@ -65,19 +65,14 @@ function showImportDialog(title, sampleCode) {
     '    <div style="flex: 2; display: flex; flex-direction: column; border-left: 1px solid #ccc; padding-left: 15px; min-width: 0;">',
     '      <label style="font-weight: bold; margin-bottom: 5px;">Server Preview:</label>',
     '      <div class="preview-container" style="flex: 1; background: #fafafa; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; overflow: auto; min-height: 0;">',
-    '        <span class="preview-placeholder" style="color: #666; font-size: 12px; text-align: center; padding: 10px;">Click Preview button to render</span>',
+    '        <span class="preview-placeholder" style="color: #666; font-size: 12px; text-align: center; padding: 10px;">Loading preview...</span>',
     '        <img class="preview-img" style="display: none; max-width: 100%; max-height: 100%; object-fit: contain;" />',
     '      </div>',
     '    </div>',
     '  </div>',
-    '  <div class="modal-footer" style="padding: 10px 15px; display: flex; justify-content: space-between; align-items: center;">',
-    '    <div>',
-    '      <button class="btn btn-default btn-preview">Preview</button>',
-    '    </div>',
-    '    <div>',
-    '      <button class="btn btn-default" data-button-id="cancel">Cancel</button>',
-    '      <button class="btn btn-primary" data-button-id="ok">Import</button>',
-    '    </div>',
+    '  <div class="modal-footer" style="padding: 10px 15px; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">',
+    '    <button class="btn btn-default" data-button-id="cancel">Cancel</button>',
+    '    <button class="btn btn-primary" data-button-id="ok">Import</button>',
     '  </div>',
     '</div>'
   ].join("\n");
@@ -91,11 +86,9 @@ function showImportDialog(title, sampleCode) {
       var $textarea = $dlg.find(".plantuml-code-input");
       var $previewPlaceholder = $dlg.find(".preview-placeholder");
       var $previewImg = $dlg.find(".preview-img");
-      var $btnPreview = $dlg.find(".btn-preview");
 
-      // Click handler for preview button
-      $btnPreview.on("click", function (e) {
-        e.preventDefault();
+      var debounceTimeout = null;
+      function updatePreview() {
         var code = $textarea.val().trim();
         if (!code) {
           $previewPlaceholder.text("No code to preview.").show();
@@ -125,7 +118,20 @@ function showImportDialog(title, sampleCode) {
           $previewPlaceholder.text("Encoding error: " + err.message).show();
           $previewImg.hide();
         }
+      }
+
+      // Input event listener with 800ms debounce
+      $textarea.on("input", function () {
+        if (debounceTimeout) {
+          clearTimeout(debounceTimeout);
+        }
+        debounceTimeout = setTimeout(function () {
+          updatePreview();
+        }, 800);
       });
+
+      // Initial update when dialog opens
+      updatePreview();
 
       var isResolved = false;
 
