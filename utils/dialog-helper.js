@@ -53,16 +53,16 @@ function showImportDialog(title, sampleCode) {
 
   // 1. HTML Dialog Template
   var template = [
-    '<div class="dialog plantuml-preview-dialog" style="width: 850px; display: flex; flex-direction: column;">',
+    '<div class="dialog plantuml-preview-dialog" style="width: 1050px; display: flex; flex-direction: column;">',
     '  <div class="modal-header">',
     '    <span class="dialog-title">' + title + '</span>',
     '  </div>',
-    '  <div class="modal-body" style="display: flex; gap: 15px; padding: 15px; height: 350px;">',
+    '  <div class="modal-body" style="display: flex; gap: 15px; padding: 15px; height: 500px;">',
     '    <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">',
     '      <label style="font-weight: bold; margin-bottom: 5px;">PlantUML Code:</label>',
-    '      <textarea class="plantuml-code-input" style="flex: 1; font-family: monospace; font-size: 12px; resize: none; padding: 8px;">' + sampleCode + '</textarea>',
+    '      <textarea class="plantuml-code-input" style="flex: 1; font-family: monospace; font-size: 13px; resize: none; padding: 8px; line-height: 1.5;">' + sampleCode + '</textarea>',
     '    </div>',
-    '    <div style="width: 380px; display: flex; flex-direction: column; border-left: 1px solid #ccc; padding-left: 15px; min-width: 0;">',
+    '    <div style="flex: 1; display: flex; flex-direction: column; border-left: 1px solid #ccc; padding-left: 15px; min-width: 0;">',
     '      <label style="font-weight: bold; margin-bottom: 5px;">Server Preview:</label>',
     '      <div class="preview-container" style="flex: 1; background: #fafafa; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; overflow: auto; min-height: 0;">',
     '        <span class="preview-placeholder" style="color: #666; font-size: 12px; text-align: center; padding: 10px;">Click Preview button to render</span>',
@@ -109,7 +109,7 @@ function showImportDialog(title, sampleCode) {
         var encoded = encodePlantUML(code);
         var imageUrl = "http://www.plantuml.com/plantuml/png/" + encoded;
 
-        $previewImg.attr("src", imageUrl);
+        // Register handlers BEFORE setting src to avoid synchronous load race conditions
         $previewImg.off("load").on("load", function () {
           $previewPlaceholder.hide();
           $previewImg.show();
@@ -118,14 +118,17 @@ function showImportDialog(title, sampleCode) {
           $previewPlaceholder.text("Failed to load image from PlantUML server.").show();
           $previewImg.hide();
         });
+        
+        $previewImg.attr("src", imageUrl);
       } catch (err) {
         $previewPlaceholder.text("Encoding error: " + err.message).show();
         $previewImg.hide();
       }
     });
 
-    // 3. Resolve value on close
-    return dialog.then(function (buttonId) {
+    // 3. Get Brackets promise and resolve value on close
+    var promise = dialog.getPromise ? dialog.getPromise() : dialog;
+    return promise.then(function (buttonId) {
       if (buttonId === "ok") {
         return $textarea.val() || "";
       }
