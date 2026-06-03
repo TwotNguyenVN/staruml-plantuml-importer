@@ -54,8 +54,8 @@ function showImportDialog(title, sampleCode) {
   // 1. HTML Dialog Template
   var template = [
     '<div class="dialog plantuml-preview-dialog" style="width: 1400px; display: flex; flex-direction: column;">',
-    '  <div class="modal-header">',
-    '    <span class="dialog-title">' + title + '</span>',
+    '  <div class="modal-header" style="padding: 15px 15px 10px 15px;">',
+    '    <span class="dialog-title" style="font-size: 14px; font-weight: bold;">' + title + '</span>',
     '  </div>',
     '  <div class="modal-body" style="display: flex; gap: 15px; padding: 15px; height: 700px;">',
     '    <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">',
