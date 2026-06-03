@@ -26,6 +26,9 @@ function injectCSS() {
         "  font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;",
         "  font-size: 13px !important;",
         "  line-height: 1.5 !important;",
+        "}",
+        ".plantuml-preview-dialog {",
+        "  width: 850px !important;",
         "}"
       ].join("\n");
       
