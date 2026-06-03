@@ -82,77 +82,91 @@ function showImportDialog(title, sampleCode) {
     '</div>'
   ].join("\n");
 
-  try {
-    // 2. Render Modal
-    var dialog = app.dialogs.showModalDialogUsingTemplate(template, true);
-    var $dlg = dialog.getElement();
+  return new Promise(function (resolve, reject) {
+    try {
+      // 2. Render Modal
+      var dialog = app.dialogs.showModalDialogUsingTemplate(template, true);
+      var $dlg = dialog.getElement();
 
-    var $textarea = $dlg.find(".plantuml-code-input");
-    var $previewPlaceholder = $dlg.find(".preview-placeholder");
-    var $previewImg = $dlg.find(".preview-img");
-    var $btnPreview = $dlg.find(".btn-preview");
+      var $textarea = $dlg.find(".plantuml-code-input");
+      var $previewPlaceholder = $dlg.find(".preview-placeholder");
+      var $previewImg = $dlg.find(".preview-img");
+      var $btnPreview = $dlg.find(".btn-preview");
 
-    // Click handler for preview button
-    $btnPreview.on("click", function (e) {
-      e.preventDefault();
-      var code = $textarea.val().trim();
-      if (!code) {
-        $previewPlaceholder.text("No code to preview.").show();
-        $previewImg.hide();
-        return;
-      }
-
-      $previewPlaceholder.text("Loading diagram from server...").show();
-      $previewImg.hide();
-
-      try {
-        var encoded = encodePlantUML(code);
-        var imageUrl = "http://www.plantuml.com/plantuml/png/" + encoded;
-
-        // Register handlers BEFORE setting src to avoid synchronous load race conditions
-        $previewImg.off("load").on("load", function () {
-          $previewPlaceholder.hide();
-          $previewImg.show();
-        });
-        $previewImg.off("error").on("error", function () {
-          $previewPlaceholder.text("Failed to load image from PlantUML server.").show();
+      // Click handler for preview button
+      $btnPreview.on("click", function (e) {
+        e.preventDefault();
+        var code = $textarea.val().trim();
+        if (!code) {
+          $previewPlaceholder.text("No code to preview.").show();
           $previewImg.hide();
-        });
-        
-        $previewImg.attr("src", imageUrl);
-      } catch (err) {
-        $previewPlaceholder.text("Encoding error: " + err.message).show();
+          return;
+        }
+
+        $previewPlaceholder.text("Loading diagram from server...").show();
         $previewImg.hide();
+
+        try {
+          var encoded = encodePlantUML(code);
+          var imageUrl = "http://www.plantuml.com/plantuml/png/" + encoded;
+
+          // Register handlers BEFORE setting src to avoid synchronous load race conditions
+          $previewImg.off("load").on("load", function () {
+            $previewPlaceholder.hide();
+            $previewImg.show();
+          });
+          $previewImg.off("error").on("error", function () {
+            $previewPlaceholder.text("Failed to load image from PlantUML server.").show();
+            $previewImg.hide();
+          });
+          
+          $previewImg.attr("src", imageUrl);
+        } catch (err) {
+          $previewPlaceholder.text("Encoding error: " + err.message).show();
+          $previewImg.hide();
+        }
+      });
+
+      var isResolved = false;
+
+      // Cancel button click handler
+      $dlg.find('[data-button-id="cancel"]').on("click", function (e) {
+        e.preventDefault();
+        isResolved = true;
+        dialog.close("cancel");
+        resolve(null);
+      });
+
+      // Import button click handler
+      $dlg.find('[data-button-id="ok"]').on("click", function (e) {
+        e.preventDefault();
+        var valueToReturn = $textarea.val() || "";
+        isResolved = true;
+        dialog.close("ok");
+        resolve(valueToReturn);
+      });
+
+      // Fallback in case the dialog is closed by pressing escape or clicking Brackets close (x) button
+      var promise = dialog.getPromise ? dialog.getPromise() : dialog;
+      if (promise && promise.done) {
+        promise.done(function (buttonId) {
+          if (!isResolved) {
+            isResolved = true;
+            resolve(buttonId === "ok" ? ($textarea.val() || "") : null);
+          }
+        });
+      } else if (promise && promise.then) {
+        promise.then(function (buttonId) {
+          if (!isResolved) {
+            isResolved = true;
+            resolve(buttonId === "ok" ? ($textarea.val() || "") : null);
+          }
+        });
       }
-    });
-
-    var valueToReturn = null;
-
-    // Cancel button click handler
-    $dlg.find('[data-button-id="cancel"]').on("click", function (e) {
-      e.preventDefault();
-      dialog.close("cancel");
-    });
-
-    // Import button click handler
-    $dlg.find('[data-button-id="ok"]').on("click", function (e) {
-      e.preventDefault();
-      valueToReturn = $textarea.val() || "";
-      dialog.close("ok");
-    });
-
-    // 3. Get Brackets promise and resolve value on close
-    var promise = dialog.getPromise ? dialog.getPromise() : dialog;
-    return promise.then(function (buttonId) {
-      if (buttonId === "ok") {
-        return valueToReturn;
-      }
-      return null;
-    });
-  } catch (dialogErr) {
-    return Promise.reject(dialogErr);
-  }
-}
+    } catch (dialogErr) {
+      reject(dialogErr);
+    }
+  });
 
 module.exports = {
   showImportDialog: showImportDialog,
