@@ -4,40 +4,9 @@
       "id": "tools",
       "submenu": [
         {
-          "label": "PlantUML Importer",
-          "id": "plantuml-importer",
-          "submenu": [
-            {
-              "label": "Import Use Case Diagram...",
-              "id": "plantuml-importer:import-usecase",
-              "command": "plantuml-importer:import-usecase"
-            },
-            {
-              "label": "Import Class Diagram...",
-              "id": "plantuml-importer:import-classdiagram",
-              "command": "plantuml-importer:import-classdiagram"
-            },
-            {
-              "label": "Import Sequence Diagram...",
-              "id": "plantuml-importer:import-sequencediagram",
-              "command": "plantuml-importer:import-sequencediagram"
-            },
-            {
-              "label": "Import Activity Diagram...",
-              "id": "plantuml-importer:import-activitydiagram",
-              "command": "plantuml-importer:import-activitydiagram"
-            },
-            {
-              "label": "Import State Diagram...",
-              "id": "plantuml-importer:import-statechart",
-              "command": "plantuml-importer:import-statechart"
-            },
-            {
-              "label": "Import ER Diagram...",
-              "id": "plantuml-importer:import-erd",
-              "command": "plantuml-importer:import-erd"
-            }
-          ]
+          "label": "Import PlantUML Diagram...",
+          "id": "plantuml-importer:import-auto",
+          "command": "plantuml-importer:import-auto"
         }
       ]
     }
