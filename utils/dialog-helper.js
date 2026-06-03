@@ -76,7 +76,7 @@ function showImportDialog(title, sampleCode) {
     '      </div>',
     '      <div class="preview-container" style="flex: 1; background: #fafafa; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 0; cursor: grab; position: relative;">',
     '        <span class="preview-placeholder" style="color: #666; font-size: 12px; text-align: center; padding: 10px;">Loading preview...</span>',
-    '        <img class="preview-img" style="display: none; max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; transform-origin: center center;" />',
+    '        <img class="preview-img" style="display: none; width: 100%; height: 100%; object-fit: contain; user-select: none; transform-origin: center center;" />',
     '      </div>',
     '    </div>',
     '  </div>',
