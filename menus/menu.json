@@ -31,6 +31,11 @@
               "label": "Import State Diagram...",
               "id": "plantuml-importer:import-statechart",
               "command": "plantuml-importer:import-statechart"
+            },
+            {
+              "label": "Import ER Diagram...",
+              "id": "plantuml-importer:import-erd",
+              "command": "plantuml-importer:import-erd"
             }
           ]
         }

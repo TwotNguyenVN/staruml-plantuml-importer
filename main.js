@@ -10,6 +10,7 @@ const classParser = require("./parsers/class-parser");
 const sequenceParser = require("./parsers/sequence-parser");
 const activityParser = require("./parsers/activity-parser");
 const stateParser = require("./parsers/state-parser");
+const erdParser = require("./parsers/erd-parser");
 
 function injectCSS() {
   try {
@@ -74,6 +75,12 @@ function init() {
     "plantuml-importer:import-statechart",
     handleImportStatechartDiagram,
     "Import State Diagram from PlantUML Code"
+  );
+  
+  app.commands.register(
+    "plantuml-importer:import-erd",
+    handleImportERD,
+    "Import ER Diagram from PlantUML Code"
   );
 }
 
@@ -335,6 +342,62 @@ function handleImportStatechartDiagram() {
       });
   } catch (outerErr) {
     console.error("[plantuml-importer] handleImportStatechartDiagram error:", outerErr);
+  }
+}
+
+function handleImportERD() {
+  try {
+    var diagram = app.diagrams.getCurrentDiagram();
+    if (!diagram) {
+      app.dialogs.showAlertDialog("Please create and open an ER Diagram first.");
+      return;
+    }
+    if (diagram.getClassName() !== "ERDDiagram") {
+      app.dialogs.showAlertDialog(
+        "The current diagram is not an ER Diagram.\n" +
+        "Please open or create a ERDDiagram."
+      );
+      return;
+    }
+
+    var sampleCode = [
+      "@startuml",
+      "entity \"User\" as user {",
+      "  * user_id : number <<generated>>",
+      "  --",
+      "  * username : varchar(50)",
+      "  email : varchar(100)",
+      "}",
+      "",
+      "entity \"Order\" as order {",
+      "  * order_id : number <<generated>>",
+      "  --",
+      "  * user_id : number <<FK>>",
+      "  order_date : date",
+      "}",
+      "",
+      "user ||--o{ order : places",
+      "@enduml"
+    ].join("\n");
+
+    dialogHelper.showImportDialog("Paste your PlantUML ERD code below:", sampleCode)
+      .then(function (code) {
+        if (code !== null) {
+          try {
+            erdParser.generateDiagram(diagram, code);
+            app.dialogs.showInfoDialog("ER Diagram imported successfully!");
+          } catch (e) {
+            app.dialogs.showAlertDialog(
+              "Error generating diagram:\n" + String(e && e.message ? e.message : e)
+            );
+          }
+        }
+      })
+      .catch(function (err) {
+        console.error("[plantuml-importer] Dialog error:", err);
+      });
+  } catch (outerErr) {
+    console.error("[plantuml-importer] handleImportERD error:", outerErr);
   }
 }
 
