@@ -2,7 +2,7 @@
 
 🌍 **Language:** [English](README.md) | [Tiếng Việt](README-VN.md)
 
-A StarUML extension that imports **Use Case Diagrams**, **Class Diagrams**, and **Sequence Diagrams** from **PlantUML** syntax and auto-generates them as native UML elements inside StarUML.
+A StarUML extension that imports **Use Case, Class, Sequence, Activity, State, and ER Diagrams** from **PlantUML** syntax and auto-generates them as native UML elements inside StarUML.
 
 ## 📊 Supported & Planned Diagrams
 
@@ -10,20 +10,22 @@ A StarUML extension that imports **Use Case Diagrams**, **Class Diagrams**, and 
 |:---|:---|:---|
 | **Use Case Diagram** | ✅ Supported | Column layout, system boundary |
 | **Class Diagram** | ✅ Supported | Grid layout, full attributes/methods & associations |
-| **Sequence Diagram** | ✅ Supported | Chronological layout, message types, actor icons |
-| **Flowchart** | ⏳ Planned | Planned for future update |
-| **ER Diagram** | ⏳ Planned | Planned for future update |
+| **Sequence Diagram** | ✅ Supported | Chronological layout, message types, actor lifelines |
+| **Activity Diagram** | ✅ Supported | Partition swimlanes, action flows, and decisions |
+| **State Diagram** | ✅ Supported | Composite states, region sub-containers, transitions |
+| **ER Diagram** | ✅ Supported | Entities, columns (PK/FK/Nullable), crow's foot cardinalities |
 | **Mindmap** | ⏳ Planned | Planned for future update |
 | **Requirement Diagram** | ⏳ Planned | Planned for future update |
-| **State Diagram** | ⏳ Planned | Planned for future update |
 
 ## ✨ Features
 
-- Parse PlantUML Use Case, Class, and Sequence Diagram syntax
-- Smart Grid layout for Class Diagrams, column distribution for Use Case Diagrams, and chronological timeline layout for Sequence Diagrams
-- Support for attributes, operations, visibilities, and multiplicities (Class Diagram)
-- Support for `<<include>>`, `<<extend>>`, generalization, interface realization, associations, aggregations, and compositions
-- Support for lifelines (`actor`, `participant`, `boundary`, `control`, `entity`, `database`, `collections`) and message lines (`->`, `-->`, `->>`, `->*`, `->x`) in Sequence Diagrams
+- **Live Server Preview:** Interactive side-by-side modal displaying diagram preview rendered directly from the PlantUML server.
+- Parse PlantUML Use Case, Class, Sequence, Activity, State, and ER Diagram syntax.
+- Smart layout algorithms: Grid layout for Class, column distribution for Use Case, chronological timeline layout for Sequence, swimlane coordinate mapping for Activity, and nested containment for State.
+- Support for attributes, operations, visibilities, and multiplicities (Class Diagram).
+- Support for `<<include>>`, `<<extend>>`, generalization, interface realization, associations, aggregations, and compositions.
+- Support for lifelines (`actor`, `participant`, `boundary`, `control`, `entity`, `database`, `collections`) and message lines (`->`, `-->`, `->>`, `->*`, `->x`) in Sequence Diagrams.
+- Support for ERD columns (Primary Keys, Foreign Keys, Nullability) and crow's foot notation.
 - Compatible with **StarUML v7+**
 
 ## 📦 Installation
@@ -60,9 +62,12 @@ Then restart StarUML.
    - For Use Case: `Model` → `Add Diagram` → `Use Case Diagram`
    - For Class: `Model` → `Add Diagram` → `Class Diagram`
    - For Sequence: `Model` → `Add Diagram` → `Sequence Diagram`
+   - For Activity: `Model` → `Add Diagram` → `Activity Diagram`
+   - For State: `Model` → `Add Diagram` → `Statechart Diagram`
+   - For ERD: `Model` → `Add Diagram` → `ER Diagram`
 3. Go to `Tools` → `PlantUML Importer` → Select your import command
 4. Paste your PlantUML code in the dialog
-5. Click **OK** — the diagram will be generated automatically!
+5. Click **Preview** to render and check the diagram from the server, then click **Import** — the diagram will be generated automatically!
 
 ## 📝 Supported PlantUML Syntax
 
@@ -122,6 +127,54 @@ U -> Auth : Login Request
 Auth -> DB : Query User
 DB --> Auth : User Data
 Auth --> U : Token / Response
+@enduml
+```
+
+### Activity Diagram
+
+```plantuml
+@startuml
+|Actor|
+start
+:Action 1;
+if (Decision?) then (yes)
+  :Action 2;
+else (no)
+  :Action 3;
+endif
+stop
+@enduml
+```
+
+### State Diagram
+
+```plantuml
+@startuml
+[*] --> Active
+state Active {
+  [*] --> Idle
+  Idle --> Processing : trigger
+}
+Active --> [*] : shutdown
+@enduml
+```
+
+### ER Diagram
+
+```plantuml
+@startuml
+entity User {
+  * user_id : number <<generated>>
+  --
+  * username : varchar(50)
+  email : varchar(100)
+}
+entity Order {
+  * order_id : number
+  --
+  * user_id : number <<FK>>
+}
+User ||--o{ Order
 @enduml
 ```
 
