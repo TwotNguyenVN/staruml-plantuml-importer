@@ -71,7 +71,7 @@ function showImportDialog(title, sampleCode) {
     '          <button class="btn btn-zoom-in" style="padding: 3px 10px; background: transparent; border: none; color: #999; cursor: pointer; font-weight: bold; border-radius: 3px; font-family: sans-serif;" title="Zoom In">+</button>',
     '        </div>',
     '      </div>',
-    '      <div class="preview-container" style="flex: 1; background: #141414; border: 1px solid #2d2d2d; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 0; cursor: grab; position: relative; border-radius: 6px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); margin-bottom: 12px;">',
+    '      <div class="preview-container" style="flex: 1; background: #141414; border: 1px solid #2d2d2d; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 0; cursor: grab; position: relative; border-radius: 6px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);">',
     '        <span class="preview-placeholder" style="color: #666; font-size: 12px; text-align: center; padding: 10px; font-family: sans-serif;">Loading preview...</span>',
     '        <img class="preview-img" style="display: none; width: 100%; height: 100%; object-fit: contain; user-select: none; transform-origin: center center; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));" />',
     '      </div>',
