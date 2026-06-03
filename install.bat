@@ -33,6 +33,7 @@ echo [*] Installing extension to:
 echo     %TARGET%
 echo.
 
+copy /Y "%~dp0PlantUML_Importer.png" "%TARGET%\PlantUML_Importer.png" >nul
 copy /Y "%~dp0main.js" "%TARGET%\main.js" >nul
 copy /Y "%~dp0package.json" "%TARGET%\package.json" >nul
 copy /Y "%~dp0menus\menu.json" "%TARGET%\menus\menu.json" >nul
