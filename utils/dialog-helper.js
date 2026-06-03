@@ -122,6 +122,19 @@ function showImportDialog(title, sampleCode) {
           return;
         }
 
+        // Show local welcome image for the default code
+        if (code === "@startuml\n\n' Paste your PlantUML code here\n\n@enduml".trim()) {
+          $previewPlaceholder.hide();
+          var path = require("path");
+          var imgPath = path.join(__dirname, "..", "PlantUML_Importer.png").replace(/\\/g, '/');
+          $previewImg.off("load").off("error").attr("src", "file:///" + imgPath).show();
+          currentScale = 1.0;
+          translateX = 0;
+          translateY = 0;
+          applyTransform(false);
+          return;
+        }
+
         $previewPlaceholder.text("Loading diagram from server...").show();
         $previewImg.hide();
 
