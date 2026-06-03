@@ -40,6 +40,8 @@ copy /Y "%~dp0utils\dialog-helper.js" "%TARGET%\utils\dialog-helper.js" >nul
 copy /Y "%~dp0parsers\usecase-parser.js" "%TARGET%\parsers\usecase-parser.js" >nul
 copy /Y "%~dp0parsers\class-parser.js" "%TARGET%\parsers\class-parser.js" >nul
 copy /Y "%~dp0parsers\sequence-parser.js" "%TARGET%\parsers\sequence-parser.js" >nul
+copy /Y "%~dp0parsers\activity-parser.js" "%TARGET%\parsers\activity-parser.js" >nul
+copy /Y "%~dp0parsers\state-parser.js" "%TARGET%\parsers\state-parser.js" >nul
 
 echo [OK] Installation complete!
 echo.

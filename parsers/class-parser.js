@@ -144,11 +144,12 @@ function generateDiagram(diagram, text) {
     }
     
     // Check start of class/interface/enum block
-    var matchBlock = line.match(/^(abstract\s+class|class|interface|enum)\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))(?:\s+as\s+(\w+))?\s*\{?$/);
+    var matchBlock = line.match(/^(abstract\s+class|class|interface|enum)\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))(?:\s+as\s+(\w+))?(?:\s+<<([^>]+)>>)?\s*\{?$/);
     if (matchBlock) {
       var blockType = matchBlock[1];
       var blockName = matchBlock[2] || matchBlock[3];
       var alias = matchBlock[4] || blockName;
+      var stereotype = matchBlock[5] || "";
       
       var type = "UMLClass";
       var isAbstract = false;
@@ -164,6 +165,7 @@ function generateDiagram(diagram, text) {
         name: blockName,
         alias: alias,
         isAbstract: isAbstract,
+        stereotype: stereotype,
         attributes: [],
         operations: [],
         literals: []
@@ -174,7 +176,7 @@ function generateDiagram(diagram, text) {
     
     // Relations (e.g. A <|-- B, A --|> B, A "1" o-- "0..*" B, etc.)
     // Matches: LeftName "LeftMult" RelationSymbol "RightMult" RightName : label
-    var matchRel = line.match(/^([a-zA-Z0-9_\.]+)\s*(?:"([^"]+)")?\s*([<|o*.\-~]+)\s*(?:"([^"]+)")?\s*([a-zA-Z0-9_\.]+)(?:\s*:\s*([^>]+)?\s*([><])?)?$/);
+    var matchRel = line.match(/^([a-zA-Z0-9_\.]+)\s*(?:"([^"]+)")?\s*([<|o*.\-~>]+)\s*(?:"([^"]+)")?\s*([a-zA-Z0-9_\.]+)(?:\s*:\s*(.*?)(?:\s+([><]))?)?$/);
     if (matchRel) {
       var left = matchRel[1];
       var leftMult = matchRel[2] || "";
@@ -299,6 +301,7 @@ function generateDiagram(diagram, text) {
           modelInitializer: function (model) {
             model.name = el.name;
             if (el.isAbstract) model.isAbstract = true;
+            if (el.stereotype) model.stereotype = el.stereotype;
           },
           viewInitializer: function (dgmView) {
             dgmView.left = posX;
@@ -423,7 +426,20 @@ function generateDiagram(diagram, text) {
             model.end2.multiplicity = rel.rightMult;
             model.end1.aggregation = rel.tailAggregation;
             model.end2.aggregation = rel.headAggregation;
-            model.name = rel.label;
+            
+            var stereo = "";
+            var cleanLabel = rel.label || "";
+            if (cleanLabel.indexOf("<<") !== -1) {
+              var matchStereo = cleanLabel.match(/<<([^>]+)>>/);
+              if (matchStereo) {
+                stereo = matchStereo[1].trim();
+                cleanLabel = cleanLabel.replace(/<<[^>]+>>/g, "").trim();
+              }
+            }
+            model.name = cleanLabel;
+            if (stereo) {
+              model.stereotype = stereo;
+            }
           }
         }
       });

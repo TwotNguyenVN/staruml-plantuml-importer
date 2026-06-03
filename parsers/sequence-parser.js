@@ -67,16 +67,18 @@ function generateDiagram(diagram, text) {
     }
 
     // Parse Lifelines: actor/participant/database/etc. Name as Alias
-    var matchLife = line.match(/^(actor|participant|boundary|control|entity|database|collections)\s+(?:"([^"]+)"|([a-zA-Z0-9_\-]+))\s*(?:as\s+(\w+))?$/i);
+    var matchLife = line.match(/^(actor|participant|boundary|control|entity|database|collections)\s+(?:"([^"]+)"|([a-zA-Z0-9_\-]+))\s*(?:as\s+(\w+))?(?:\s+<<([^>]+)>>)?$/i);
     if (matchLife) {
       var lifeType = matchLife[1].toLowerCase();
       var name = matchLife[2] || matchLife[3];
       var alias = matchLife[4] || name;
+      var stereotype = matchLife[5] || "";
       
       parsedLifelines.push({
         type: lifeType,
         name: name,
-        alias: alias
+        alias: alias,
+        stereotype: stereotype
       });
       continue;
     }
@@ -153,6 +155,9 @@ function generateDiagram(diagram, text) {
       lifelineModel.name = nameClean;
       lifelineModel.represent = roleModel;
       lifelineModel._parent = interaction;
+      if (life.stereotype) {
+        lifelineModel.stereotype = life.stereotype;
+      }
       builder.insert(lifelineModel);
       builder.fieldInsert(interaction, "participants", lifelineModel);
 
@@ -195,7 +200,19 @@ function generateDiagram(diagram, text) {
 
       // Create Message model
       var msgModel = new types.UMLMessage();
-      msgModel.name = msg.label;
+      var stereo = "";
+      var cleanLabel = msg.label || "";
+      if (cleanLabel.indexOf("<<") !== -1) {
+        var matchStereo = cleanLabel.match(/<<([^>]+)>>/);
+        if (matchStereo) {
+          stereo = matchStereo[1].trim();
+          cleanLabel = cleanLabel.replace(/<<[^>]+>>/g, "").trim();
+        }
+      }
+      msgModel.name = cleanLabel;
+      if (stereo) {
+        msgModel.stereotype = stereo;
+      }
       msgModel.messageSort = msg.sort;
       msgModel.source = tailModel;
       msgModel.target = headModel;
