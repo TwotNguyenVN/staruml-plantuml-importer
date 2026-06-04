@@ -41,6 +41,7 @@ echo "[*] Installing extension to:"
 echo "    $TARGET"
 echo ""
 
+cp "$SCRIPT_DIR/PlantUML_Importer.png" "$TARGET/PlantUML_Importer.png"
 cp "$SCRIPT_DIR/main.js" "$TARGET/main.js"
 cp "$SCRIPT_DIR/package.json" "$TARGET/package.json"
 cp "$SCRIPT_DIR/menus/menu.json" "$TARGET/menus/menu.json"
