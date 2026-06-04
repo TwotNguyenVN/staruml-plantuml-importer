@@ -54,8 +54,12 @@ function showImportDialog(title, sampleCode) {
   // 1. HTML Dialog Template
   var template = [
     '<div class="dialog plantuml-preview-dialog" style="width: 1400px; display: flex; flex-direction: column; background: #282828; color: #e0e0e0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3c3c3c; overflow: hidden;">',
-    '  <div class="modal-header" style="padding: 16px 20px 12px 20px; border-bottom: 1px solid #3c3c3c; background: #282828;">',
-    '    <span class="dialog-title" style="font-size: 15px; font-weight: 600; color: #ffffff; font-family: sans-serif;">' + title + '</span>',
+    '  <div class="modal-header" style="padding: 16px 20px 12px 20px; border-bottom: 1px solid #3c3c3c; background: #282828; display: flex; justify-content: space-between; align-items: center;">',
+    '    <div style="flex: 1;"></div>',
+    '    <span class="dialog-title" style="font-size: 15px; font-weight: 600; color: #ffffff; font-family: sans-serif; flex: 1; text-align: center;">' + title + '</span>',
+    '    <div style="flex: 1; text-align: right; font-size: 13px; font-family: sans-serif;">',
+    '      <a href="#" onclick="require(\'electron\').shell.openExternal(\'https://github.com/TwotNguyenVN\'); return false;" style="color: #007acc; text-decoration: none; cursor: pointer;">Twot Nguyen</a>',
+    '    </div>',
     '  </div>',
     '  <div class="modal-body" style="display: flex; gap: 20px; padding: 20px; height: 700px; background: #202020; min-height: 0;">',
     '    <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">',
@@ -119,6 +123,19 @@ function showImportDialog(title, sampleCode) {
         if (!code) {
           $previewPlaceholder.text("No code to preview.").show();
           $previewImg.hide();
+          return;
+        }
+
+        // Show local welcome image for the default code
+        if (code === "@startuml\n\n' Paste your PlantUML code here\n\n@enduml".trim()) {
+          $previewPlaceholder.hide();
+          var path = require("path");
+          var imgPath = path.join(__dirname, "..", "PlantUML_Importer.png").replace(/\\/g, '/');
+          $previewImg.off("load").off("error").attr("src", "file:///" + imgPath).show();
+          currentScale = 1.0;
+          translateX = 0;
+          translateY = 0;
+          applyTransform(false);
           return;
         }
 

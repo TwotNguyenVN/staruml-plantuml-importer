@@ -81,7 +81,7 @@ function handleImportAuto() {
 
     var sampleCode = "@startuml\n\n' Paste your PlantUML code here\n\n@enduml";
 
-    dialogHelper.showImportDialog("Paste your PlantUML code below:", sampleCode)
+    dialogHelper.showImportDialog("PlantUML Importer", sampleCode)
       .then(function (code) {
         if (code !== null) {
           try {
