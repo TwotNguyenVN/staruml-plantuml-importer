@@ -17,7 +17,19 @@ function generateDiagram(diagram, text) {
   var connections = [];
   
   var stack = [];
+  var currentLevel = 0;
   
+  // Helper to attach grid coordinates
+  function addNode(node) {
+    node.level = currentLevel++;
+    nodes.push(node);
+    if (stack.length > 0) {
+      for (var s = 0; s < stack.length; s++) {
+        stack[s].maxLevel = Math.max(stack[s].maxLevel || 0, currentLevel);
+      }
+    }
+  }
+
   // 1. First Pass: Parse lines to build AST (Nodes & Connections & Swimlanes)
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i].trim();
@@ -51,7 +63,7 @@ function generateDiagram(diagram, text) {
         name: "Initial",
         lane: activeLaneName
       };
-      nodes.push(initNode);
+      addNode(initNode);
       
       // Connect to last node if active
       if (stack.length > 0) {
@@ -77,7 +89,7 @@ function generateDiagram(diagram, text) {
         name: "Final",
         lane: activeLaneName
       };
-      nodes.push(finalNode);
+      addNode(finalNode);
       
       if (stack.length > 0) {
         var currentBlock = stack[stack.length - 1];
@@ -104,7 +116,7 @@ function generateDiagram(diagram, text) {
         name: actionName,
         lane: activeLaneName
       };
-      nodes.push(actionNode);
+      addNode(actionNode);
       
       if (stack.length > 0) {
         var currentBlock = stack[stack.length - 1];
@@ -138,7 +150,7 @@ function generateDiagram(diagram, text) {
         name: cond,
         lane: activeLaneName
       };
-      nodes.push(decNode);
+      addNode(decNode);
       
       // Connect to last node
       var prevNode = null;
@@ -158,7 +170,9 @@ function generateDiagram(diagram, text) {
         thenBranchTail: null,
         elseBranchTail: null,
         lastNode: decNode,
-        pendingGuard: thenBranchGuard
+        pendingGuard: thenBranchGuard,
+        baseLevel: currentLevel,
+        maxLevel: currentLevel
       });
       continue;
     }
@@ -171,6 +185,8 @@ function generateDiagram(diagram, text) {
         currentBlock.thenBranchTail = currentBlock.lastNode;
         currentBlock.lastNode = currentBlock.decisionNode;
         currentBlock.pendingGuard = matchElse[1] ? matchElse[1].trim() : "";
+        
+        currentLevel = currentBlock.baseLevel;
       }
       continue;
     }
@@ -179,28 +195,62 @@ function generateDiagram(diagram, text) {
     if (line.toLowerCase() === "endif") {
       if (stack.length > 0 && stack[stack.length - 1].type === "if") {
         var currentBlock = stack.pop();
-        currentBlock.elseBranchTail = currentBlock.lastNode;
         
+        var thenTail, elseTail;
+        if (currentBlock.thenBranchTail === null) {
+            // No else block was present
+            thenTail = currentBlock.lastNode;
+            elseTail = currentBlock.decisionNode;
+        } else {
+            // Else block was present
+            thenTail = currentBlock.thenBranchTail;
+            elseTail = currentBlock.lastNode;
+        }
+        
+        currentLevel = Math.max(currentLevel, currentBlock.maxLevel || currentLevel);
+        
+        var connectThen = thenTail && thenTail.type !== "UMLActivityFinalNode";
+        var connectElse = elseTail && elseTail.type !== "UMLActivityFinalNode";
+        
+        function setLastNode(node) {
+            if (stack.length > 0) {
+                stack[stack.length - 1].lastNode = node;
+            } else {
+                generateDiagram.lastNodeGlobal = node;
+            }
+        }
+        
+        if (!connectThen && !connectElse) {
+             // Both stopped
+             setLastNode(null);
+             continue;
+        }
+        
+        if (!connectThen && connectElse) {
+             // Only else continues
+             setLastNode(elseTail);
+             continue;
+        }
+        
+        if (connectThen && !connectElse) {
+             // Only then continues
+             setLastNode(thenTail);
+             continue;
+        }
+        
+        // Both continue -> Merge Node
         var mergeNode = {
           type: "UMLMergeNode",
           id: "merge_" + i,
           name: "Merge",
           lane: activeLaneName
         };
-        nodes.push(mergeNode);
+        addNode(mergeNode);
         
-        if (currentBlock.thenBranchTail) {
-          connections.push({ from: currentBlock.thenBranchTail.id, to: mergeNode.id });
-        }
-        if (currentBlock.elseBranchTail) {
-          connections.push({ from: currentBlock.elseBranchTail.id, to: mergeNode.id });
-        }
+        connections.push({ from: thenTail.id, to: mergeNode.id });
+        connections.push({ from: elseTail.id, to: mergeNode.id });
         
-        if (stack.length > 0) {
-          stack[stack.length - 1].lastNode = mergeNode;
-        } else {
-          generateDiagram.lastNodeGlobal = mergeNode;
-        }
+        setLastNode(mergeNode);
       }
       continue;
     }
@@ -213,7 +263,7 @@ function generateDiagram(diagram, text) {
         name: "Fork",
         lane: activeLaneName
       };
-      nodes.push(forkNode);
+      addNode(forkNode);
       
       var prevNode = stack.length > 0 ? stack[stack.length - 1].lastNode : generateDiagram.lastNodeGlobal;
       if (prevNode) {
@@ -224,7 +274,10 @@ function generateDiagram(diagram, text) {
         type: "fork",
         forkNode: forkNode,
         branchTails: [],
-        lastNode: forkNode
+        lastNode: forkNode,
+        baseLevel: currentLevel,
+        maxLevel: currentLevel,
+        branchIndex: 0
       });
       continue;
     }
@@ -237,6 +290,8 @@ function generateDiagram(diagram, text) {
           currentBlock.branchTails.push(currentBlock.lastNode);
         }
         currentBlock.lastNode = currentBlock.forkNode;
+        currentBlock.branchIndex++;
+        currentLevel = currentBlock.baseLevel;
       }
       continue;
     }
@@ -249,13 +304,15 @@ function generateDiagram(diagram, text) {
           currentBlock.branchTails.push(currentBlock.lastNode);
         }
         
+        currentLevel = Math.max(currentLevel, currentBlock.maxLevel || currentLevel);
+        
         var joinNode = {
           type: "UMLJoinNode",
           id: "join_" + i,
           name: "Join",
           lane: activeLaneName
         };
-        nodes.push(joinNode);
+        addNode(joinNode);
         
         currentBlock.branchTails.forEach(function (tail) {
           connections.push({ from: tail.id, to: joinNode.id });
@@ -265,6 +322,72 @@ function generateDiagram(diagram, text) {
           stack[stack.length - 1].lastNode = joinNode;
         } else {
           generateDiagram.lastNodeGlobal = joinNode;
+        }
+      }
+      continue;
+    }
+
+    // Parse Repeat: repeat
+    if (line.toLowerCase() === "repeat") {
+      var repeatMerge = { type: "UMLMergeNode", id: "merge_" + i, name: "Repeat", lane: activeLaneName };
+      var prevRep = stack.length > 0 ? stack[stack.length - 1].lastNode : generateDiagram.lastNodeGlobal;
+      addNode(repeatMerge);
+      if (prevRep) connections.push({ from: prevRep.id, to: repeatMerge.id });
+      stack.push({ type: "repeat", mergeNode: repeatMerge, lastNode: repeatMerge, maxLevel: currentLevel });
+      continue;
+    }
+    
+    // Parse Repeat While: repeat while (cond)
+    var matchRepeatWhile = line.match(/^repeat\s*while\s*(?:\(([^)]+)\))?\s*$/i);
+    if (matchRepeatWhile) {
+      if (stack.length > 0 && stack[stack.length - 1].type === "repeat") {
+        var currentBlock = stack.pop();
+        var cond = matchRepeatWhile[1] ? matchRepeatWhile[1].trim() : "";
+        var repeatDec = { type: "UMLDecisionNode", id: "dec_" + i, name: cond, lane: activeLaneName };
+        addNode(repeatDec);
+        if (currentBlock.lastNode) connections.push({ from: currentBlock.lastNode.id, to: repeatDec.id });
+        connections.push({ from: repeatDec.id, to: currentBlock.mergeNode.id, guard: "yes" }); // loop back
+        
+        if (stack.length > 0) {
+          stack[stack.length - 1].lastNode = repeatDec;
+          stack[stack.length - 1].pendingGuard = "no";
+        } else {
+          generateDiagram.lastNodeGlobal = repeatDec;
+        }
+      }
+      continue;
+    }
+
+    // Parse While: while (cond)
+    var matchWhile = line.match(/^while\s*(?:\(([^)]+)\))?\s*$/i);
+    if (matchWhile) {
+      var whileMerge = { type: "UMLMergeNode", id: "merge_" + i, name: "While", lane: activeLaneName };
+      var cond2 = matchWhile[1] ? matchWhile[1].trim() : "";
+      var whileDec = { type: "UMLDecisionNode", id: "dec_" + i, name: cond2, lane: activeLaneName };
+      
+      var prev2 = stack.length > 0 ? stack[stack.length - 1].lastNode : generateDiagram.lastNodeGlobal;
+      addNode(whileMerge);
+      addNode(whileDec);
+      
+      if (prev2) connections.push({ from: prev2.id, to: whileMerge.id });
+      connections.push({ from: whileMerge.id, to: whileDec.id });
+      
+      stack.push({ type: "while", mergeNode: whileMerge, decisionNode: whileDec, lastNode: whileDec, pendingGuard: "yes", maxLevel: currentLevel });
+      continue;
+    }
+    
+    // Parse Endwhile: endwhile
+    if (line.toLowerCase() === "endwhile" || line.toLowerCase() === "end while") {
+      if (stack.length > 0 && stack[stack.length - 1].type === "while") {
+        var currentBlock = stack.pop();
+        if (currentBlock.lastNode) {
+          connections.push({ from: currentBlock.lastNode.id, to: currentBlock.mergeNode.id });
+        }
+        if (stack.length > 0) {
+          stack[stack.length - 1].lastNode = currentBlock.decisionNode;
+          stack[stack.length - 1].pendingGuard = "no";
+        } else {
+          generateDiagram.lastNodeGlobal = currentBlock.decisionNode;
         }
       }
       continue;
@@ -301,18 +424,118 @@ function generateDiagram(diagram, text) {
     }
   }
   
-  // Set up Swimlanes layout geometry
-  var laneWidth = 280;
-  var diagramHeight = Math.max(600, nodes.length * 90 + 100);
+  // --- Dynamic Width Occupancy Grid Layout Calculation ---
+  var buckets = {};
+  parsedLanes.forEach(function(lane) { buckets[lane] = {}; });
+  if (!buckets[""]) buckets[""] = {};
+
+  nodes.forEach(function(node) {
+    var l = node.lane || "";
+    if (!buckets[l]) buckets[l] = {};
+    if (!buckets[l][node.level]) buckets[l][node.level] = [];
+    buckets[l][node.level].push(node);
+  });
+  
+  var gap = 40; // spacing between parallel nodes
+
+  // 1. Calculate dynamic width for each node
+  nodes.forEach(function(node) {
+    var nameLen = node.name ? node.name.length : 0;
+    var w = 120;
+    if (node.type === "UMLInitialNode" || node.type === "UMLActivityFinalNode") {
+      w = 25;
+    } else if (node.type === "UMLDecisionNode" || node.type === "UMLMergeNode") {
+      w = 60;
+    } else if (node.type === "UMLForkNode" || node.type === "UMLJoinNode") {
+      w = 0; // handled dynamically
+    } else {
+      // Dynamic width: text length * 7px + padding, minimum 120
+      w = Math.max(120, nameLen * 7 + 20);
+    }
+    node.dynamicWidth = w;
+  });
+
+  // 2. Calculate required width for each lane
+  var laneWidths = {};
+  parsedLanes.forEach(function(lane) {
+    var maxLaneWidth = 280; // minimum lane width
+    
+    for (var lvl in buckets[lane]) {
+      var levelNodes = buckets[lane][lvl];
+      var totalLevelWidth = 0;
+      
+      var actionableNodes = levelNodes.filter(function(n) {
+          return n.type !== "UMLForkNode" && n.type !== "UMLJoinNode";
+      });
+      
+      actionableNodes.forEach(function(node) {
+         totalLevelWidth += node.dynamicWidth;
+      });
+      
+      if (actionableNodes.length > 1) {
+          totalLevelWidth += (actionableNodes.length - 1) * gap;
+      }
+      if (actionableNodes.length > 0) {
+          totalLevelWidth += 50; // Side padding (25px each side)
+      }
+
+      if (totalLevelWidth > maxLaneWidth) {
+          maxLaneWidth = totalLevelWidth;
+      }
+    }
+    laneWidths[lane] = maxLaneWidth;
+  });
+
+  var laneX = {};
+  var currentX = 50;
+  parsedLanes.forEach(function(lane) {
+    laneX[lane] = currentX;
+    currentX += laneWidths[lane];
+  });
+  
+  var maxLevelGlob = Object.keys(buckets).reduce(function(m, k) { 
+    return Math.max(m, Object.keys(buckets[k]).length); 
+  }, nodes.length);
+  var diagramHeight = Math.max(600, maxLevelGlob * 90 + 100);
+
+  // 3. Calculate X coordinates based on dynamic widths
+  Object.keys(buckets).forEach(function(lane) {
+    Object.keys(buckets[lane]).forEach(function(lvl) {
+      var levelNodes = buckets[lane][lvl];
+      var actionableNodes = levelNodes.filter(function(n) {
+          return n.type !== "UMLForkNode" && n.type !== "UMLJoinNode";
+      });
+      
+      var centerX = (laneX[lane] || 50) + (laneWidths[lane] || 280) / 2;
+      
+      var totalW = 0;
+      actionableNodes.forEach(function(n) { totalW += n.dynamicWidth; });
+      totalW += (actionableNodes.length > 1) ? (actionableNodes.length - 1) * gap : 0;
+      
+      var startX = centerX - totalW / 2;
+      var currX = startX;
+      
+      levelNodes.forEach(function(node) {
+        if (node.type === "UMLForkNode" || node.type === "UMLJoinNode") {
+            node.finalCenterX = centerX;
+        } else {
+            node.finalCenterX = currX + node.dynamicWidth / 2;
+            currX += node.dynamicWidth + gap;
+        }
+        node.finalY = parseInt(lvl) * 90 + 80;
+      });
+    });
+  });
+
   var laneViewsMap = {};
   var laneModelsMap = {};
   
-  parsedLanes.forEach(function (laneName, index) {
-    var posX = index * laneWidth + 50;
+  parsedLanes.forEach(function (laneName) {
+    var posX = laneX[laneName];
     var posY = 40;
+    var lWidth = laneWidths[laneName];
     
     try {
-      // Create Partition Model
       var laneModel = app.factory.createModelAndView({
         id: "UMLActivityPartition",
         parent: activityModel,
@@ -323,7 +546,7 @@ function generateDiagram(diagram, text) {
         viewInitializer: function (view) {
           view.left = posX;
           view.top = posY;
-          view.width = laneWidth;
+          view.width = lWidth;
           view.height = diagramHeight;
         }
       });
@@ -337,30 +560,26 @@ function generateDiagram(diagram, text) {
   });
   
   // Create Nodes
-  nodes.forEach(function (node, index) {
-    var laneIndex = parsedLanes.indexOf(node.lane);
-    if (laneIndex === -1) laneIndex = 0;
-    
-    // Position node in its swimlane
-    var posX = laneIndex * laneWidth + 50 + Math.floor((laneWidth - 120) / 2);
-    var posY = index * 90 + 80;
-    
-    // Set specific sizes based on node type
-    var width = 120;
+  nodes.forEach(function (node) {
+    var lane = node.lane || "";
+    var width = node.dynamicWidth || 120;
     var height = 40;
+    
     if (node.type === "UMLInitialNode" || node.type === "UMLActivityFinalNode") {
-      width = 25;
       height = 25;
-      posX = laneIndex * laneWidth + 50 + Math.floor((laneWidth - 25) / 2);
     } else if (node.type === "UMLDecisionNode" || node.type === "UMLMergeNode") {
-      width = 60;
       height = 40;
-      posX = laneIndex * laneWidth + 50 + Math.floor((laneWidth - 60) / 2);
     } else if (node.type === "UMLForkNode" || node.type === "UMLJoinNode") {
-      width = 180;
+      // Dynamic width spanning the lane
+      width = (laneWidths[lane] || 280) - 40;
       height = 8;
-      posX = laneIndex * laneWidth + 50 + Math.floor((laneWidth - 180) / 2);
     }
+    
+    // Fork/Join nodes center on the lane, others center on their allocated sub-column
+    var posX = (node.type === "UMLForkNode" || node.type === "UMLJoinNode") 
+               ? (laneX[lane] || 50) + 20 
+               : (node.finalCenterX || 150) - width / 2;
+    var posY = node.finalY || 80;
     
     var nodeParent = activityModel;
     

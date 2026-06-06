@@ -1,0 +1,14 @@
+@startuml
+|Lane 1|
+start
+:Action 1;
+while (Condition?)
+  :Action 2;
+  :Action 3;
+endwhile
+:Action 4;
+repeat
+  :Action 5;
+repeat while (More data?)
+stop
+@enduml
