@@ -21,7 +21,10 @@ A StarUML extension that imports **Use Case, Class, Sequence, Activity, State, a
 
 - **Live Server Preview:** Interactive side-by-side modal displaying diagram preview rendered directly from the PlantUML server.
 - Parse PlantUML Use Case, Class, Sequence, Activity, State, and ER Diagram syntax.
-- Smart layout algorithms: Grid layout for Class, column distribution for Use Case, chronological timeline layout for Sequence, swimlane coordinate mapping for Activity, and nested containment for State.
+- Smart layout algorithms: 
+  - **Enhanced Sugiyama Hierarchical Layout** for Class Diagrams to minimize edge crossings.
+  - **Dynamic Width Occupancy Grid Layout** for Activity Diagrams to automatically adjust swimlanes and prevent overlapping.
+  - Column distribution for Use Case, chronological timeline layout for Sequence, and nested containment for State.
 - Support for attributes, operations, visibilities, and multiplicities (Class Diagram).
 - Support for `<<include>>`, `<<extend>>`, generalization, interface realization, associations, aggregations, and compositions.
 - Support for lifelines (`actor`, `participant`, `boundary`, `control`, `entity`, `database`, `collections`) and message lines (`->`, `-->`, `->>`, `->*`, `->x`) in Sequence Diagrams.
@@ -178,9 +181,11 @@ User ||--o{ Order
 @enduml
 ```
 
-## 🗑️ Clean Uninstallation (Windows & macOS)
+## 🗑️ Clean Uninstallation of StarUML (Windows & macOS)
 
-If you need to completely remove StarUML and all of its configurations, caches, extensions, and logs from your device, you can use the provided uninstaller script.
+> **⚠️ WARNING:** The `clear.bat` and `clear.sh` scripts **DO NOT** just uninstall the extension. They will **COMPLETELY UNINSTALL** the StarUML application from your system and wipe all of its configurations, caches, extensions, and logs. Only use this if you want a fresh start or want to remove StarUML completely!
+
+If you only want to uninstall the **PlantUML Importer Extension**, simply delete the `staruml-plantuml-importer` folder from your StarUML `extensions/user/` directory.
 
 #### Windows
 **Double-click** `clear.bat` or run it from command prompt.
