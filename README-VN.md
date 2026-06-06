@@ -21,7 +21,10 @@ Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các
 
 - **Xem trước trực tuyến (Live Server Preview):** Hộp thoại chia đôi màn hình cho phép dán code bên trái và bấm **Preview** để xem trước ảnh render sơ đồ từ máy chủ PlantUML bên phải trước khi import.
 - Phân tích cú pháp PlantUML cho biểu đồ Use Case, Class, Sequence, Activity, State và ERD.
-- Thuật toán bố cục tự động: Bố cục lưới thông minh cho Class Diagram, căn cột ngang cho Use Case, xếp chồng trục đứng đứng trên Sequence, ánh xạ làn bơi (swimlanes) cho Activity và lồng phân tầng cho State.
+- Thuật toán bố cục tự động cực kỳ thông minh: 
+  - **Thuật toán Phân tầng Enhanced Sugiyama** cho sơ đồ Class giúp dóng hàng thẳng tắp và hạn chế tối đa việc đan chéo dây.
+  - **Thuật toán Độ rộng động (Dynamic Width Occupancy Grid)** cho sơ đồ Activity giúp tự động nới rộng làn bơi và ngăn các khối đâm vào nhau.
+  - Căn cột ngang cho Use Case, xếp chồng trục đứng trên Sequence, và lồng phân tầng cho State.
 - Hỗ trợ đầy đủ các thuộc tính, phương thức, phạm vi truy cập (visibility) và bội số (multiplicities) trên Class Diagram.
 - Hỗ trợ các quan hệ: `<<include>>`, `<<extend>>`, thừa kế (generalization), hiện thực hóa giao diện (interface realization), liên kết (association), thu nạp (aggregation) và hợp thành (composition).
 - Hỗ trợ đầy đủ các loại lifeline (`actor`, `participant`, `boundary`, `control`, `entity`, `database`, `collections`) và đường thông điệp (`->`, `-->`, `->>`, `->*`, `->x`) trên Sequence Diagram.
@@ -179,9 +182,11 @@ User ||--o{ Order
 @enduml
 ```
 
-## 🗑️ Gỡ cài đặt sạch sẽ (Windows & macOS)
+## 🗑️ Gỡ cài đặt hoàn toàn StarUML (Windows & macOS)
 
-Nếu bạn cần gỡ bỏ hoàn toàn StarUML và toàn bộ cấu hình, cache, extension cũng như log của nó khỏi thiết bị của mình, bạn có thể sử dụng script dọn dẹp được cung cấp sẵn.
+> **⚠️ CẢNH BÁO:** Các file `clear.bat` và `clear.sh` **KHÔNG PHẢI** dùng để gỡ mỗi tiện ích này. Chúng sẽ **GỠ CÀI ĐẶT HOÀN TOÀN** phần mềm StarUML khỏi máy tính của bạn, đồng thời xóa sạch toàn bộ cấu hình, cache, tiện ích mở rộng và log. Chỉ sử dụng khi bạn muốn cài lại từ đầu hoặc xóa hẳn StarUML!
+
+Nếu bạn chỉ muốn gỡ cài đặt **Tiện ích PlantUML Importer**, bạn chỉ cần xóa thư mục `staruml-plantuml-importer` nằm trong thư mục `extensions/user/` của StarUML là xong.
 
 #### Windows
 **Nhấp đúp** vào file `clear.bat` hoặc chạy nó qua Command Prompt.
