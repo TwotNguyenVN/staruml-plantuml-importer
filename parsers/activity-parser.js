@@ -493,10 +493,16 @@ function generateDiagram(diagram, text) {
     currentX += laneWidths[lane];
   });
   
-  var maxLevelGlob = Object.keys(buckets).reduce(function(m, k) { 
-    return Math.max(m, Object.keys(buckets[k]).length); 
-  }, nodes.length);
-  var diagramHeight = Math.max(600, maxLevelGlob * 90 + 100);
+  var maxLevelGlob = 0;
+  Object.keys(buckets).forEach(function(lane) {
+    Object.keys(buckets[lane]).forEach(function(lvl) {
+      var lNum = parseInt(lvl, 10);
+      if (lNum > maxLevelGlob) {
+        maxLevelGlob = lNum;
+      }
+    });
+  });
+  var diagramHeight = Math.max(600, maxLevelGlob * 90 + 200);
 
   // 3. Calculate X coordinates based on dynamic widths
   Object.keys(buckets).forEach(function(lane) {
