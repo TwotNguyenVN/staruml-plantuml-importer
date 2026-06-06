@@ -234,45 +234,154 @@ function generateDiagram(diagram, text) {
     }
   }
   
-  // 2. Classify Elements for Hierarchical Grid Layout
-  var enumsList = [];
-  var coreList = [];
-  var concreteList = [];
-  var transactionList = [];
-  var serviceList = [];
-  
-  elements.forEach(function (el) {
-    var nameLower = el.name.toLowerCase();
-    
-    if (el.type === "UMLEnumeration") {
-      enumsList.push(el);
-    } else if (nameLower.indexOf("service") !== -1 || nameLower.indexOf("controller") !== -1 || nameLower.indexOf("api") !== -1) {
-      serviceList.push(el);
-    } else if (el.isAbstract || el.type === "UMLInterface" || el.name === "Library" || el.name === "Book" || el.name === "User") {
-      coreList.push(el);
-    } else if (
-      nameLower.indexOf("loan") !== -1 ||
-      nameLower.indexOf("reservation") !== -1 ||
-      nameLower.indexOf("fine") !== -1 ||
-      nameLower.indexOf("payment") !== -1 ||
-      nameLower.indexOf("review") !== -1 ||
-      nameLower.indexOf("notification") !== -1 ||
-      nameLower.indexOf("receipt") !== -1 ||
-      nameLower.indexOf("policy") !== -1 ||
-      nameLower.indexOf("detail") !== -1 ||
-      nameLower.indexOf("report") !== -1
-    ) {
-      transactionList.push(el);
-    } else {
-      concreteList.push(el);
-    }
+  // 2. Build Graph for Hierarchical (Sugiyama-style) Layout
+  var nodesMap = {};
+  elements.forEach(function(e) {
+    nodesMap[e.alias] = {
+      data: e,
+      edgesIn: [],
+      edgesOut: [],
+      level: 0,
+      avgParentIndex: 0
+    };
   });
   
+  relations.forEach(function(r) {
+    var from = r.from;
+    var to = r.to;
+    // Reverse generalization direction for layout logic (Parent above Child)
+    if (r.type === "UMLGeneralization" || r.type === "UMLInterfaceRealization") {
+      from = r.to;
+      to = r.from;
+    }
+    
+    if (nodesMap[from] && nodesMap[to]) {
+      nodesMap[from].edgesOut.push(to);
+      nodesMap[to].edgesIn.push(from);
+    }
+  });
+
+  // Level Assignment (Bellman-Ford style for longest path)
+  var changed = true;
+  var iterations = 0;
+  while(changed && iterations < elements.length) {
+    changed = false;
+    relations.forEach(function(r) {
+      var from = r.from;
+      var to = r.to;
+      if (r.type === "UMLGeneralization" || r.type === "UMLInterfaceRealization") {
+        from = r.to; to = r.from;
+      }
+      
+      var nodeFrom = nodesMap[from];
+      var nodeTo = nodesMap[to];
+      
+      if (nodeFrom && nodeTo) {
+        if (nodeTo.level <= nodeFrom.level) {
+          nodeTo.level = nodeFrom.level + 1;
+          changed = true;
+        }
+      }
+    });
+    iterations++;
+  }
+
+  // 2.1 Edge Shortening (Push-Down logic)
+  // Pull independent nodes down closer to their children
+  var maxLevel = 0;
+  Object.keys(nodesMap).forEach(function(k) {
+    if (nodesMap[k].level > maxLevel) maxLevel = nodesMap[k].level;
+  });
+  
+  for (var i = maxLevel - 1; i >= 0; i--) {
+    Object.keys(nodesMap).forEach(function(k) {
+      var node = nodesMap[k];
+      if (node.level === i && node.edgesOut.length > 0) {
+        var minChildLevel = Infinity;
+        node.edgesOut.forEach(function(childId) {
+          if (nodesMap[childId] && nodesMap[childId].level < minChildLevel) {
+            minChildLevel = nodesMap[childId].level;
+          }
+        });
+        if (minChildLevel !== Infinity && minChildLevel > node.level + 1) {
+          node.level = minChildLevel - 1;
+        }
+      }
+    });
+  }
+
+  // Group by Level
+  var levels = [];
+  Object.keys(nodesMap).forEach(function(key) {
+    var n = nodesMap[key];
+    if (!levels[n.level]) levels[n.level] = [];
+    levels[n.level].push(n);
+  });
+  
+  // Remove empty levels
+  levels = levels.filter(function(l) { return l !== undefined && l.length > 0; });
+  
+  // 2.2 Multi-pass Barycenter Heuristic (Reduce crossings)
+  for (var iter = 0; iter < 4; iter++) {
+    // Sweep Down
+    for (var i = 1; i < levels.length; i++) {
+      levels[i].forEach(function(node) {
+        var sum = 0;
+        var count = 0;
+        node.edgesIn.forEach(function(parentId) {
+          var parentNode = nodesMap[parentId];
+          if (parentNode && parentNode.level === i - 1) {
+            var pIndex = levels[i - 1].indexOf(parentNode);
+            if (pIndex !== -1) {
+              sum += pIndex;
+              count++;
+            }
+          }
+        });
+        node.barycenter = count > 0 ? sum / count : levels[i].indexOf(node);
+      });
+      levels[i].sort(function(a, b) {
+        return a.barycenter - b.barycenter;
+      });
+    }
+    
+    // Sweep Up
+    for (var i = levels.length - 2; i >= 0; i--) {
+      levels[i].forEach(function(node) {
+        var sum = 0;
+        var count = 0;
+        node.edgesOut.forEach(function(childId) {
+          var childNode = nodesMap[childId];
+          if (childNode && childNode.level === i + 1) {
+            var cIndex = levels[i + 1].indexOf(childNode);
+            if (cIndex !== -1) {
+              sum += cIndex;
+              count++;
+            }
+          }
+        });
+        node.barycenter = count > 0 ? sum / count : levels[i].indexOf(node);
+      });
+      levels[i].sort(function(a, b) {
+        return a.barycenter - b.barycenter;
+      });
+    }
+  }
+
   var parentModel = diagram._parent || app.project.getProject();
   
-  // Helper to layout row
-  function layoutRow(rowElements, startY, spacingX) {
-    rowElements.forEach(function (el, colIndex) {
+  // 3. Layout Grid & Calculate Coordinates
+  var currentY = 50;
+  var verticalSpacing = 120;
+  var horizontalSpacing = 100;
+  
+  levels.forEach(function(levelNodes) {
+    var currentX = 50;
+    var maxLevelHeight = 0;
+    
+    levelNodes.forEach(function(nodeNode) {
+      var el = nodeNode.data;
+      
       // Calculate dynamic width based on name & members
       var maxLength = el.name.length;
       el.attributes.forEach(function (attr) {
@@ -290,8 +399,12 @@ function generateDiagram(diagram, text) {
       var width = Math.max(180, maxLength * 7.5);
       var height = Math.max(65, 45 + (el.attributes.length + el.operations.length + el.literals.length) * 15);
       
-      var posX = colIndex * spacingX + 50;
-      var posY = startY;
+      var posX = currentX;
+      var posY = currentY;
+      
+      // Move X pointer for the next element in this level
+      currentX += width + horizontalSpacing;
+      if (height > maxLevelHeight) maxLevelHeight = height;
       
       try {
         var view = app.factory.createModelAndView({
@@ -388,14 +501,9 @@ function generateDiagram(diagram, text) {
         console.error("[class-parser] Failed to create element:", el.name, e);
       }
     });
-  }
-  
-  // Layout rows
-  layoutRow(enumsList, 50, 240);
-  layoutRow(coreList, 300, 360);
-  layoutRow(concreteList, 650, 360);
-  layoutRow(transactionList, 1050, 360);
-  layoutRow(serviceList, 1500, 380);
+    
+    currentY += maxLevelHeight + verticalSpacing;
+  });
   
   // 3. Create Relations
   relations.forEach(function (rel) {
