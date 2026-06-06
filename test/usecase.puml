@@ -1,0 +1,42 @@
+@startuml
+title Use Case Diagram - Chức năng trả sách
+
+left to right direction
+
+actor "Độc giả" as DocGia
+actor "Thủ thư" as ThuThu
+
+rectangle "Hệ thống quản lý thư viện" {
+
+  usecase "Trả sách" as UC1
+  usecase "Tiếp nhận sách trả" as UC2
+  usecase "Kiểm tra phiếu mượn" as UC3
+  usecase "Kiểm tra tình trạng sách" as UC4
+  usecase "Kiểm tra ngày trả" as UC5
+  usecase "Cập nhật trạng thái sách" as UC6
+  usecase "Cập nhật phiếu mượn" as UC7
+  usecase "Lập phiếu phạt" as UC8
+  usecase "Tính tiền phạt" as UC9
+  usecase "Thông báo kết quả trả sách" as UC10
+}
+
+DocGia --> UC1
+ThuThu --> UC2
+ThuThu --> UC3
+ThuThu --> UC4
+ThuThu --> UC10
+
+UC1 ..> UC2 : <<include>>
+UC1 ..> UC3 : <<include>>
+UC1 ..> UC4 : <<include>>
+UC1 ..> UC5 : <<include>>
+UC1 ..> UC6 : <<include>>
+UC1 ..> UC7 : <<include>>
+UC1 ..> UC10 : <<include>>
+
+UC8 ..> UC9 : <<include>>
+
+UC8 ..> UC1 : <<extend>>
+UC9 ..> UC5 : <<extend>>
+
+@enduml
