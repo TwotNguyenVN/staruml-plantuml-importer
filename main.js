@@ -56,7 +56,7 @@ function init() {
   app.commands.register(
     "plantuml-importer:import-auto",
     handleImportAuto,
-    "Import PlantUML Diagram..."
+    "PlantUML Importer..."
   );
 }
 
