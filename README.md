@@ -68,11 +68,25 @@ Then restart StarUML.
    - For Activity: `Model` → `Add Diagram` → `Activity Diagram`
    - For State: `Model` → `Add Diagram` → `Statechart Diagram`
    - For ERD: `Model` → `Add Diagram` → `ER Diagram`
-3. Go to `Tools` → `PlantUML Importer` → Select your import command
-4. Paste your PlantUML code in the dialog
-5. Click **Preview** to render and check the diagram from the server, then click **Import** — the diagram will be generated automatically!
+3. Go to **`Tools` → `PlantUML Importer`** and select your import command.
 
-![PlantUML Importer Preview](PlantUML_Importer.png)
+   ![Step 1](picture/step1.png)
+
+4. The importer dialog will appear.
+
+   ![Step 2](picture/step2.png)
+
+5. Paste your PlantUML code into the input field; the Preview will be displayed on the right.
+
+   ![Step 3](picture/step3.png)
+
+6. Click **Import** and wait for the tool to process.
+
+   ![Step 4](picture/step4.png)
+
+7. Click **OK**, then view and edit your generated diagram.
+
+   ![Step 5](picture/step5.png)
 
 ## 📝 Supported PlantUML Syntax
 
