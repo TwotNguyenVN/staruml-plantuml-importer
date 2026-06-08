@@ -72,6 +72,8 @@ Then restart StarUML.
 4. Paste your PlantUML code in the dialog
 5. Click **Preview** to render and check the diagram from the server, then click **Import** — the diagram will be generated automatically!
 
+![PlantUML Importer Preview](PlantUML_Importer.png)
+
 ## 📝 Supported PlantUML Syntax
 
 ### Use Case Diagram

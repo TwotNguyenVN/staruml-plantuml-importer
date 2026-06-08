@@ -73,6 +73,8 @@ Sau đó khởi động lại StarUML.
 4. Dán đoạn mã PlantUML vào hộp thoại.
 5. Nhấp **Preview** để xem trước ảnh render trực tuyến từ server, sau đó nhấp **Import** để tự động sinh sơ đồ lên canvas!
 
+![Giao diện xem trước PlantUML Importer](PlantUML_Importer.png)
+
 ## 📝 Cú pháp PlantUML được hỗ trợ
 
 ### Biểu đồ Use Case
