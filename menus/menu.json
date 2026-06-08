@@ -4,7 +4,7 @@
       "id": "tools",
       "submenu": [
         {
-          "label": "Import PlantUML Diagram...",
+          "label": "PlantUML Importer...",
           "id": "plantuml-importer:import-auto",
           "command": "plantuml-importer:import-auto"
         }

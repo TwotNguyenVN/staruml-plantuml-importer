@@ -69,7 +69,7 @@ Sau đó khởi động lại StarUML.
    - Sơ đồ Activity: `Model` → `Add Diagram` → `Activity Diagram`
    - Sơ đồ State: `Model` → `Add Diagram` → `Statechart Diagram`
    - Sơ đồ ERD: `Model` → `Add Diagram` → `ER Diagram`
-3. Vào menu **`Tools` → `Import PlantUML Diagram...`**
+3. Vào menu **`Tools` → `PlantUML Importer...`**
 
    ![Bước 1](picture/step1.png)
 
