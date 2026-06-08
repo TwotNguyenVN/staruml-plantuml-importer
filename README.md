@@ -68,7 +68,7 @@ Then restart StarUML.
    - For Activity: `Model` → `Add Diagram` → `Activity Diagram`
    - For State: `Model` → `Add Diagram` → `Statechart Diagram`
    - For ERD: `Model` → `Add Diagram` → `ER Diagram`
-3. Go to **`Tools` → `PlantUML Importer`** and select your import command.
+3. Go to menu **`Tools` → `Import PlantUML Diagram...`**
 
    ![Step 1](picture/step1.png)
 
