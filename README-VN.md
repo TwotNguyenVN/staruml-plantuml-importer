@@ -69,11 +69,25 @@ Sau đó khởi động lại StarUML.
    - Sơ đồ Activity: `Model` → `Add Diagram` → `Activity Diagram`
    - Sơ đồ State: `Model` → `Add Diagram` → `Statechart Diagram`
    - Sơ đồ ERD: `Model` → `Add Diagram` → `ER Diagram`
-3. Truy cập: **`Tools` → `PlantUML Importer` → Chọn lệnh nhập tương ứng**.
-4. Dán đoạn mã PlantUML vào hộp thoại.
-5. Nhấp **Preview** để xem trước ảnh render trực tuyến từ server, sau đó nhấp **Import** để tự động sinh sơ đồ lên canvas!
+3. Vào tool chọn **Import PlantUML Diagram** (hoặc chọn theo loại biểu đồ tương ứng).
 
-![Giao diện xem trước PlantUML Importer](PlantUML_Importer.png)
+   ![Bước 1](picture/step1.png)
+
+4. Màn hình tool sẽ xuất hiện.
+
+   ![Bước 2](picture/step2.png)
+
+5. Dán code PlantUML vào phần code và phần Preview sẽ hiển thị bên cạnh.
+
+   ![Bước 3](picture/step3.png)
+
+6. Ấn **Import** và chờ đợi tool hoạt động.
+
+   ![Bước 4](picture/step4.png)
+
+7. Ấn **OK**, xem và chỉnh sửa lại sơ đồ.
+
+   ![Bước 5](picture/step5.png)
 
 ## 📝 Cú pháp PlantUML được hỗ trợ
 
