@@ -18,9 +18,15 @@ function generateDiagram(diagram, text) {
 
   var parsedActors = [];
   var parsedUseCases = [];
+  var parsedPackages = []; // stores boundaries
+  var parsedNotes = [];
   var relations = [];
-
+  var noteLinks = [];
+  
+  var currentPackage = null;
   var inSkinparam = false;
+  var currentNote = null; // for multiline notes
+
   var secondaryKeywords = [
     "service", "gateway", "system", "supplier",
     "provider", "bank", "payment", "email", "sms", "api"
@@ -34,23 +40,18 @@ function generateDiagram(diagram, text) {
     });
   }
 
-  // Helper to clean up colons and parentheses from aliases
   function cleanEndpoint(str) {
     if (!str) return "";
     var cleaned = str.trim();
-    // Remove starting/ending colons for actors: :Actor: -> Actor
     if (cleaned.indexOf(":") === 0 && cleaned.lastIndexOf(":") === cleaned.length - 1 && cleaned.length > 1) {
       cleaned = cleaned.substring(1, cleaned.length - 1).trim();
     }
-    // Remove starting/ending parentheses for use cases: (UseCase) -> UseCase
     if (cleaned.indexOf("(") === 0 && cleaned.lastIndexOf(")") === cleaned.length - 1 && cleaned.length > 1) {
       cleaned = cleaned.substring(1, cleaned.length - 1).trim();
     }
-    // Strip quotes if any
     if (cleaned.indexOf('"') === 0 && cleaned.lastIndexOf('"') === cleaned.length - 1 && cleaned.length > 1) {
       cleaned = cleaned.substring(1, cleaned.length - 1).trim();
     }
-    // Strip extraneous < or > that might have been left over from parser bugs
     if (cleaned.indexOf("<") === 0) cleaned = cleaned.substring(1).trim();
     if (cleaned.lastIndexOf(">") === cleaned.length - 1 && cleaned.length > 0) cleaned = cleaned.substring(0, cleaned.length - 1).trim();
     return cleaned;
@@ -60,15 +61,16 @@ function generateDiagram(diagram, text) {
     if (!alias) return;
     var isActor = parsedActors.some(function(a) { return a.alias === alias; });
     var isUC = parsedUseCases.some(function(u) { return u.alias === alias; });
+    var isNote = parsedNotes.some(function(n) { return n.alias === alias; });
 
-    if (!isActor && !isUC) {
+    if (!isActor && !isUC && !isNote) {
       if (forceUC || rawStr.indexOf("(") === 0) {
-        parsedUseCases.push({ name: alias, alias: alias, stereotype: "" });
+        parsedUseCases.push({ name: alias, alias: alias, stereotype: "", parent: currentPackage });
       } else if (rawStr.indexOf(":") === 0) {
         parsedActors.push({ name: alias, alias: alias, stereotype: "" });
       } else {
         if (/^uc/i.test(alias) || /usecase/i.test(alias)) {
-          parsedUseCases.push({ name: alias, alias: alias, stereotype: "" });
+          parsedUseCases.push({ name: alias, alias: alias, stereotype: "", parent: currentPackage });
         } else {
           parsedActors.push({ name: alias, alias: alias, stereotype: "" });
         }
@@ -76,29 +78,10 @@ function generateDiagram(diagram, text) {
     }
   }
 
-  // Parse PlantUML lines
-  var subjectName = "";
-
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i].trim();
 
-    // Skip empty, comments, directives
-    if (
-      !line ||
-      line.indexOf("'") === 0 ||
-      line.indexOf("@startuml") === 0 ||
-      line.indexOf("@enduml") === 0 ||
-      line.indexOf("left to right") === 0 ||
-      line.indexOf("top to bottom") === 0 ||
-      line.indexOf("title ") === 0
-    ) {
-      continue;
-    }
-
-    // Parse Subject name (rectangle or package)
-    var matchSub = line.match(/^(rectangle|package)\s+(?:"([^"]+)"|([a-zA-Z0-9_\-]+))\s*\{?$/i);
-    if (matchSub) {
-      subjectName = matchSub[2] || matchSub[3];
+    if (!line || line.indexOf("'") === 0 || line.indexOf("@startuml") === 0 || line.indexOf("@enduml") === 0 || line.indexOf("left to right") === 0 || line.indexOf("top to bottom") === 0 || line.indexOf("title ") === 0) {
       continue;
     }
 
@@ -110,33 +93,78 @@ function generateDiagram(diagram, text) {
       if (line.indexOf("}") !== -1) inSkinparam = false;
       continue;
     }
-    if (line === "}") continue;
+
+    // Multiline notes
+    if (currentNote) {
+      if (line.toLowerCase() === "end note") {
+        currentNote = null;
+      } else {
+        currentNote.text += (currentNote.text ? "\n" : "") + line;
+      }
+      continue;
+    }
+
+    var matchNoteBlock = line.match(/^note\s+(left\s+of|right\s+of|top\s+of|bottom\s+of|as)\s+(\w+)/i);
+    if (matchNoteBlock && line.indexOf(":") === -1) {
+      var notePos = matchNoteBlock[1].toLowerCase();
+      var noteTarget = matchNoteBlock[2];
+      var nAlias = "note_" + parsedNotes.length;
+      if (notePos === "as") {
+        nAlias = noteTarget;
+        currentNote = { text: "", alias: nAlias };
+        parsedNotes.push(currentNote);
+      } else {
+        currentNote = { text: "", alias: nAlias };
+        parsedNotes.push(currentNote);
+        noteLinks.push({ from: nAlias, to: noteTarget });
+      }
+      continue;
+    }
+
+    // Single line notes
+    var matchSingleNote = line.match(/^note\s+(left\s+of|right\s+of|top\s+of|bottom\s+of)\s+(\w+)\s*:\s*(.+)$/i);
+    if (matchSingleNote) {
+      var nTarget = matchSingleNote[2];
+      var nText = matchSingleNote[3];
+      var snAlias = "note_" + parsedNotes.length;
+      parsedNotes.push({ text: nText, alias: snAlias });
+      noteLinks.push({ from: snAlias, to: nTarget });
+      continue;
+    }
+    var matchSingleNoteAs = line.match(/^note\s+"([^"]+)"\s+as\s+(\w+)/i);
+    if (matchSingleNoteAs) {
+      parsedNotes.push({ text: matchSingleNoteAs[1], alias: matchSingleNoteAs[2] });
+      continue;
+    }
+
+    // Package / Rectangle
+    var matchSub = line.match(/^(rectangle|package)\s+(?:"([^"]+)"|([a-zA-Z0-9_\-]+))\s*(?:as\s+(\w+))?\s*\{?$/i);
+    if (matchSub) {
+      var pkgName = matchSub[2] || matchSub[3];
+      var pkgAlias = matchSub[4] || pkgName;
+      var newPkg = { name: pkgName, alias: pkgAlias, children: [] };
+      parsedPackages.push(newPkg);
+      currentPackage = pkgAlias;
+      continue;
+    }
+    
+    if (line === "}") {
+      currentPackage = null;
+      continue;
+    }
 
     // Parse actors
     if (line.toLowerCase().indexOf("actor ") === 0) {
-      var nameAct = "";
-      var aliasAct = "";
-      var stereotypeAct = "";
-      var matchAct;
-
+      var nameAct = "", aliasAct = "", stereotypeAct = "", matchAct;
       if ((matchAct = line.match(/actor\s+"([^"]+)"\s+as\s+(\w+)(?:\s+<<([^>]+)>>)?/i))) {
-        nameAct = matchAct[1];
-        aliasAct = matchAct[2];
-        stereotypeAct = matchAct[3] || "";
+        nameAct = matchAct[1]; aliasAct = matchAct[2]; stereotypeAct = matchAct[3] || "";
       } else if ((matchAct = line.match(/actor\s+(\w+)\s+as\s+"([^"]+)"(?:\s+<<([^>]+)>>)?/i))) {
-        aliasAct = matchAct[1];
-        nameAct = matchAct[2];
-        stereotypeAct = matchAct[3] || "";
+        aliasAct = matchAct[1]; nameAct = matchAct[2]; stereotypeAct = matchAct[3] || "";
       } else if ((matchAct = line.match(/actor\s+"([^"]+)"(?:\s+<<([^>]+)>>)?/i))) {
-        nameAct = matchAct[1];
-        aliasAct = matchAct[1];
-        stereotypeAct = matchAct[2] || "";
+        nameAct = matchAct[1]; aliasAct = matchAct[1]; stereotypeAct = matchAct[2] || "";
       } else if ((matchAct = line.match(/actor\s+(\w+)(?:\s+<<([^>]+)>>)?/i))) {
-        nameAct = matchAct[1];
-        aliasAct = matchAct[1];
-        stereotypeAct = matchAct[2] || "";
+        nameAct = matchAct[1]; aliasAct = matchAct[1]; stereotypeAct = matchAct[2] || "";
       }
-
       if (aliasAct) {
         parsedActors.push({ name: nameAct, alias: aliasAct, stereotype: stereotypeAct });
       }
@@ -145,40 +173,29 @@ function generateDiagram(diagram, text) {
 
     // Parse use cases
     var isUseCaseLine = false;
-    var nameUC = "";
-    var aliasUC = "";
-    var stereotypeUC = "";
-    var matchUC;
-
+    var nameUC = "", aliasUC = "", stereotypeUC = "", matchUC;
     if (line.toLowerCase().indexOf("usecase ") === 0) {
       isUseCaseLine = true;
       if ((matchUC = line.match(/usecase\s+"([^"]+)"\s+as\s+(\w+)(?:\s+<<([^>]+)>>)?/i))) {
-        nameUC = matchUC[1];
-        aliasUC = matchUC[2];
-        stereotypeUC = matchUC[3] || "";
+        nameUC = matchUC[1]; aliasUC = matchUC[2]; stereotypeUC = matchUC[3] || "";
       } else if ((matchUC = line.match(/usecase\s+(\w+)\s+as\s+"([^"]+)"(?:\s+<<([^>]+)>>)?/i))) {
-        aliasUC = matchUC[1];
-        nameUC = matchUC[2];
-        stereotypeUC = matchUC[3] || "";
+        aliasUC = matchUC[1]; nameUC = matchUC[2]; stereotypeUC = matchUC[3] || "";
       } else if ((matchUC = line.match(/usecase\s+"([^"]+)"(?:\s+<<([^>]+)>>)?/i))) {
-        nameUC = matchUC[1];
-        aliasUC = matchUC[1];
-        stereotypeUC = matchUC[2] || "";
+        nameUC = matchUC[1]; aliasUC = matchUC[1]; stereotypeUC = matchUC[2] || "";
       } else if ((matchUC = line.match(/usecase\s+(\w+)(?:\s+<<([^>]+)>>)?/i))) {
-        nameUC = matchUC[1];
-        aliasUC = matchUC[1];
-        stereotypeUC = matchUC[2] || "";
+        nameUC = matchUC[1]; aliasUC = matchUC[1]; stereotypeUC = matchUC[2] || "";
       }
     } else if (line.match(/^\(([^)]+)\)(?:\s+as\s+(\w+))?(?:\s+<<([^>]+)>>)?$/i)) {
       matchUC = line.match(/^\(([^)]+)\)(?:\s+as\s+(\w+))?(?:\s+<<([^>]+)>>)?$/i);
       isUseCaseLine = true;
-      nameUC = matchUC[1];
-      aliasUC = matchUC[2] || matchUC[1];
-      stereotypeUC = matchUC[3] || "";
+      nameUC = matchUC[1]; aliasUC = matchUC[2] || matchUC[1]; stereotypeUC = matchUC[3] || "";
     }
-
     if (isUseCaseLine && aliasUC) {
-      parsedUseCases.push({ name: nameUC, alias: aliasUC, stereotype: stereotypeUC });
+      parsedUseCases.push({ name: nameUC, alias: aliasUC, stereotype: stereotypeUC, parent: currentPackage });
+      if (currentPackage) {
+        var p = parsedPackages.find(function(x){ return x.alias === currentPackage; });
+        if (p) p.children.push(aliasUC);
+      }
       continue;
     }
 
@@ -207,200 +224,279 @@ function generateDiagram(diagram, text) {
         ensureElementRegistered(fromAlias, leftStr, fromIsUC);
         ensureElementRegistered(toAlias, rightStr, toIsUC);
 
+        // Note Link
+        if (arrow.indexOf(".") !== -1 && (parsedNotes.some(function(n){ return n.alias === fromAlias; }) || parsedNotes.some(function(n){ return n.alias === toAlias; }))) {
+          noteLinks.push({ from: fromAlias, to: toAlias });
+          continue;
+        }
+
         var relType = "UMLAssociation";
-        if (arrow === "--|>" || arrow === "<|--") {
-          var realFrom = (arrow === "--|>") ? fromAlias : toAlias;
-          var realTo = (arrow === "--|>") ? toAlias : fromAlias;
-          relations.push({ type: "UMLGeneralization", from: realFrom, to: realTo });
-        } else {
-          var stereo = label ? label.replace(/<<|>>/g, "").trim().toLowerCase() : "";
+        var isDashed = arrow.indexOf(".") !== -1;
+        var isGeneralization = arrow === "--|>" || arrow === "<|--";
+        var stereo = label ? label.replace(/<<|>>/g, "").trim().toLowerCase() : "";
+
+        if (isGeneralization) {
+          relType = "UMLGeneralization";
+          if (arrow === "<|--") {
+            var temp = fromAlias; fromAlias = toAlias; toAlias = temp;
+          }
+        } else if (isDashed) {
+          relType = "UMLDependency";
           if (stereo === "include") relType = "UMLInclude";
           else if (stereo === "extend") relType = "UMLExtend";
-          relations.push({ type: relType, from: fromAlias, to: toAlias });
+          if (arrow.indexOf("<") === 0 && arrow.indexOf(">") === -1) {
+             var temp = fromAlias; fromAlias = toAlias; toAlias = temp;
+          }
+        } else {
+          if (arrow.indexOf("<") === 0 && arrow.indexOf(">") === -1) {
+             var temp = fromAlias; fromAlias = toAlias; toAlias = temp;
+          }
         }
+        relations.push({ type: relType, from: fromAlias, to: toAlias, name: stereo ? "" : label.replace(/"/g, "") });
       }
     }
   }
 
-  // Split actors into left (primary) and right (secondary)
+  // --- Layout Engine ---
   var leftActors = [];
   var rightActors = [];
   parsedActors.forEach(function (actor) {
-    if (isSecondaryActor(actor.name, actor.alias)) {
-      rightActors.push(actor);
+    if (isSecondaryActor(actor.name, actor.alias)) rightActors.push(actor);
+    else leftActors.push(actor);
+  });
+
+  var PADDING = 40;
+  var COL_WIDTH = 250;
+  var ROW_HEIGHT = 100;
+  var START_Y = 100;
+
+  // 1. Calculate max elements to define diagram bounds
+  var maxElements = Math.max(leftActors.length, rightActors.length, parsedUseCases.length);
+  var TOTAL_HEIGHT = Math.max(1, maxElements - 1) * ROW_HEIGHT;
+
+  function getSpacing(count) {
+    if (count <= 1) return 0;
+    return TOTAL_HEIGHT / (count - 1);
+  }
+
+  var leftSpacing = getSpacing(leftActors.length);
+  var rightSpacing = getSpacing(rightActors.length);
+
+  // 2. Assign evenly distributed Y coordinates to actors
+  var actorsMap = {};
+  leftActors.forEach(function (actor, index) {
+    actor.y = leftActors.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + index * leftSpacing;
+    actorsMap[actor.alias] = actor;
+  });
+  rightActors.forEach(function (actor, index) {
+    actor.y = rightActors.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + index * rightSpacing;
+    actorsMap[actor.alias] = actor;
+  });
+
+  // 3. Calculate ucTargetY for each Use Case (Heuristic Y-Alignment)
+  var ucTargetY = {};
+  parsedUseCases.forEach(function (uc) {
+    var connectedActors = [];
+    relations.forEach(function (rel) {
+      if (rel.from === uc.alias && actorsMap[rel.to]) connectedActors.push(actorsMap[rel.to]);
+      if (rel.to === uc.alias && actorsMap[rel.from]) connectedActors.push(actorsMap[rel.from]);
+    });
+    
+    if (connectedActors.length > 0) {
+      var sumY = 0;
+      connectedActors.forEach(function (a) { sumY += a.y; });
+      ucTargetY[uc.alias] = sumY / connectedActors.length;
     } else {
-      leftActors.push(actor);
+      ucTargetY[uc.alias] = START_Y + TOTAL_HEIGHT / 2; // Default to middle
     }
   });
 
-  // Calculate layout dimensions
-  var totalUC = parsedUseCases.length;
-  var colsCount = 2;
-  var useCaseCols = [360, 600];
-  var leftActorX = 80;
-  var rightActorX = 850;
-
-  if (totalUC > 30) {
-    colsCount = 4;
-    useCaseCols = [280, 480, 680, 880];
-    rightActorX = 1100;
-  } else if (totalUC > 10) {
-    colsCount = 3;
-    useCaseCols = [300, 520, 740];
-    rightActorX = 980;
-  }
-
-  var ucRowCount = Math.ceil(totalUC / colsCount);
-  var minHeightForActors = Math.max(leftActors.length, rightActors.length) * 120;
-  var diagramHeight = Math.max(500, Math.max(ucRowCount * 95 + 100, minHeightForActors + 100));
-
-  var leftSpacing = leftActors.length > 0 ? Math.floor(diagramHeight / (leftActors.length + 1)) : 160;
-  var rightSpacing = rightActors.length > 0 ? Math.floor(diagramHeight / (rightActors.length + 1)) : 160;
-
   var parentModel = diagram._parent;
-  if (!parentModel) {
-    parentModel = app.project.getProject();
-  }
+  if (!parentModel) parentModel = app.project.getProject();
 
-  // Create Use Case Subject (System Boundary) if defined
-  if (subjectName) {
-    var subjectLeft = useCaseCols[0] - 30;
-    var subjectTop = 40;
-    var subjectWidth = useCaseCols[useCaseCols.length - 1] + 150 + 30 - subjectLeft;
-    var subjectHeight = 80 + ucRowCount * 95 - 40;
+  var currentX = 300; // start after left actors
+  var elementsMap = {};
+  var rightActorStartX = currentX + COL_WIDTH * 2;
+
+  // 4. Sort Packages by their average ucTargetY
+  var pkgTargetY = {};
+  parsedPackages.forEach(function(pkg) {
+    var ucs = parsedUseCases.filter(function(u){ return u.parent === pkg.alias; });
+    var sum = 0;
+    ucs.forEach(function(u) { sum += ucTargetY[u.alias]; });
+    pkgTargetY[pkg.alias] = ucs.length > 0 ? sum / ucs.length : START_Y + TOTAL_HEIGHT / 2;
+  });
+
+  parsedPackages.sort(function(a, b) {
+    return pkgTargetY[a.alias] - pkgTargetY[b.alias];
+  });
+
+  // 5. Layout Use Cases and Packages evenly across TOTAL_HEIGHT
+  var globalUcSpacing = getSpacing(parsedUseCases.length);
+  var currentGlobalUcIndex = 0;
+
+  parsedPackages.forEach(function (pkg) {
+    var ucsInPkg = parsedUseCases.filter(function(u){ return u.parent === pkg.alias; });
+    if (ucsInPkg.length === 0) return;
+    
+    // Sort UCs within package by target Y
+    ucsInPkg.sort(function(a, b) {
+      return ucTargetY[a.alias] - ucTargetY[b.alias];
+    });
+
+    var pkgTop = START_Y + currentGlobalUcIndex * globalUcSpacing - PADDING;
+    var maxUcRight = currentX;
+
+    // Layout UCs
+    ucsInPkg.forEach(function(uc) {
+      uc.x = currentX + PADDING;
+      uc.y = parsedUseCases.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + currentGlobalUcIndex * globalUcSpacing;
+      
+      currentGlobalUcIndex++;
+      maxUcRight = Math.max(maxUcRight, uc.x + 150);
+    });
+
+    var pkgBottom = START_Y + (currentGlobalUcIndex - 1) * globalUcSpacing + 55 + PADDING;
+    var pkgWidth = Math.max(350, maxUcRight - currentX + PADDING);
+    var pkgHeight = Math.max(150, pkgBottom - pkgTop);
 
     try {
-      app.factory.createModelAndView({
+      var subjectView = app.factory.createModelAndView({
         id: "UMLUseCaseSubject",
         parent: parentModel,
         diagram: diagram,
-        modelInitializer: function (model) {
-          model.name = subjectName;
-        },
-        viewInitializer: function (dgmView) {
-          dgmView.left = subjectLeft;
-          dgmView.top = subjectTop;
-          dgmView.width = subjectWidth;
-          dgmView.height = subjectHeight;
+        modelInitializer: function (model) { model.name = pkg.name; },
+        viewInitializer: function (v) {
+          v.left = currentX;
+          v.top = pkgTop;
+          v.width = pkgWidth;
+          v.height = pkgHeight;
         }
       });
+      elementsMap[pkg.alias] = subjectView;
     } catch (e) {
-      console.error("[usecase-parser] Failed to create UseCaseSubject:", subjectName, e);
+      console.error("[usecase-parser] Error creating subject", e);
     }
-  }
 
-  // Create left actors
-  leftActors.forEach(function (actor, index) {
-    var posX = leftActorX;
-    var posY = leftSpacing + index * leftSpacing - 40;
-    var actorName = sanitizeName(actor.name);
-
-    try {
-      var view = app.factory.createModelAndView({
-        id: "UMLActor",
-        parent: parentModel,
-        diagram: diagram,
-        modelInitializer: function (model) {
-          model.name = actorName;
-          if (actor.stereotype) {
-            model.stereotype = actor.stereotype;
-          }
-        },
-        viewInitializer: function (dgmView) {
-          dgmView.left = posX;
-          dgmView.top = posY;
-          dgmView.width = 60;
-          dgmView.height = 80;
-        }
-      });
-      if (view) {
-        elementsMap[actor.alias] = view;
-      }
-    } catch (e) {
-      console.error("[usecase-importer] Failed to create actor:", actorName, e);
-    }
+    rightActorStartX = Math.max(rightActorStartX, currentX + pkgWidth + 150);
   });
 
-  // Create right actors
-  rightActors.forEach(function (actor, index) {
-    var posX = rightActorX;
-    var posY = rightSpacing + index * rightSpacing - 40;
-    var actorName = sanitizeName(actor.name);
-
-    try {
-      var view = app.factory.createModelAndView({
-        id: "UMLActor",
-        parent: parentModel,
-        diagram: diagram,
-        modelInitializer: function (model) {
-          model.name = actorName;
-          if (actor.stereotype) {
-            model.stereotype = actor.stereotype;
-          }
-        },
-        viewInitializer: function (dgmView) {
-          dgmView.left = posX;
-          dgmView.top = posY;
-          dgmView.width = 60;
-          dgmView.height = 80;
-        }
-      });
-      if (view) {
-        elementsMap[actor.alias] = view;
-      }
-    } catch (e) {
-      console.error("[usecase-importer] Failed to create actor:", actorName, e);
-    }
+  // Process unassigned Use Cases
+  var unassignedUCs = parsedUseCases.filter(function(u){ return !u.parent; });
+  unassignedUCs.sort(function(a, b) {
+    return ucTargetY[a.alias] - ucTargetY[b.alias];
   });
 
-  // Create use cases
-  parsedUseCases.forEach(function (uc, index) {
-    var colIndex = index % colsCount;
-    var rowIndex = Math.floor(index / colsCount);
-    var posX = useCaseCols[colIndex];
-    var posY = 80 + rowIndex * 95;
-    var ucName = sanitizeName(uc.name);
+  unassignedUCs.forEach(function(uc) {
+    uc.x = currentX;
+    uc.y = parsedUseCases.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + currentGlobalUcIndex * globalUcSpacing;
+    currentGlobalUcIndex++;
+    rightActorStartX = Math.max(rightActorStartX, uc.x + 250);
+  });
 
+  // Create Use Case Views
+  parsedUseCases.forEach(function (uc) {
     try {
       var view = app.factory.createModelAndView({
         id: "UMLUseCase",
         parent: parentModel,
         diagram: diagram,
         modelInitializer: function (model) {
-          model.name = ucName;
-          if (uc.stereotype) {
-            model.stereotype = uc.stereotype;
-          }
+          model.name = sanitizeName(uc.name);
+          if (uc.stereotype) model.stereotype = uc.stereotype;
         },
-        viewInitializer: function (dgmView) {
-          dgmView.left = posX;
-          dgmView.top = posY;
-          dgmView.width = 150;
-          dgmView.height = 55;
+        viewInitializer: function (v) {
+          v.left = uc.x;
+          v.top = uc.y;
+          v.width = 150;
+          v.height = 55;
         }
       });
-      if (view) {
-        elementsMap[uc.alias] = view;
-      }
+      if (view) elementsMap[uc.alias] = view;
     } catch (e) {
-      console.error("[usecase-importer] Failed to create use case:", ucName, e);
+      console.error("[usecase-parser] Error creating UC", e);
     }
   });
 
-  // Create relations
+  // 6. Draw Actors (using their evenly distributed Y)
+  leftActors.forEach(function (actor) {
+    try {
+      var view = app.factory.createModelAndView({
+        id: "UMLActor",
+        parent: parentModel,
+        diagram: diagram,
+        modelInitializer: function (model) {
+          model.name = sanitizeName(actor.name);
+          if (actor.stereotype) model.stereotype = actor.stereotype;
+        },
+        viewInitializer: function (v) {
+          v.left = 50;
+          v.top = actor.y;
+          v.width = 60;
+          v.height = 80;
+        }
+      });
+      if (view) elementsMap[actor.alias] = view;
+    } catch (e) {}
+  });
+
+  rightActors.forEach(function (actor) {
+    try {
+      var view = app.factory.createModelAndView({
+        id: "UMLActor",
+        parent: parentModel,
+        diagram: diagram,
+        modelInitializer: function (model) {
+          model.name = sanitizeName(actor.name);
+          if (actor.stereotype) model.stereotype = actor.stereotype;
+        },
+        viewInitializer: function (v) {
+          v.left = rightActorStartX;
+          v.top = actor.y;
+          v.width = 60;
+          v.height = 80;
+        }
+      });
+      if (view) elementsMap[actor.alias] = view;
+    } catch (e) {}
+  });
+
+  var maxDiagramHeight = START_Y + TOTAL_HEIGHT + 100;
+
+
+  // Notes
+  var noteY = maxDiagramHeight + 50;
+  var noteX = 50;
+  parsedNotes.forEach(function (note) {
+    try {
+      var view = app.factory.createModelAndView({
+        id: "UMLNote",
+        parent: parentModel,
+        diagram: diagram,
+        modelInitializer: function (model) {
+          model.text = note.text;
+        },
+        viewInitializer: function (v) {
+          v.left = noteX;
+          v.top = noteY;
+          v.width = 150;
+          v.height = Math.max(50, note.text.split("\n").length * 20 + 20);
+        }
+      });
+      if (view) elementsMap[note.alias] = view;
+      noteX += 180;
+      if (noteX > rightActorStartX) {
+        noteX = 50;
+        noteY += 100;
+      }
+    } catch (e) {}
+  });
+
+  // Relations
   relations.forEach(function (rel) {
     var tailView = elementsMap[rel.from];
     var headView = elementsMap[rel.to];
-
-    if (!tailView || !headView) {
-      console.warn(
-        "[usecase-importer] Skipping relation: " +
-        rel.from + " -> " + rel.to +
-        " (missing element)"
-      );
-      return;
-    }
-
+    if (!tailView || !headView) return;
     try {
       app.factory.createModelAndView({
         id: rel.type,
@@ -409,14 +505,28 @@ function generateDiagram(diagram, text) {
         tailView: tailView,
         headView: headView,
         tailModel: tailView.model,
-        headModel: headView.model
+        headModel: headView.model,
+        modelInitializer: function (model) {
+          if (rel.name) model.name = rel.name;
+        }
       });
-    } catch (e) {
-      console.error(
-        "[usecase-importer] Failed to create relation:",
-        rel.type, rel.from, "->", rel.to, e
-      );
-    }
+    } catch (e) {}
+  });
+
+  // Note Links
+  noteLinks.forEach(function (link) {
+    var tailView = elementsMap[link.from];
+    var headView = elementsMap[link.to];
+    if (!tailView || !headView) return;
+    try {
+      app.factory.createModelAndView({
+        id: "UMLNoteLink",
+        parent: parentModel,
+        diagram: diagram,
+        tailView: tailView,
+        headView: headView
+      });
+    } catch (e) {}
   });
 }
 
