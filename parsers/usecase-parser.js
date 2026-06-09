@@ -50,6 +50,9 @@ function generateDiagram(diagram, text) {
     if (cleaned.indexOf('"') === 0 && cleaned.lastIndexOf('"') === cleaned.length - 1 && cleaned.length > 1) {
       cleaned = cleaned.substring(1, cleaned.length - 1).trim();
     }
+    // Strip extraneous < or > that might have been left over from parser bugs
+    if (cleaned.indexOf("<") === 0) cleaned = cleaned.substring(1).trim();
+    if (cleaned.lastIndexOf(">") === cleaned.length - 1 && cleaned.length > 0) cleaned = cleaned.substring(0, cleaned.length - 1).trim();
     return cleaned;
   }
 
@@ -180,7 +183,7 @@ function generateDiagram(diagram, text) {
     }
 
     // Parse relations
-    var arrowRegex = /\s*(--\|>|<\|--|\.\.>|\.>|-->|->|--)\s*/;
+    var arrowRegex = /\s*(<\|?-+|-+\|?>|<\.+|\.+>|<-+|-+>|--+|\.\.+)\s*/;
     var parts = line.split(arrowRegex);
     if (parts.length >= 3) {
       var leftStr = parts[0].trim();
@@ -248,7 +251,8 @@ function generateDiagram(diagram, text) {
   }
 
   var ucRowCount = Math.ceil(totalUC / colsCount);
-  var diagramHeight = Math.max(500, ucRowCount * 95 + 100);
+  var minHeightForActors = Math.max(leftActors.length, rightActors.length) * 120;
+  var diagramHeight = Math.max(500, Math.max(ucRowCount * 95 + 100, minHeightForActors + 100));
 
   var leftSpacing = leftActors.length > 0 ? Math.floor(diagramHeight / (leftActors.length + 1)) : 160;
   var rightSpacing = rightActors.length > 0 ? Math.floor(diagramHeight / (rightActors.length + 1)) : 160;
