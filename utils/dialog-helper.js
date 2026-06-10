@@ -53,7 +53,7 @@ function showImportDialog(title, sampleCode) {
 
   // 1. HTML Dialog Template
   var template = [
-    '<div class="dialog plantuml-preview-dialog" style="width: 80vw; height: 80vh; min-width: 700px; min-height: 450px; max-width: 95vw; max-height: 95vh; display: flex; flex-direction: column; background: #282828; color: #e0e0e0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3c3c3c; overflow: hidden; resize: both;">',
+    '<div class="dialog plantuml-preview-dialog" style="width: 80vw; height: 80vh; min-width: 700px; min-height: 450px; max-width: 95vw; max-height: 95vh; display: flex; flex-direction: column; background: #282828; color: #e0e0e0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3c3c3c; overflow: hidden; position: relative;">',
     '  <div class="modal-header" style="padding: 16px 20px 12px 20px; border-bottom: 1px solid #3c3c3c; background: #282828; display: flex; justify-content: space-between; align-items: center;">',
     '    <div style="flex: 1;"></div>',
     '    <span class="dialog-title" style="font-size: 15px; font-weight: 600; color: #ffffff; font-family: sans-serif; flex: 1; text-align: center;">' + title + '</span>',
@@ -96,6 +96,92 @@ function showImportDialog(title, sampleCode) {
       // 2. Render Modal
       var dialog = app.dialogs.showModalDialogUsingTemplate(template, true);
       var $dlg = dialog.getElement();
+
+      // Custom Resizing Logic (All 4 edges and corners)
+      var handles = ['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw'];
+      handles.forEach(function(dir) {
+        var $handle = $('<div class="resizer resizer-' + dir + '"></div>');
+        $handle.css({ position: 'absolute', 'z-index': 100 });
+        if (dir.indexOf('n') !== -1) $handle.css({ top: 0, height: '8px', cursor: 'ns-resize' });
+        if (dir.indexOf('s') !== -1) $handle.css({ bottom: 0, height: '8px', cursor: 'ns-resize' });
+        if (dir.indexOf('w') !== -1) $handle.css({ left: 0, width: '8px', cursor: 'ew-resize' });
+        if (dir.indexOf('e') !== -1) $handle.css({ right: 0, width: '8px', cursor: 'ew-resize' });
+        if (dir.length === 2) {
+          $handle.css({ width: '12px', height: '12px', cursor: dir + '-resize' });
+        } else {
+          if (dir === 'n' || dir === 's') $handle.css({ left: '12px', right: '12px' });
+          if (dir === 'e' || dir === 'w') $handle.css({ top: '12px', bottom: '12px' });
+        }
+        $dlg.append($handle);
+      });
+
+      var isResizing = false;
+      var currentResizer = null;
+      var startMouseX, startMouseY;
+      var startDlgRect;
+
+      $dlg.on('mousedown', '.resizer', function(e) {
+        isResizing = true;
+        currentResizer = $(this).attr('class').match(/resizer-([nesw]{1,2})/)[1];
+        startMouseX = e.clientX;
+        startMouseY = e.clientY;
+        var rect = $dlg[0].getBoundingClientRect();
+        startDlgRect = {
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height
+        };
+        $dlg.css({
+          position: 'fixed',
+          top: startDlgRect.top + 'px',
+          left: startDlgRect.left + 'px',
+          width: startDlgRect.width + 'px',
+          height: startDlgRect.height + 'px',
+          transform: 'none',
+          margin: 0,
+          'max-width': 'none',
+          'max-height': 'none'
+        });
+        e.preventDefault();
+        e.stopPropagation();
+      });
+
+      $(window).on('mousemove.plantuml-resize', function(e) {
+        if (!isResizing) return;
+        var dx = e.clientX - startMouseX;
+        var dy = e.clientY - startMouseY;
+        var newRect = {
+          top: startDlgRect.top,
+          left: startDlgRect.left,
+          width: startDlgRect.width,
+          height: startDlgRect.height
+        };
+
+        if (currentResizer.indexOf('e') !== -1) newRect.width = Math.max(700, startDlgRect.width + dx);
+        if (currentResizer.indexOf('s') !== -1) newRect.height = Math.max(450, startDlgRect.height + dy);
+        if (currentResizer.indexOf('w') !== -1) {
+          var actualDx = Math.min(dx, startDlgRect.width - 700);
+          newRect.left = startDlgRect.left + actualDx;
+          newRect.width = startDlgRect.width - actualDx;
+        }
+        if (currentResizer.indexOf('n') !== -1) {
+          var actualDy = Math.min(dy, startDlgRect.height - 450);
+          newRect.top = startDlgRect.top + actualDy;
+          newRect.height = startDlgRect.height - actualDy;
+        }
+
+        $dlg.css({
+          top: newRect.top + 'px',
+          left: newRect.left + 'px',
+          width: newRect.width + 'px',
+          height: newRect.height + 'px'
+        });
+      });
+
+      $(window).on('mouseup.plantuml-resize', function(e) {
+        if (isResizing) isResizing = false;
+      });
 
       var $textarea = $dlg.find(".plantuml-code-input");
       var $previewContainer = $dlg.find(".preview-container");
@@ -294,6 +380,7 @@ function showImportDialog(title, sampleCode) {
 
       function cleanUpEvents() {
         $(window).off(".plantuml-pan");
+        $(window).off(".plantuml-resize");
       }
 
       var isResolved = false;
