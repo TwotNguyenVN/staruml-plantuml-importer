@@ -61,11 +61,13 @@ function init() {
 }
 
 function detectDiagramType(code) {
-  // Try to detect the diagram type from the code.
-  if (/\b(actor|usecase)\b/i.test(code)) return "UMLUseCaseDiagram";
-  if (/\b(class|interface|abstract class|enum)\b/i.test(code) && !/\b(participant|actor\s+\w+\s+as)\b/i.test(code)) return "UMLClassDiagram";
-  if (/\b(participant|actor|boundary|control|entity|database|collections)\b.*as\b/i.test(code) || /->/.test(code)) return "UMLSequenceDiagram";
-  if (/\b(start|stop|end|if\s*\(|:\w+;)\b/i.test(code) && !/->/.test(code)) return "UMLActivityDiagram";
+  // Clean markdown code blocks if any
+  code = code.replace(/```[a-z]*\n/g, "").replace(/```/g, "");
+  
+  if (/\b(participant|boundary|control|database|collections)\b/i.test(code) || /->/.test(code)) return "UMLSequenceDiagram";
+  if (/\b(usecase)\b/i.test(code) || (/\b(actor)\b/i.test(code) && !/->/.test(code))) return "UMLUseCaseDiagram";
+  if (/\b(class|interface|abstract class|enum)\b/i.test(code)) return "UMLClassDiagram";
+  if (/\b(start|stop|end|if\s*\(|:\w+;)\b/i.test(code)) return "UMLActivityDiagram";
   if (/\b(state|\[\*\])\b/i.test(code)) return "UMLStatechartDiagram";
   if (/\b(entity|\|\|--o\{)\b/i.test(code)) return "ERDDiagram";
   return null;
