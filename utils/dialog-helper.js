@@ -128,20 +128,24 @@ function showImportDialog(title, sampleCode) {
         startMouseX = e.clientX;
         startMouseY = e.clientY;
 
-        startWidth = $dlg.outerWidth();
-        startHeight = $dlg.outerHeight();
-        startML = parseInt($dlg.css('margin-left')) || 0;
-        startMR = parseInt($dlg.css('margin-right')) || 0;
-        startMT = parseInt($dlg.css('margin-top')) || 0;
-        startMB = parseInt($dlg.css('margin-bottom')) || 0;
+        var rect = $dlg[0].getBoundingClientRect();
+        startWidth = rect.width;
+        startHeight = rect.height;
+        startML = parseFloat($dlg.css('margin-left')) || 0;
+        startMR = parseFloat($dlg.css('margin-right')) || 0;
+        startMT = parseFloat($dlg.css('margin-top')) || 0;
+        startMB = parseFloat($dlg.css('margin-bottom')) || 0;
 
         $dlg.css({
+          'box-sizing': 'border-box',
           'max-width': 'none',
           'max-height': 'none',
           'min-width': '0',
           'min-height': '0',
           'transition': 'none',
-          'position': 'relative'
+          'position': 'relative',
+          'width': startWidth + 'px',
+          'height': startHeight + 'px'
         });
 
         // Also ensure wrapper has no transition
