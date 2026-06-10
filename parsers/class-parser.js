@@ -370,17 +370,19 @@ function generateDiagram(diagram, text) {
 
   var parentModel = diagram._parent || app.project.getProject();
   
-  // 3. Setup Physics Nodes
-  var nodeArray = [];
+  // 3. Layout Grid & Calculate Coordinates (Symmetrical Centered Grid)
   var currentY = 50;
-  var verticalSpacing = 200;
-  var horizontalSpacing = 200;
+  var verticalSpacing = 150;
+  var horizontalSpacing = 100;
   
-  levels.forEach(function(levelNodes) {
-    var currentX = 50;
+  // First pass: calculate widths, heights, and total width of each level
+  var levelWidths = [];
+  var maxDiagramWidth = 0;
+  
+  levels.forEach(function(levelNodes, i) {
+    var totalWidth = 0;
     levelNodes.forEach(function(nodeNode) {
       var el = nodeNode.data;
-      
       var maxLength = el.name.length;
       el.attributes.forEach(function (attr) {
         var len = (attr.name + ": " + (attr.type || "")).length + 3;
@@ -399,90 +401,40 @@ function generateDiagram(diagram, text) {
       
       nodeNode.width = width;
       nodeNode.height = height;
-      nodeNode.x = currentX + (Math.random() * 20 - 10);
-      nodeNode.y = currentY + (Math.random() * 20 - 10);
-      nodeNode.vx = 0;
-      nodeNode.vy = 0;
       
-      nodeArray.push(nodeNode);
-      currentX += width + horizontalSpacing;
+      totalWidth += width + horizontalSpacing;
     });
-    currentY += verticalSpacing;
+    
+    totalWidth -= horizontalSpacing; // Remove trailing spacing
+    levelWidths[i] = totalWidth;
+    if (totalWidth > maxDiagramWidth) maxDiagramWidth = totalWidth;
   });
 
-  var K = 300;
-  var iterations = 200;
-  var temperature = 100;
-  var dt = 1;
-
-  var edges = [];
-  relations.forEach(function(r) {
-    if (nodesMap[r.from] && nodesMap[r.to]) {
-      var targetK = K;
-      if (r.type === "UMLGeneralization" || r.type === "UMLInterfaceRealization") targetK = K * 1.5;
-      edges.push({ source: nodesMap[r.from], target: nodesMap[r.to], k: targetK });
-    }
-  });
-
-  for (var iter = 0; iter < iterations; iter++) {
-    for (var i = 0; i < nodeArray.length; i++) {
-      for (var j = i + 1; j < nodeArray.length; j++) {
-        var n1 = nodeArray[i], n2 = nodeArray[j];
-        var dx = n1.x - n2.x, dy = n1.y - n2.y;
-        if (dx === 0 && dy === 0) { dx = Math.random(); dy = Math.random(); }
-        var dist = Math.sqrt(dx*dx + dy*dy);
-        var overlapDist = Math.max((n1.width + n2.width) / 2 + 50, (n1.height + n2.height) / 2 + 50);
-        var force = (K * K) / dist;
-        if (dist < overlapDist) force *= 5;
-        var fx = (dx / dist) * force, fy = (dy / dist) * force;
-        n1.vx += fx; n1.vy += fy;
-        n2.vx -= fx; n2.vy -= fy;
-      }
-    }
-    edges.forEach(function(edge) {
-      var dx = edge.target.x - edge.source.x, dy = edge.target.y - edge.source.y;
-      var dist = Math.sqrt(dx*dx + dy*dy) || 1;
-      var force = (dist * dist) / edge.k;
-      var fx = (dx / dist) * force, fy = (dy / dist) * force;
-      edge.source.vx += fx; edge.source.vy += fy;
-      edge.target.vx -= fx; edge.target.vy -= fy;
+  // Second pass: Assign coordinates with center alignment
+  levels.forEach(function(levelNodes, i) {
+    // Center this level relative to the max diagram width
+    var currentX = 50 + (maxDiagramWidth - levelWidths[i]) / 2;
+    var maxLevelHeight = 0;
+    
+    levelNodes.forEach(function(nodeNode) {
+      nodeNode.x = currentX;
+      nodeNode.y = currentY;
+      
+      currentX += nodeNode.width + horizontalSpacing;
+      if (nodeNode.height > maxLevelHeight) maxLevelHeight = nodeNode.height;
     });
-    var cx = 500, cy = 500;
-    nodeArray.forEach(function(n) {
-      var dx = cx - n.x, dy = cy - n.y;
-      var dist = Math.sqrt(dx*dx + dy*dy) || 1;
-      var force = dist * 0.05;
-      n.vx += (dx / dist) * force; n.vy += (dy / dist) * force;
-    });
-    nodeArray.forEach(function(n) {
-      var vMag = Math.sqrt(n.vx*n.vx + n.vy*n.vy) || 1;
-      var limit = Math.min(vMag, temperature);
-      n.x += (n.vx / vMag) * limit * dt; n.y += (n.vy / vMag) * limit * dt;
-      n.vx = 0; n.vy = 0;
-    });
-    temperature *= 0.95;
-  }
-
-  var minX = Infinity, minY = Infinity;
-  nodeArray.forEach(function(n) {
-    if (n.x < minX) minX = n.x;
-    if (n.y < minY) minY = n.y;
-  });
-  
-  var shiftX = 50 - minX;
-  var shiftY = 50 - minY;
-  nodeArray.forEach(function(n) {
-    n.x += shiftX;
-    n.y += shiftY;
+    
+    currentY += maxLevelHeight + verticalSpacing;
   });
 
   // 4. Create Models and Views in StarUML
-  nodeArray.forEach(function(nodeNode) {
-    var el = nodeNode.data;
-    var width = nodeNode.width;
-    var height = nodeNode.height;
-    var posX = Math.round(nodeNode.x);
-    var posY = Math.round(nodeNode.y);
+  levels.forEach(function(levelNodes) {
+    levelNodes.forEach(function(nodeNode) {
+      var el = nodeNode.data;
+      var width = nodeNode.width;
+      var height = nodeNode.height;
+      var posX = Math.round(nodeNode.x);
+      var posY = Math.round(nodeNode.y);
       
       try {
         var view = app.factory.createModelAndView({
@@ -579,6 +531,7 @@ function generateDiagram(diagram, text) {
         console.error("[class-parser] Failed to create element:", el.name, e);
       }
     });
+  });
   
   // 3. Create Relations
   relations.forEach(function (rel) {
