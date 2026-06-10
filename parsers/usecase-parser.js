@@ -513,18 +513,29 @@ function generateDiagram(diagram, text) {
     var centerX = 400;
     var centerY = 300;
 
+    var actorSpacing = 100;
+    var extendSpacing = 80;
+    var includeSpacing = 150;
+
+    var actorStartY = centerY - (parsedActors.length - 1) * actorSpacing / 2;
+    var extendStartY = centerY - (extendsUCs.length - 1) * extendSpacing / 2;
+    
+    var minY = Math.min(actorStartY, extendStartY);
+    if (minY < 120) {
+      centerY += (120 - minY);
+      actorStartY = centerY - (parsedActors.length - 1) * actorSpacing / 2;
+      extendStartY = centerY - (extendsUCs.length - 1) * extendSpacing / 2;
+    }
+
     mainUC.width = Math.max(150, (mainUC.name ? mainUC.name.length : 10) * 8 + 60);
     mainUC.x = centerX;
     mainUC.y = centerY;
 
-    var actorSpacing = 100;
-    var actorStartY = centerY - (parsedActors.length - 1) * actorSpacing / 2;
     parsedActors.forEach(function(a, i) {
       a.x = 50;
       a.y = actorStartY + i * actorSpacing;
     });
 
-    var includeSpacing = 150;
     var includeStartX = centerX - (includes.length - 1) * includeSpacing / 2;
     includes.forEach(function(uc, i) {
       uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
@@ -532,8 +543,6 @@ function generateDiagram(diagram, text) {
       uc.y = centerY + 150;
     });
 
-    var extendSpacing = 80;
-    var extendStartY = centerY - (extendsUCs.length - 1) * extendSpacing / 2;
     extendsUCs.forEach(function(uc, i) {
       uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
       uc.x = centerX + mainUC.width + 100;
@@ -548,10 +557,26 @@ function generateDiagram(diagram, text) {
     });
 
     parsedPackages.forEach(function(pkg) {
-      var pkgTop = Math.min(centerY - 100, extendStartY - 50);
-      var pkgBottom = otherY + 100;
-      var pkgLeft = centerX - 100;
-      var pkgRight = centerX + mainUC.width + 400;
+      var ucsInPkg = parsedUseCases.filter(function(u){ return u.parent === pkg.alias; });
+      var pkgTop, pkgLeft, pkgWidth, pkgHeight;
+      if (ucsInPkg.length > 0) {
+        var minX = 999999, minY = 999999, maxX = -999999, maxY = -999999;
+        ucsInPkg.forEach(function(uc) {
+          if (uc.x < minX) minX = uc.x;
+          if (uc.y < minY) minY = uc.y;
+          if (uc.x + uc.width > maxX) maxX = uc.x + uc.width;
+          if (uc.y + 55 > maxY) maxY = uc.y + 55;
+        });
+        pkgTop = minY - 60;
+        pkgLeft = minX - 40;
+        pkgWidth = maxX - minX + 80;
+        pkgHeight = maxY - minY + 100;
+      } else {
+        pkgTop = Math.min(centerY - 100, extendStartY - 50);
+        pkgLeft = centerX - 100;
+        pkgWidth = mainUC.width + 500;
+        pkgHeight = otherY + 100 - pkgTop;
+      }
       var subjectView = app.factory.createModelAndView({
         id: "UMLUseCaseSubject",
         parent: parentModel,
@@ -560,8 +585,8 @@ function generateDiagram(diagram, text) {
         viewInitializer: function (v) {
           v.left = pkgLeft;
           v.top = pkgTop;
-          v.width = pkgRight - pkgLeft;
-          v.height = pkgBottom - pkgTop;
+          v.width = pkgWidth;
+          v.height = pkgHeight;
         }
       });
       elementsMap[pkg.alias] = subjectView;
@@ -636,10 +661,26 @@ function generateDiagram(diagram, text) {
     });
 
     parsedPackages.forEach(function(pkg) {
-      var pkgTop = 50;
-      var pkgBottom = otherY + 100;
-      var pkgLeft = 200;
-      var pkgRight = 800;
+      var ucsInPkg = parsedUseCases.filter(function(u){ return u.parent === pkg.alias; });
+      var pkgTop, pkgLeft, pkgWidth, pkgHeight;
+      if (ucsInPkg.length > 0) {
+        var minX = 999999, minY = 999999, maxX = -999999, maxY = -999999;
+        ucsInPkg.forEach(function(uc) {
+          if (uc.x < minX) minX = uc.x;
+          if (uc.y < minY) minY = uc.y;
+          if (uc.x + uc.width > maxX) maxX = uc.x + uc.width;
+          if (uc.y + 55 > maxY) maxY = uc.y + 55;
+        });
+        pkgTop = minY - 60;
+        pkgLeft = minX - 40;
+        pkgWidth = maxX - minX + 80;
+        pkgHeight = maxY - minY + 100;
+      } else {
+        pkgTop = 50;
+        pkgLeft = 200;
+        pkgWidth = 600;
+        pkgHeight = otherY + 50;
+      }
       var subjectView = app.factory.createModelAndView({
         id: "UMLUseCaseSubject",
         parent: parentModel,
@@ -648,8 +689,8 @@ function generateDiagram(diagram, text) {
         viewInitializer: function (v) {
           v.left = pkgLeft;
           v.top = pkgTop;
-          v.width = pkgRight - pkgLeft;
-          v.height = pkgBottom - pkgTop;
+          v.width = pkgWidth;
+          v.height = pkgHeight;
         }
       });
       elementsMap[pkg.alias] = subjectView;
