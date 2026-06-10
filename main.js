@@ -63,13 +63,21 @@ function init() {
 function detectDiagramType(code) {
   // Clean markdown code blocks if any
   code = code.replace(/```[a-z]*\n/g, "").replace(/```/g, "");
+
+  if (/^\s*usecase\s+/im.test(code) || /^\s*\(/im.test(code)) return "UMLUseCaseDiagram";
+  if (/^\s*entity\s+/im.test(code) || /\|\|--o\{/.test(code)) return "ERDDiagram";
+  if (/^\s*(class|interface|abstract class|enum)\s+/im.test(code)) return "UMLClassDiagram";
+  if (/^\s*(start|stop|if\s*\(|:\w+;)/im.test(code)) return "UMLActivityDiagram";
+  if (/^\s*(state|\[\*\])/im.test(code)) return "UMLStatechartDiagram";
+  if (/^\s*(participant|boundary|control|database|collections)\s+/im.test(code)) return "UMLSequenceDiagram";
   
-  if (/\b(participant|boundary|control|database|collections)\b/i.test(code) || /->/.test(code)) return "UMLSequenceDiagram";
-  if (/\b(usecase)\b/i.test(code) || (/\b(actor)\b/i.test(code) && !/->/.test(code))) return "UMLUseCaseDiagram";
-  if (/\b(class|interface|abstract class|enum)\b/i.test(code)) return "UMLClassDiagram";
-  if (/\b(entity|\|\|--o\{)\b/i.test(code)) return "ERDDiagram";
-  if (/\b(start|stop|end|if\s*\(|:\w+;)\b/i.test(code)) return "UMLActivityDiagram";
-  if (/\b(state|\[\*\])\b/i.test(code)) return "UMLStatechartDiagram";
+  if (/^\s*actor\s+/im.test(code)) {
+    if (/\.\.>/m.test(code) || /--/m.test(code)) return "UMLUseCaseDiagram";
+    return "UMLSequenceDiagram";
+  }
+  
+  if (/->/.test(code)) return "UMLSequenceDiagram";
+
   return null;
 }
 
