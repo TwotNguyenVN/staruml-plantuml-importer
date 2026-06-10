@@ -370,19 +370,17 @@ function generateDiagram(diagram, text) {
 
   var parentModel = diagram._parent || app.project.getProject();
   
-  // 3. Layout Grid & Calculate Coordinates
+  // 3. Setup Physics Nodes
+  var nodeArray = [];
   var currentY = 50;
-  var verticalSpacing = 120;
-  var horizontalSpacing = 100;
+  var verticalSpacing = 200;
+  var horizontalSpacing = 200;
   
   levels.forEach(function(levelNodes) {
     var currentX = 50;
-    var maxLevelHeight = 0;
-    
     levelNodes.forEach(function(nodeNode) {
       var el = nodeNode.data;
       
-      // Calculate dynamic width based on name & members
       var maxLength = el.name.length;
       el.attributes.forEach(function (attr) {
         var len = (attr.name + ": " + (attr.type || "")).length + 3;
@@ -399,12 +397,92 @@ function generateDiagram(diagram, text) {
       var width = Math.max(180, maxLength * 7.5);
       var height = Math.max(65, 45 + (el.attributes.length + el.operations.length + el.literals.length) * 15);
       
-      var posX = currentX;
-      var posY = currentY;
+      nodeNode.width = width;
+      nodeNode.height = height;
+      nodeNode.x = currentX + (Math.random() * 20 - 10);
+      nodeNode.y = currentY + (Math.random() * 20 - 10);
+      nodeNode.vx = 0;
+      nodeNode.vy = 0;
       
-      // Move X pointer for the next element in this level
+      nodeArray.push(nodeNode);
       currentX += width + horizontalSpacing;
-      if (height > maxLevelHeight) maxLevelHeight = height;
+    });
+    currentY += verticalSpacing;
+  });
+
+  var K = 300;
+  var iterations = 200;
+  var temperature = 100;
+  var dt = 1;
+
+  var edges = [];
+  relations.forEach(function(r) {
+    if (nodesMap[r.from] && nodesMap[r.to]) {
+      var targetK = K;
+      if (r.type === "UMLGeneralization" || r.type === "UMLInterfaceRealization") targetK = K * 1.5;
+      edges.push({ source: nodesMap[r.from], target: nodesMap[r.to], k: targetK });
+    }
+  });
+
+  for (var iter = 0; iter < iterations; iter++) {
+    for (var i = 0; i < nodeArray.length; i++) {
+      for (var j = i + 1; j < nodeArray.length; j++) {
+        var n1 = nodeArray[i], n2 = nodeArray[j];
+        var dx = n1.x - n2.x, dy = n1.y - n2.y;
+        if (dx === 0 && dy === 0) { dx = Math.random(); dy = Math.random(); }
+        var dist = Math.sqrt(dx*dx + dy*dy);
+        var overlapDist = Math.max((n1.width + n2.width) / 2 + 50, (n1.height + n2.height) / 2 + 50);
+        var force = (K * K) / dist;
+        if (dist < overlapDist) force *= 5;
+        var fx = (dx / dist) * force, fy = (dy / dist) * force;
+        n1.vx += fx; n1.vy += fy;
+        n2.vx -= fx; n2.vy -= fy;
+      }
+    }
+    edges.forEach(function(edge) {
+      var dx = edge.target.x - edge.source.x, dy = edge.target.y - edge.source.y;
+      var dist = Math.sqrt(dx*dx + dy*dy) || 1;
+      var force = (dist * dist) / edge.k;
+      var fx = (dx / dist) * force, fy = (dy / dist) * force;
+      edge.source.vx += fx; edge.source.vy += fy;
+      edge.target.vx -= fx; edge.target.vy -= fy;
+    });
+    var cx = 500, cy = 500;
+    nodeArray.forEach(function(n) {
+      var dx = cx - n.x, dy = cy - n.y;
+      var dist = Math.sqrt(dx*dx + dy*dy) || 1;
+      var force = dist * 0.05;
+      n.vx += (dx / dist) * force; n.vy += (dy / dist) * force;
+    });
+    nodeArray.forEach(function(n) {
+      var vMag = Math.sqrt(n.vx*n.vx + n.vy*n.vy) || 1;
+      var limit = Math.min(vMag, temperature);
+      n.x += (n.vx / vMag) * limit * dt; n.y += (n.vy / vMag) * limit * dt;
+      n.vx = 0; n.vy = 0;
+    });
+    temperature *= 0.95;
+  }
+
+  var minX = Infinity, minY = Infinity;
+  nodeArray.forEach(function(n) {
+    if (n.x < minX) minX = n.x;
+    if (n.y < minY) minY = n.y;
+  });
+  
+  var shiftX = 50 - minX;
+  var shiftY = 50 - minY;
+  nodeArray.forEach(function(n) {
+    n.x += shiftX;
+    n.y += shiftY;
+  });
+
+  // 4. Create Models and Views in StarUML
+  nodeArray.forEach(function(nodeNode) {
+    var el = nodeNode.data;
+    var width = nodeNode.width;
+    var height = nodeNode.height;
+    var posX = Math.round(nodeNode.x);
+    var posY = Math.round(nodeNode.y);
       
       try {
         var view = app.factory.createModelAndView({
@@ -501,9 +579,6 @@ function generateDiagram(diagram, text) {
         console.error("[class-parser] Failed to create element:", el.name, e);
       }
     });
-    
-    currentY += maxLevelHeight + verticalSpacing;
-  });
   
   // 3. Create Relations
   relations.forEach(function (rel) {
