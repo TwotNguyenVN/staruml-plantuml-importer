@@ -67,9 +67,9 @@ function detectDiagramType(code) {
   if (/\b(participant|boundary|control|database|collections)\b/i.test(code) || /->/.test(code)) return "UMLSequenceDiagram";
   if (/\b(usecase)\b/i.test(code) || (/\b(actor)\b/i.test(code) && !/->/.test(code))) return "UMLUseCaseDiagram";
   if (/\b(class|interface|abstract class|enum)\b/i.test(code)) return "UMLClassDiagram";
+  if (/\b(entity|\|\|--o\{)\b/i.test(code)) return "ERDDiagram";
   if (/\b(start|stop|end|if\s*\(|:\w+;)\b/i.test(code)) return "UMLActivityDiagram";
   if (/\b(state|\[\*\])\b/i.test(code)) return "UMLStatechartDiagram";
-  if (/\b(entity|\|\|--o\{)\b/i.test(code)) return "ERDDiagram";
   return null;
 }
 
