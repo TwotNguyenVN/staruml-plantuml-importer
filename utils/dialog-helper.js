@@ -122,7 +122,8 @@ function showImportDialog(title, sampleCode) {
 
       $dlg.on('mousedown', '.resizer', function(e) {
         isResizing = true;
-        currentResizer = $(this).attr('class').match(/resizer-([nesw]{1,2})/)[1];
+        var resizerClass = $(this).attr('class').match(/resizer-([nesw]{1,2})/);
+        currentResizer = resizerClass ? resizerClass[1] : null;
         startMouseX = e.clientX;
         startMouseY = e.clientY;
         var rect = $dlg[0].getBoundingClientRect();
@@ -141,46 +142,56 @@ function showImportDialog(title, sampleCode) {
           transform: 'none',
           margin: 0,
           'max-width': 'none',
-          'max-height': 'none'
+          'max-height': 'none',
+          'transition': 'none'
         });
+        var cursor = $(this).css('cursor');
+        $('body').css({ 'user-select': 'none', 'cursor': cursor });
         e.preventDefault();
         e.stopPropagation();
       });
 
+      var resizeRaf = null;
       $(window).on('mousemove.plantuml-resize', function(e) {
         if (!isResizing) return;
-        var dx = e.clientX - startMouseX;
-        var dy = e.clientY - startMouseY;
-        var newRect = {
-          top: startDlgRect.top,
-          left: startDlgRect.left,
-          width: startDlgRect.width,
-          height: startDlgRect.height
-        };
+        if (resizeRaf) cancelAnimationFrame(resizeRaf);
+        resizeRaf = requestAnimationFrame(function() {
+          var dx = e.clientX - startMouseX;
+          var dy = e.clientY - startMouseY;
+          var newRect = {
+            top: startDlgRect.top,
+            left: startDlgRect.left,
+            width: startDlgRect.width,
+            height: startDlgRect.height
+          };
 
-        if (currentResizer.indexOf('e') !== -1) newRect.width = Math.max(700, startDlgRect.width + dx);
-        if (currentResizer.indexOf('s') !== -1) newRect.height = Math.max(450, startDlgRect.height + dy);
-        if (currentResizer.indexOf('w') !== -1) {
-          var actualDx = Math.min(dx, startDlgRect.width - 700);
-          newRect.left = startDlgRect.left + actualDx;
-          newRect.width = startDlgRect.width - actualDx;
-        }
-        if (currentResizer.indexOf('n') !== -1) {
-          var actualDy = Math.min(dy, startDlgRect.height - 450);
-          newRect.top = startDlgRect.top + actualDy;
-          newRect.height = startDlgRect.height - actualDy;
-        }
+          if (currentResizer.indexOf('e') !== -1) newRect.width = Math.max(700, startDlgRect.width + dx);
+          if (currentResizer.indexOf('s') !== -1) newRect.height = Math.max(450, startDlgRect.height + dy);
+          if (currentResizer.indexOf('w') !== -1) {
+            var actualDx = Math.min(dx, startDlgRect.width - 700);
+            newRect.left = startDlgRect.left + actualDx;
+            newRect.width = startDlgRect.width - actualDx;
+          }
+          if (currentResizer.indexOf('n') !== -1) {
+            var actualDy = Math.min(dy, startDlgRect.height - 450);
+            newRect.top = startDlgRect.top + actualDy;
+            newRect.height = startDlgRect.height - actualDy;
+          }
 
-        $dlg.css({
-          top: newRect.top + 'px',
-          left: newRect.left + 'px',
-          width: newRect.width + 'px',
-          height: newRect.height + 'px'
+          $dlg.css({
+            top: newRect.top + 'px',
+            left: newRect.left + 'px',
+            width: newRect.width + 'px',
+            height: newRect.height + 'px'
+          });
         });
       });
 
       $(window).on('mouseup.plantuml-resize', function(e) {
-        if (isResizing) isResizing = false;
+        if (isResizing) {
+          isResizing = false;
+          $('body').css({ 'user-select': '', 'cursor': '' });
+        }
       });
 
       var $textarea = $dlg.find(".plantuml-code-input");
