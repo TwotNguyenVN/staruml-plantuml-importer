@@ -345,19 +345,27 @@ function generateDiagram(diagram, text) {
     });
 
     var pkgTop = START_Y + currentGlobalUcIndex * globalUcSpacing - PADDING;
-    var maxUcRight = currentX;
-
-    // Layout UCs
+    // Step 1: Pre-calculate the maximum UC width in this package
+    var maxUcWidth = 0;
     ucsInPkg.forEach(function(uc) {
-      uc.x = currentX + PADDING;
+      uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
+      if (uc.width > maxUcWidth) {
+         maxUcWidth = uc.width;
+      }
+    });
+
+    var pkgWidth = Math.max(350, maxUcWidth + PADDING * 2);
+
+    // Step 2: Layout UCs centered inside the package
+    ucsInPkg.forEach(function(uc) {
+      // Center horizontally
+      uc.x = currentX + (pkgWidth - uc.width) / 2;
       uc.y = parsedUseCases.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + currentGlobalUcIndex * globalUcSpacing;
       
       currentGlobalUcIndex++;
-      maxUcRight = Math.max(maxUcRight, uc.x + 150);
     });
 
     var pkgBottom = START_Y + (currentGlobalUcIndex - 1) * globalUcSpacing + 55 + PADDING;
-    var pkgWidth = Math.max(350, maxUcRight - currentX + PADDING);
     var pkgHeight = Math.max(150, pkgBottom - pkgTop);
 
     try {
@@ -390,8 +398,9 @@ function generateDiagram(diagram, text) {
   unassignedUCs.forEach(function(uc) {
     uc.x = currentX;
     uc.y = parsedUseCases.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + currentGlobalUcIndex * globalUcSpacing;
+    uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
     currentGlobalUcIndex++;
-    rightActorStartX = Math.max(rightActorStartX, uc.x + 250);
+    rightActorStartX = Math.max(rightActorStartX, uc.x + uc.width + 150);
   });
 
   // Create Use Case Views
@@ -408,7 +417,7 @@ function generateDiagram(diagram, text) {
         viewInitializer: function (v) {
           v.left = uc.x;
           v.top = uc.y;
-          v.width = 150;
+          v.width = uc.width || 150;
           v.height = 55;
         }
       });
