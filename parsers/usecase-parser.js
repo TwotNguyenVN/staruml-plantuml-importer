@@ -528,7 +528,7 @@ function generateDiagram(diagram, text) {
     }
 
     mainUC.width = Math.max(150, (mainUC.name ? mainUC.name.length : 10) * 8 + 60);
-    mainUC.x = centerX;
+    mainUC.x = centerX - mainUC.width / 2;
     mainUC.y = centerY;
 
     parsedActors.forEach(function(a, i) {
@@ -539,13 +539,14 @@ function generateDiagram(diagram, text) {
     var includeStartX = centerX - (includes.length - 1) * includeSpacing / 2;
     includes.forEach(function(uc, i) {
       uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
-      uc.x = includeStartX + i * includeSpacing;
-      uc.y = centerY + 150;
+      uc.x = includeStartX + i * includeSpacing - uc.width / 2;
+      uc.y = centerY + 200;
     });
 
+    var extendCenter = centerX + mainUC.width / 2 + 200;
     extendsUCs.forEach(function(uc, i) {
       uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
-      uc.x = centerX + mainUC.width + 100;
+      uc.x = extendCenter - uc.width / 2;
       uc.y = extendStartY + i * extendSpacing;
     });
 
@@ -631,18 +632,20 @@ function generateDiagram(diagram, text) {
     });
 
     var centerY = 300;
-    var actorSpacing = 100;
+    var actorSpacing = 120;
+    var stepSpacing = 120;
+    var extendSpacing = 120;
+
     var actorStartY = centerY - (parsedActors.length - 1) * actorSpacing / 2;
+    var includeStartY = centerY - (includes.length - 1) * stepSpacing / 2;
+    var extendStartY = centerY - (extendsUCs.length - 1) * extendSpacing / 2;
 
-    var rightSideItems = includes.concat(extendsUCs);
-    var itemSpacing = 90;
-    var itemStartY = centerY - (rightSideItems.length - 1) * itemSpacing / 2;
-
-    var minY = Math.min(actorStartY, itemStartY);
+    var minY = Math.min(actorStartY, includeStartY, extendStartY);
     if (minY < 120) {
       centerY += (120 - minY);
       actorStartY = centerY - (parsedActors.length - 1) * actorSpacing / 2;
-      itemStartY = centerY - (rightSideItems.length - 1) * itemSpacing / 2;
+      includeStartY = centerY - (includes.length - 1) * stepSpacing / 2;
+      extendStartY = centerY - (extendsUCs.length - 1) * extendSpacing / 2;
     }
 
     parsedActors.forEach(function(a, i) {
@@ -650,25 +653,32 @@ function generateDiagram(diagram, text) {
       a.y = actorStartY + i * actorSpacing;
     });
 
+    var mainCenter = 300;
     mainUC.width = Math.max(150, (mainUC.name ? mainUC.name.length : 10) * 8 + 60);
-    mainUC.x = 250;
+    mainUC.x = mainCenter - mainUC.width / 2;
     mainUC.y = centerY;
 
+    var includeCenter = mainCenter + Math.max(250, mainUC.width + 100);
     includes.forEach(function(uc, i) {
       uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
-      uc.x = 600;
-      uc.y = itemStartY + i * itemSpacing;
+      uc.x = includeCenter - uc.width / 2;
+      uc.y = includeStartY + i * stepSpacing;
     });
 
+    var maxIncludeWidth = 150;
+    includes.forEach(function(uc) { if(uc.width > maxIncludeWidth) maxIncludeWidth = uc.width; });
+
+    var extendCenter = includeCenter + maxIncludeWidth / 2 + 150;
     extendsUCs.forEach(function(uc, i) {
       uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
-      uc.x = 600;
-      uc.y = itemStartY + (includes.length + i) * itemSpacing;
+      uc.x = extendCenter - uc.width / 2;
+      uc.y = extendStartY + i * extendSpacing;
     });
 
     var otherY = Math.max(
       actorStartY + parsedActors.length * actorSpacing,
-      itemStartY + rightSideItems.length * itemSpacing
+      includeStartY + includes.length * stepSpacing,
+      extendStartY + extendsUCs.length * extendSpacing
     ) + 100;
     others.forEach(function(uc, i) {
       uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
