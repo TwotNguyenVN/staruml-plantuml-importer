@@ -27,9 +27,6 @@ function injectCSS() {
         "  font-size: 13px !important;",
         "  line-height: 1.5 !important;",
         "}",
-        ".dialog.plantuml-preview-dialog {",
-        "  width: 1400px !important;",
-        "}",
         ".dialog.plantuml-preview-dialog textarea {",
         "  height: 100% !important;",
         "}"
@@ -64,19 +61,23 @@ function detectDiagramType(code) {
   // Clean markdown code blocks if any
   code = code.replace(/```[a-z]*\n/g, "").replace(/```/g, "");
 
+  var hasSequenceKeywords = /^\s*(participant|boundary|control|database|collections|autonumber|activate|deactivate|alt|opt|loop|par|break|critical)\b/im.test(code);
+  var hasSequenceArrows = /->/im.test(code);
+  var hasERDRelations = /\|\|--o\{|}--\|\{|\|o--|--o\{|}--\||\|\|--\|\|/im.test(code);
+
+  if (hasSequenceKeywords) return "UMLSequenceDiagram";
   if (/^\s*usecase\s+/im.test(code) || /^\s*\(/im.test(code)) return "UMLUseCaseDiagram";
-  if (/^\s*entity\s+/im.test(code) || /\|\|--o\{/.test(code)) return "ERDDiagram";
   if (/^\s*(class|interface|abstract class|enum)\s+/im.test(code)) return "UMLClassDiagram";
   if (/^\s*(start|stop|if\s*\(|:\w+;)/im.test(code)) return "UMLActivityDiagram";
   if (/^\s*(state|\[\*\])/im.test(code)) return "UMLStatechartDiagram";
-  if (/^\s*(participant|boundary|control|database|collections)\s+/im.test(code)) return "UMLSequenceDiagram";
-  
   if (/^\s*actor\s+/im.test(code)) {
-    if (/\.\.>/m.test(code) || /--/m.test(code)) return "UMLUseCaseDiagram";
+    if (/\.\.>[^>]/m.test(code) || /--[^>]/m.test(code)) return "UMLUseCaseDiagram";
     return "UMLSequenceDiagram";
   }
   
-  if (/->/.test(code)) return "UMLSequenceDiagram";
+  if (hasERDRelations || (/^\s*entity\s+/im.test(code) && !hasSequenceArrows)) return "ERDDiagram";
+  
+  if (hasSequenceArrows) return "UMLSequenceDiagram";
 
   return null;
 }
