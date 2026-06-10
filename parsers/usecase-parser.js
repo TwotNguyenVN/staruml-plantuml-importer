@@ -653,7 +653,7 @@ function generateDiagram(diagram, text) {
       a.y = actorStartY + i * actorSpacing;
     });
 
-    var mainCenter = 650;
+    var mainCenter = 850;
     mainUC.width = Math.max(150, (mainUC.name ? mainUC.name.length : 10) * 8 + 60);
     mainUC.x = mainCenter - mainUC.width / 2;
     mainUC.y = centerY;
