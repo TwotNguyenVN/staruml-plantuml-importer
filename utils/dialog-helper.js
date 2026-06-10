@@ -53,7 +53,7 @@ function showImportDialog(title, sampleCode) {
 
   // 1. HTML Dialog Template
   var template = [
-    '<div class="dialog plantuml-preview-dialog" style="width: 1400px; display: flex; flex-direction: column; background: #282828; color: #e0e0e0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3c3c3c; overflow: hidden;">',
+    '<div class="dialog plantuml-preview-dialog" style="width: 80vw; height: 80vh; min-width: 700px; min-height: 450px; max-width: 95vw; max-height: 95vh; display: flex; flex-direction: column; background: #282828; color: #e0e0e0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3c3c3c; overflow: hidden; resize: both;">',
     '  <div class="modal-header" style="padding: 16px 20px 12px 20px; border-bottom: 1px solid #3c3c3c; background: #282828; display: flex; justify-content: space-between; align-items: center;">',
     '    <div style="flex: 1;"></div>',
     '    <span class="dialog-title" style="font-size: 15px; font-weight: 600; color: #ffffff; font-family: sans-serif; flex: 1; text-align: center;">' + title + '</span>',
@@ -61,7 +61,7 @@ function showImportDialog(title, sampleCode) {
     '      <a href="#" onclick="require(\'electron\').shell.openExternal(\'https://github.com/TwotNguyenVN\'); return false;" style="color: #007acc; text-decoration: none; cursor: pointer;">Twot Nguyen</a>',
     '    </div>',
     '  </div>',
-    '  <div class="modal-body" style="display: flex; gap: 20px; padding: 20px; height: 700px; background: #202020; min-height: 0;">',
+    '  <div class="modal-body" style="display: flex; gap: 20px; padding: 20px; flex: 1; background: #202020; min-height: 0;">',
     '    <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">',
     '      <div style="display: flex; align-items: center; min-height: 32px; margin-bottom: 8px;">',
     '        <label style="font-weight: 600; color: #a0a0a0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-family: sans-serif;">PlantUML Code</label>',
