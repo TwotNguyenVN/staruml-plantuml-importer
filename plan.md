@@ -1,27 +1,48 @@
-Ý tưởng rất tuyệt vời! Việc tách riêng thuật toán cho từng cấp độ không chỉ giải quyết triệt để vấn đề thẩm mỹ mà còn giúp làm nổi bật được "ý đồ nghiệp vụ" của từng cấp (Level) giống hệt như triết lý trong các tài liệu hướng dẫn.
+# 🚀 Giới thiệu Tool: StarUML PlantUML Importer - Biến Code thành Biểu Đồ Tự Động!
 
-Dựa trên đề xuất của bạn, mình xin trình bày Bản thiết kế thuật toán Layout cho từng cấp độ để bạn xem xét và chốt trước khi mình viết thành tài liệu plan.md:
+Chào mọi người! 👋 
+Chắc hẳn ai học qua môn Phân Tích Thiết Kế Hệ Thống thì đã từng "đau đầu" hoặc tốn khá nhiều thời gian với việc kéo thả thủ công từng khối hình trong StarUML.
 
-1. Sơ đồ Cấp 0 (Tổng quan)
-Đặc điểm: Tập trung vào Actor bên ngoài và các nhóm chức năng lớn bên trong Boundary. Nhiều đường chéo.
-Thuật toán đề xuất: "Heuristic Y-Alignment" (Cân bằng trục Y)
-Xếp Actor theo trục dọc bên trái.
-Tính tọa độ Y của từng Use Case bên trong Boundary dựa trên trung bình cộng tọa độ Y của các Actor liên kết với nó.
-Kết quả: Các Use Case được "hút" về đúng tầm mắt của Actor kết nối với nó, các đường thẳng song song nhiều hơn, giảm tối đa việc đan chéo (crossing).
-2. Sơ đồ Cấp 1 (Phân hệ Quản lý)
-Đặc điểm: Thường có 1 Use Case trung tâm (VD: Quản lý Sách) nối với 1 Use Case Đăng nhập (include) và rẽ nhánh ra các chức năng CRUD (Thêm, Sửa, Xóa) bằng extend.
-Thuật toán đề xuất: "Hub & Spoke" (Mô hình Tỏa tròn / Rẽ nhánh 1 chiều)
-Actor ở ngoài cùng bên trái.
-Use Case trung tâm nằm chính giữa.
-Use case include (Đăng nhập) nằm ở góc phải - phía trên.
-Các Use Case extend (Thêm, Sửa, Xóa) được xếp thẳng hàng dọc ở bên phải Use Case trung tâm, tỏa ra như hình rẽ quạt.
-3. Sơ đồ Cấp 2 (Nghiệp vụ chi tiết)
-Đặc điểm: Thể hiện trình tự các bước thực hiện một quy trình (VD: Lập phiếu mượn). Chứa nhiều include (bước bắt buộc) và extend (ngoại lệ).
-Thuật toán đề xuất: "Tree / Flow Layout" (Dạng Cây / Dòng chảy)
-Xếp Use Case chính ở bên trái hoặc ở trên cùng.
-Các Use Case include (Các bước bắt buộc) được xếp theo một trục ngang (hoặc dọc thẳng) tượng trưng cho timeline của quy trình nghiệp vụ.
-Các Use Case extend (Ngoại lệ) sẽ được "chẻ nhánh" (branching) ra phía trên hoặc phía dưới của các bước tương ứng, tạo thành dạng xương cá.
-4. Sơ đồ Cấp 3 (Phát sinh phức tạp)
-Đặc điểm: Đi sâu vào 1 ngoại lệ, gần như 100% là include vì một khi xảy ra ngoại lệ, các bước sau đó là bắt buộc.
-Thuật toán đề xuất: "Linear Pipeline" (Tuyến tính dọc/ngang)
-Rất đơn giản, xếp các Use Case nối tiếp nhau thành một đường thẳng duy nhất (Left-to-Right hoặc Top-to-Bottom) để thể hiện chuỗi hành động tuyến tính.
+Và trong quá trình học môn này mình cũng thấy như vậy nên đã phát triển 1 tool có tên là StarUML PlantUML Importer để giải quyết vấn đề này. 
+
+### ✨ Những tính năng nổi bật khiến bạn nên dùng thử:
+- 📊 **Đa dạng biểu đồ:** Hỗ trợ đầy đủ 6 loại sơ đồ cốt lõi bao gồm Use Case, Class, Sequence, Activity, State, và ER Diagram (ERD). (Sắp tới sẽ có thêm Mindmap và Requirement).
+- 👁️ **Live Preview trực quan:** Giao diện chia đôi màn hình siêu tiện lợi. Dán code PlantUML đến đâu, bạn có thể xem trước hình ảnh biểu đồ hiển thị ngay bên cạnh trước khi import.
+- 🧠 **Thuật toán Auto-Layout cực kỳ thông minh:** 
+  - *Sơ đồ Class:* Áp dụng thuật toán phân tầng Enhanced Sugiyama giúp dóng hàng thẳng tắp, hạn chế tối đa việc đan chéo dây rối rắm.
+  - *Sơ đồ Activity:* Thuật toán tự động nới rộng làn bơi (Dynamic Width Occupancy Grid) giúp ngăn chặn các khối đâm vào nhau.
+- ⚙️ **Hỗ trợ chi tiết các thuộc tính:** Nhận diện đầy đủ phương thức, thuộc tính, tính bao đóng (visibility), các loại quan hệ (include, extend, generalization, association...), định nghĩa cột ERD chuẩn xác.
+- ⚡ **Tương thích hoàn hảo** với phiên bản StarUML v7+.
+
+### 🛠 Cách sử dụng cực kì đơn giản:
+1. Mở StarUML, tạo một biểu đồ trắng (VD: Class Diagram).
+2. Mở tool qua menu `Tools` → `PlantUML Importer...`
+3. Dán đoạn code PlantUML vào, xem preview.
+4. Ấn **Import** và xong! Tool sẽ tự động sinh ra các phần tử UML để bạn có thể tiếp tục tùy chỉnh màu sắc, kéo thả ngay trên StarUML.
+
+🔗 **Link tải, mã nguồn mở và Hướng dẫn cài đặt chi tiết:** [GitHub - TwotNguyenVN/staruml-plantuml-importer](https://github.com/TwotNguyenVN/staruml-plantuml-importer)
+
+Nếu thấy tool giúp ích cho công việc của bạn, đừng quên cho repo xin **1 ⭐️ trên GitHub** để mình có thêm động lực cập nhật các tính năng mới nhé! Mọi góp ý hoặc báo lỗi (issue) đều được hoan nghênh. 
+
+Cảm ơn mọi người đã đọc bài! ❤️
+
+
+# StarUML PlantUML Importer - Biến Code thành Biểu Đồ Tự Động!
+
+🔗 **Link tải, mã nguồn mở và Hướng dẫn cài đặt chi tiết:** [GitHub - TwotNguyenVN/staruml-plantuml-importer](https://github.com/TwotNguyenVN/staruml-plantuml-importer)
+
+Mọi người đọc file README-VN.md trong repo để biết thêm chi tiết về tool nha ( có bản Tiếng Việt )
+
+Nếu thấy tool hay , đừng quên cho repo xin **1 ⭐️ trên GitHub** để mình có thêm động lực cập nhật các tính năng mới nhé! Mọi góp ý hoặc báo lỗi (issue) đều được hoan nghênh. 
+
+### ✨ Những tính năng nổi bật khiến bạn nên dùng thử:
+- 📊 **Đa dạng biểu đồ:** Hỗ trợ đầy đủ 6 loại sơ đồ cốt lõi bao gồm Use Case, Class, Sequence, Activity, State, và ER Diagram (ERD). (Sắp tới sẽ có thêm Mindmap và Requirement).
+- 👁️ **Live Preview trực quan:** Giao diện chia đôi màn hình siêu tiện lợi. Dán code PlantUML đến đâu, bạn có thể xem trước hình ảnh biểu đồ hiển thị ngay bên cạnh trước khi import.
+- 🧠 **Thuật toán Auto-Layout cực kỳ thông minh:** 
+  - *Sơ đồ Class:* Áp dụng thuật toán phân tầng Enhanced Sugiyama giúp dóng hàng thẳng tắp, hạn chế tối đa việc đan chéo dây rối rắm.
+  - *Sơ đồ Activity:* Thuật toán tự động nới rộng làn bơi (Dynamic Width Occupancy Grid) giúp ngăn chặn các khối đâm vào nhau.
+- ⚙️ **Hỗ trợ chi tiết các thuộc tính:** Nhận diện đầy đủ phương thức, thuộc tính, tính bao đóng (visibility), các loại quan hệ (include, extend, generalization, association...), định nghĩa cột ERD chuẩn xác.
+- ⚡ **Tương thích hoàn hảo** với phiên bản StarUML v7+.
+
+Mọi thắc mắc hay báo lỗi thì nhắn Tình hoặc vào Discord để thảo luận nha.
+Discord: https://discord.gg/EhfhyDBB
