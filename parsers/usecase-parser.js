@@ -242,8 +242,8 @@ function generateDiagram(diagram, text) {
           }
         } else if (isDashed) {
           relType = "UMLDependency";
-          if (stereo === "include") relType = "UMLInclude";
-          else if (stereo === "extend") relType = "UMLExtend";
+          if (stereo.indexOf("include") !== -1) relType = "UMLInclude";
+          else if (stereo.indexOf("extend") !== -1) relType = "UMLExtend";
           if (arrow.indexOf("<") === 0 && arrow.indexOf(">") === -1) {
              var temp = fromAlias; fromAlias = toAlias; toAlias = temp;
           }
@@ -630,30 +630,46 @@ function generateDiagram(diagram, text) {
       else others.push(uc);
     });
 
+    var centerY = 300;
+    var actorSpacing = 100;
+    var actorStartY = centerY - (parsedActors.length - 1) * actorSpacing / 2;
+
+    var rightSideItems = includes.concat(extendsUCs);
+    var itemSpacing = 90;
+    var itemStartY = centerY - (rightSideItems.length - 1) * itemSpacing / 2;
+
+    var minY = Math.min(actorStartY, itemStartY);
+    if (minY < 120) {
+      centerY += (120 - minY);
+      actorStartY = centerY - (parsedActors.length - 1) * actorSpacing / 2;
+      itemStartY = centerY - (rightSideItems.length - 1) * itemSpacing / 2;
+    }
+
     parsedActors.forEach(function(a, i) {
-      a.x = 50 + i * 100;
-      a.y = 100;
+      a.x = 50;
+      a.y = actorStartY + i * actorSpacing;
     });
 
     mainUC.width = Math.max(150, (mainUC.name ? mainUC.name.length : 10) * 8 + 60);
     mainUC.x = 250;
-    mainUC.y = 100;
+    mainUC.y = centerY;
 
-    var stepSpacing = 100;
     includes.forEach(function(uc, i) {
       uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
-      uc.x = 250;
-      uc.y = 250 + i * stepSpacing;
+      uc.x = 600;
+      uc.y = itemStartY + i * itemSpacing;
     });
 
-    var extendSpacing = 100;
     extendsUCs.forEach(function(uc, i) {
       uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
-      uc.x = 550;
-      uc.y = 250 + i * extendSpacing;
+      uc.x = 600;
+      uc.y = itemStartY + (includes.length + i) * itemSpacing;
     });
 
-    var otherY = 250 + Math.max(includes.length, extendsUCs.length) * stepSpacing + 50;
+    var otherY = Math.max(
+      actorStartY + parsedActors.length * actorSpacing,
+      itemStartY + rightSideItems.length * itemSpacing
+    ) + 100;
     others.forEach(function(uc, i) {
       uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
       uc.x = 250 + (i % 3) * 200;
