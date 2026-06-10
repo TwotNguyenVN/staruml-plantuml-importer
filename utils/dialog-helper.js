@@ -118,7 +118,8 @@ function showImportDialog(title, sampleCode) {
       var isResizing = false;
       var currentResizer = null;
       var startMouseX, startMouseY;
-      var startDlgRect;
+      var $wrapper = null;
+      var wrapperStartRect = null;
 
       $dlg.on('mousedown', '.resizer', function(e) {
         isResizing = true;
@@ -126,25 +127,46 @@ function showImportDialog(title, sampleCode) {
         currentResizer = resizerClass ? resizerClass[1] : null;
         startMouseX = e.clientX;
         startMouseY = e.clientY;
-        var rect = $dlg[0].getBoundingClientRect();
-        startDlgRect = {
+
+        $wrapper = $dlg.closest('.modal-dialog');
+        if (!$wrapper.length) {
+          var $parent = $dlg.parent();
+          var pRect = $parent[0].getBoundingClientRect();
+          var dRect = $dlg[0].getBoundingClientRect();
+          if (pRect.width > dRect.width + 100) $wrapper = $dlg;
+          else $wrapper = $parent;
+        }
+
+        var rect = $wrapper[0].getBoundingClientRect();
+        wrapperStartRect = {
           top: rect.top,
           left: rect.left,
           width: rect.width,
           height: rect.height
         };
-        $dlg.css({
+
+        $wrapper.css({
           position: 'fixed',
-          top: startDlgRect.top + 'px',
-          left: startDlgRect.left + 'px',
-          width: startDlgRect.width + 'px',
-          height: startDlgRect.height + 'px',
+          top: wrapperStartRect.top + 'px',
+          left: wrapperStartRect.left + 'px',
+          width: wrapperStartRect.width + 'px',
+          height: wrapperStartRect.height + 'px',
           transform: 'none',
           margin: 0,
           'max-width': 'none',
           'max-height': 'none',
           'transition': 'none'
         });
+
+        $dlg.css({
+          width: '100%',
+          height: '100%',
+          'min-width': '0',
+          'min-height': '0',
+          'max-width': 'none',
+          'max-height': 'none'
+        });
+
         var cursor = $(this).css('cursor');
         $('body').css({ 'user-select': 'none', 'cursor': cursor });
         e.preventDefault();
@@ -153,32 +175,32 @@ function showImportDialog(title, sampleCode) {
 
       var resizeRaf = null;
       $(window).on('mousemove.plantuml-resize', function(e) {
-        if (!isResizing) return;
+        if (!isResizing || !$wrapper) return;
         if (resizeRaf) cancelAnimationFrame(resizeRaf);
         resizeRaf = requestAnimationFrame(function() {
           var dx = e.clientX - startMouseX;
           var dy = e.clientY - startMouseY;
           var newRect = {
-            top: startDlgRect.top,
-            left: startDlgRect.left,
-            width: startDlgRect.width,
-            height: startDlgRect.height
+            top: wrapperStartRect.top,
+            left: wrapperStartRect.left,
+            width: wrapperStartRect.width,
+            height: wrapperStartRect.height
           };
 
-          if (currentResizer.indexOf('e') !== -1) newRect.width = Math.max(700, startDlgRect.width + dx);
-          if (currentResizer.indexOf('s') !== -1) newRect.height = Math.max(450, startDlgRect.height + dy);
+          if (currentResizer.indexOf('e') !== -1) newRect.width = Math.max(700, wrapperStartRect.width + dx);
+          if (currentResizer.indexOf('s') !== -1) newRect.height = Math.max(450, wrapperStartRect.height + dy);
           if (currentResizer.indexOf('w') !== -1) {
-            var actualDx = Math.min(dx, startDlgRect.width - 700);
-            newRect.left = startDlgRect.left + actualDx;
-            newRect.width = startDlgRect.width - actualDx;
+            var actualDx = Math.min(dx, wrapperStartRect.width - 700);
+            newRect.left = wrapperStartRect.left + actualDx;
+            newRect.width = wrapperStartRect.width - actualDx;
           }
           if (currentResizer.indexOf('n') !== -1) {
-            var actualDy = Math.min(dy, startDlgRect.height - 450);
-            newRect.top = startDlgRect.top + actualDy;
-            newRect.height = startDlgRect.height - actualDy;
+            var actualDy = Math.min(dy, wrapperStartRect.height - 450);
+            newRect.top = wrapperStartRect.top + actualDy;
+            newRect.height = wrapperStartRect.height - actualDy;
           }
 
-          $dlg.css({
+          $wrapper.css({
             top: newRect.top + 'px',
             left: newRect.left + 'px',
             width: newRect.width + 'px',
