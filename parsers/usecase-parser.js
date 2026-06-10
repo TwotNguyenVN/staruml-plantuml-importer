@@ -653,26 +653,23 @@ function generateDiagram(diagram, text) {
       a.y = actorStartY + i * actorSpacing;
     });
 
-    var mainCenter = 300;
+    var mainCenter = 650;
     mainUC.width = Math.max(150, (mainUC.name ? mainUC.name.length : 10) * 8 + 60);
     mainUC.x = mainCenter - mainUC.width / 2;
     mainUC.y = centerY;
 
-    var includeCenter = mainCenter + Math.max(250, mainUC.width + 100);
-    includes.forEach(function(uc, i) {
-      uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
-      uc.x = includeCenter - uc.width / 2;
-      uc.y = includeStartY + i * stepSpacing;
-    });
-
-    var maxIncludeWidth = 150;
-    includes.forEach(function(uc) { if(uc.width > maxIncludeWidth) maxIncludeWidth = uc.width; });
-
-    var extendCenter = includeCenter + maxIncludeWidth / 2 + 150;
+    var extendCenter = mainCenter - Math.max(300, mainUC.width / 2 + 180);
     extendsUCs.forEach(function(uc, i) {
       uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
       uc.x = extendCenter - uc.width / 2;
       uc.y = extendStartY + i * extendSpacing;
+    });
+
+    var includeCenter = mainCenter + Math.max(300, mainUC.width / 2 + 180);
+    includes.forEach(function(uc, i) {
+      uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
+      uc.x = includeCenter - uc.width / 2;
+      uc.y = includeStartY + i * stepSpacing;
     });
 
     var otherY = Math.max(
