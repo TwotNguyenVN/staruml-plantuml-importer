@@ -8,22 +8,22 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Detect OS
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    TARGET="$HOME/Library/Application Support/StarUML/extensions/user/staruml-plantuml-importer"
-    OLD_TARGET="$HOME/Library/Application Support/StarUML/extensions/user/staruml-usecase-importer"
+    TARGET="$HOME/Library/Application Support/StarUML/extensions/user/twot.staruml-plantuml-importer"
+    OLD_TARGET="$HOME/Library/Application Support/StarUML/extensions/user/staruml-plantuml-importer"
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    TARGET="$HOME/.config/StarUML/extensions/user/staruml-plantuml-importer"
-    OLD_TARGET="$HOME/.config/StarUML/extensions/user/staruml-usecase-importer"
+    TARGET="$HOME/.config/StarUML/extensions/user/twot.staruml-plantuml-importer"
+    OLD_TARGET="$HOME/.config/StarUML/extensions/user/staruml-plantuml-importer"
 else
     echo "[ERROR] Unsupported OS: $OSTYPE"
     exit 1
 fi
 
-# Kill StarUML if running
-if pgrep -x "StarUML" > /dev/null 2>&1; then
-    echo "[!] StarUML is running. Closing..."
-    pkill -x "StarUML"
-    sleep 2
-fi
+# Kill StarUML if running (Bỏ qua để có thể dùng Cmd + R reload)
+# if pgrep -x "StarUML" > /dev/null 2>&1; then
+#     echo "[!] StarUML is running. Closing..."
+#     pkill -x "StarUML"
+#     sleep 2
+# fi
 
 # Clean up old extension
 if [ -d "$OLD_TARGET" ]; then
