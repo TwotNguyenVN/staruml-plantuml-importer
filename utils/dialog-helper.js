@@ -65,14 +65,17 @@ function showImportDialog(title, sampleCode) {
     '      <a href="#" onclick="require(\'electron\').shell.openExternal(\'https://github.com/TwotNguyenVN\'); return false;" style="color: #007acc; text-decoration: none; cursor: pointer;">Twot Nguyen</a>',
     '    </div>',
     '  </div>',
-    '  <div class="modal-body" style="display: flex; gap: 20px; padding: 20px; flex: 1; background: #202020; min-height: 0;">',
-    '    <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">',
+    '  <div class="modal-body" style="display: flex; padding: 20px; flex: 1; background: #202020; min-height: 0;">',
+    '    <div class="panel-left" style="flex: 0 0 calc(33.33% - 8px); display: flex; flex-direction: column; min-width: 150px;">',
     '      <div style="display: flex; align-items: center; min-height: 32px; margin-bottom: 8px;">',
     '        <label style="font-weight: 600; color: #a0a0a0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-family: sans-serif;">PlantUML Code</label>',
     '      </div>',
     '      <textarea class="plantuml-code-input" style="flex: 1; font-family: \'Consolas\', \'Monaco\', \'Courier New\', monospace; font-size: 13px; resize: none; padding: 12px; line-height: 1.5; background: #181818; color: #d4d4d4; border: 1px solid #3a3a3a; border-radius: 6px; outline: none; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); transition: border-color 0.2s;" placeholder="Type PlantUML code here...">' + sampleCode + '</textarea>',
     '    </div>',
-    '    <div style="flex: 2; display: flex; flex-direction: column; border-left: 1px solid #2d2d2d; padding-left: 20px; min-width: 0;">',
+    '    <div class="panel-splitter" style="width: 16px; cursor: col-resize; display: flex; justify-content: center; align-items: center; z-index: 10;">',
+    '      <div style="width: 2px; height: 100%; background: #2d2d2d; transition: background 0.2s;"></div>',
+    '    </div>',
+    '    <div class="panel-right" style="flex: 1; display: flex; flex-direction: column; min-width: 150px;">',
     '      <div style="display: flex; justify-content: space-between; align-items: center; min-height: 32px; margin-bottom: 8px;">',
     '        <label style="font-weight: 600; margin: 0; color: #a0a0a0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-family: sans-serif;">Server Preview</label>',
     '        <div class="preview-controls" style="display: flex; gap: 4px; background: #181818; padding: 2px; border-radius: 4px; border: 1px solid #323232;">',
@@ -234,6 +237,48 @@ function showImportDialog(title, sampleCode) {
       $(window).on('mouseup.plantuml-resize', function(e) {
         if (isResizing) {
           isResizing = false;
+          $('body').css({ 'user-select': '', 'cursor': '' });
+        }
+      });
+
+      // Splitter Logic
+      var isSplitting = false;
+      var $splitter = $dlg.find('.panel-splitter');
+      var $splitterLine = $splitter.find('div');
+      var $panelLeft = $dlg.find('.panel-left');
+      var $modalBody = $dlg.find('.modal-body');
+
+      $splitter.on('mouseenter', function() { $splitterLine.css('background', '#007acc'); });
+      $splitter.on('mouseleave', function() { if (!isSplitting) $splitterLine.css('background', '#2d2d2d'); });
+
+      $splitter.on('mousedown', function(e) {
+        isSplitting = true;
+        $splitterLine.css('background', '#007acc');
+        $('body').css({ 'user-select': 'none', 'cursor': 'col-resize' });
+        e.preventDefault();
+        e.stopPropagation();
+      });
+
+      var splitRaf = null;
+      $(window).on('mousemove.plantuml-split', function(e) {
+        if (!isSplitting) return;
+        if (splitRaf) cancelAnimationFrame(splitRaf);
+        splitRaf = requestAnimationFrame(function() {
+          var bodyRect = $modalBody[0].getBoundingClientRect();
+          var newWidth = e.clientX - bodyRect.left - 20;
+          var maxWidth = bodyRect.width - 40 - 150 - 16;
+          newWidth = Math.max(150, Math.min(newWidth, maxWidth));
+          
+          $panelLeft.css({
+            'flex': '0 0 ' + newWidth + 'px'
+          });
+        });
+      });
+
+      $(window).on('mouseup.plantuml-split', function(e) {
+        if (isSplitting) {
+          isSplitting = false;
+          $splitterLine.css('background', '#2d2d2d');
           $('body').css({ 'user-select': '', 'cursor': '' });
         }
       });
