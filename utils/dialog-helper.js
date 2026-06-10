@@ -118,8 +118,8 @@ function showImportDialog(title, sampleCode) {
       var isResizing = false;
       var currentResizer = null;
       var startMouseX, startMouseY;
-      var $wrapper = null;
-      var wrapperStartRect = null;
+      var startWidth, startHeight;
+      var startML, startMR, startMT, startMB;
 
       $dlg.on('mousedown', '.resizer', function(e) {
         isResizing = true;
@@ -128,45 +128,26 @@ function showImportDialog(title, sampleCode) {
         startMouseX = e.clientX;
         startMouseY = e.clientY;
 
-        $wrapper = $dlg.closest('.modal-dialog');
-        if (!$wrapper.length) {
-          var $parent = $dlg.parent();
-          var pRect = $parent[0].getBoundingClientRect();
-          var dRect = $dlg[0].getBoundingClientRect();
-          if (pRect.width > dRect.width + 100) $wrapper = $dlg;
-          else $wrapper = $parent;
-        }
+        startWidth = $dlg.outerWidth();
+        startHeight = $dlg.outerHeight();
+        startML = parseInt($dlg.css('margin-left')) || 0;
+        startMR = parseInt($dlg.css('margin-right')) || 0;
+        startMT = parseInt($dlg.css('margin-top')) || 0;
+        startMB = parseInt($dlg.css('margin-bottom')) || 0;
 
-        var rect = $wrapper[0].getBoundingClientRect();
-        wrapperStartRect = {
-          top: rect.top,
-          left: rect.left,
-          width: rect.width,
-          height: rect.height
-        };
-
-        $wrapper.css({
-          position: 'fixed',
-          top: wrapperStartRect.top + 'px',
-          left: wrapperStartRect.left + 'px',
-          width: wrapperStartRect.width + 'px',
-          height: wrapperStartRect.height + 'px',
-          transform: 'none',
-          margin: 0,
+        $dlg.css({
           'max-width': 'none',
           'max-height': 'none',
-          'transition': 'none'
+          'min-width': '0',
+          'min-height': '0',
+          'transition': 'none',
+          'position': 'relative'
         });
 
-        if ($wrapper[0] !== $dlg[0]) {
-          $dlg.css({
-            width: '100%',
-            height: '100%',
-            'min-width': '0',
-            'min-height': '0',
-            'max-width': 'none',
-            'max-height': 'none'
-          });
+        // Also ensure wrapper has no transition
+        var $wrapper = $dlg.closest('.modal-dialog');
+        if ($wrapper.length) {
+          $wrapper.css('transition', 'none');
         }
 
         var cursor = $(this).css('cursor');
@@ -177,36 +158,43 @@ function showImportDialog(title, sampleCode) {
 
       var resizeRaf = null;
       $(window).on('mousemove.plantuml-resize', function(e) {
-        if (!isResizing || !$wrapper) return;
+        if (!isResizing) return;
         if (resizeRaf) cancelAnimationFrame(resizeRaf);
         resizeRaf = requestAnimationFrame(function() {
           var dx = e.clientX - startMouseX;
           var dy = e.clientY - startMouseY;
-          var newRect = {
-            top: wrapperStartRect.top,
-            left: wrapperStartRect.left,
-            width: wrapperStartRect.width,
-            height: wrapperStartRect.height
-          };
+          
+          var newWidth = startWidth;
+          var newHeight = startHeight;
+          var newML = startML;
+          var newMR = startMR;
+          var newMT = startMT;
+          var newMB = startMB;
 
-          if (currentResizer.indexOf('e') !== -1) newRect.width = Math.max(700, wrapperStartRect.width + dx);
-          if (currentResizer.indexOf('s') !== -1) newRect.height = Math.max(450, wrapperStartRect.height + dy);
+          if (currentResizer.indexOf('e') !== -1) {
+            newWidth = Math.max(700, startWidth + dx);
+            newML = startML + (newWidth - startWidth);
+          }
           if (currentResizer.indexOf('w') !== -1) {
-            var actualDx = Math.min(dx, wrapperStartRect.width - 700);
-            newRect.left = wrapperStartRect.left + actualDx;
-            newRect.width = wrapperStartRect.width - actualDx;
+            newWidth = Math.max(700, startWidth - dx);
+            newMR = startMR + (newWidth - startWidth);
+          }
+          if (currentResizer.indexOf('s') !== -1) {
+            newHeight = Math.max(450, startHeight + dy);
+            newMT = startMT + (newHeight - startHeight);
           }
           if (currentResizer.indexOf('n') !== -1) {
-            var actualDy = Math.min(dy, wrapperStartRect.height - 450);
-            newRect.top = wrapperStartRect.top + actualDy;
-            newRect.height = wrapperStartRect.height - actualDy;
+            newHeight = Math.max(450, startHeight - dy);
+            newMB = startMB + (newHeight - startHeight);
           }
 
-          $wrapper.css({
-            top: newRect.top + 'px',
-            left: newRect.left + 'px',
-            width: newRect.width + 'px',
-            height: newRect.height + 'px'
+          $dlg.css({
+            width: newWidth + 'px',
+            height: newHeight + 'px',
+            'margin-left': newML + 'px',
+            'margin-right': newMR + 'px',
+            'margin-top': newMT + 'px',
+            'margin-bottom': newMB + 'px'
           });
         });
       });
