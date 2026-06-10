@@ -158,14 +158,16 @@ function showImportDialog(title, sampleCode) {
           'transition': 'none'
         });
 
-        $dlg.css({
-          width: '100%',
-          height: '100%',
-          'min-width': '0',
-          'min-height': '0',
-          'max-width': 'none',
-          'max-height': 'none'
-        });
+        if ($wrapper[0] !== $dlg[0]) {
+          $dlg.css({
+            width: '100%',
+            height: '100%',
+            'min-width': '0',
+            'min-height': '0',
+            'max-width': 'none',
+            'max-height': 'none'
+          });
+        }
 
         var cursor = $(this).css('cursor');
         $('body').css({ 'user-select': 'none', 'cursor': cursor });
