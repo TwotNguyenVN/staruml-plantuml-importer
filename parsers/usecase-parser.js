@@ -258,222 +258,417 @@ function generateDiagram(diagram, text) {
   }
 
   // --- Layout Engine ---
-  var leftActors = [];
-  var rightActors = [];
-  parsedActors.forEach(function (actor) {
-    if (isSecondaryActor(actor.name, actor.alias)) rightActors.push(actor);
-    else leftActors.push(actor);
-  });
-
-  var PADDING = 40;
-  var COL_WIDTH = 250;
-  var ROW_HEIGHT = 100;
-  var START_Y = 100;
-
-  // 1. Calculate max elements to define diagram bounds
-  var maxElements = Math.max(leftActors.length, rightActors.length, parsedUseCases.length);
-  var TOTAL_HEIGHT = Math.max(1, maxElements - 1) * ROW_HEIGHT;
-
-  function getSpacing(count) {
-    if (count <= 1) return 0;
-    return TOTAL_HEIGHT / (count - 1);
-  }
-
-  var leftSpacing = getSpacing(leftActors.length);
-  var rightSpacing = getSpacing(rightActors.length);
-
-  // 2. Assign evenly distributed Y coordinates to actors
-  var actorsMap = {};
-  leftActors.forEach(function (actor, index) {
-    actor.y = leftActors.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + index * leftSpacing;
-    actorsMap[actor.alias] = actor;
-  });
-  rightActors.forEach(function (actor, index) {
-    actor.y = rightActors.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + index * rightSpacing;
-    actorsMap[actor.alias] = actor;
-  });
-
-  // 3. Calculate ucTargetY for each Use Case (Heuristic Y-Alignment)
-  var ucTargetY = {};
-  parsedUseCases.forEach(function (uc) {
-    var connectedActors = [];
-    relations.forEach(function (rel) {
-      if (rel.from === uc.alias && actorsMap[rel.to]) connectedActors.push(actorsMap[rel.to]);
-      if (rel.to === uc.alias && actorsMap[rel.from]) connectedActors.push(actorsMap[rel.from]);
-    });
-    
-    if (connectedActors.length > 0) {
-      var sumY = 0;
-      connectedActors.forEach(function (a) { sumY += a.y; });
-      ucTargetY[uc.alias] = sumY / connectedActors.length;
-    } else {
-      ucTargetY[uc.alias] = START_Y + TOTAL_HEIGHT / 2; // Default to middle
-    }
-  });
-
   var parentModel = diagram._parent;
   if (!parentModel) parentModel = app.project.getProject();
-
-  var currentX = 300; // start after left actors
   var elementsMap = {};
-  var rightActorStartX = currentX + COL_WIDTH * 2;
+  var maxDiagramHeight = 1000;
 
-  // 4. Sort Packages by their average ucTargetY
-  var pkgTargetY = {};
-  parsedPackages.forEach(function(pkg) {
-    var ucs = parsedUseCases.filter(function(u){ return u.parent === pkg.alias; });
-    var sum = 0;
-    ucs.forEach(function(u) { sum += ucTargetY[u.alias]; });
-    pkgTargetY[pkg.alias] = ucs.length > 0 ? sum / ucs.length : START_Y + TOTAL_HEIGHT / 2;
-  });
+  function detectLevel(text, relations, parsedUseCases) {
+    var lowerText = text.toLowerCase();
+    if (lowerText.indexOf("cấp 0") !== -1 || lowerText.indexOf("level 0") !== -1 || lowerText.indexOf("uc-00") !== -1) return 0;
+    if (lowerText.indexOf("cấp 1") !== -1 || lowerText.indexOf("level 1") !== -1) return 1;
+    if (lowerText.indexOf("cấp 2") !== -1 || lowerText.indexOf("level 2") !== -1) return 2;
 
-  parsedPackages.sort(function(a, b) {
-    return pkgTargetY[a.alias] - pkgTargetY[b.alias];
-  });
-
-  // 5. Layout Use Cases and Packages evenly across TOTAL_HEIGHT
-  var globalUcSpacing = getSpacing(parsedUseCases.length);
-  var currentGlobalUcIndex = 0;
-
-  parsedPackages.forEach(function (pkg) {
-    var ucsInPkg = parsedUseCases.filter(function(u){ return u.parent === pkg.alias; });
-    if (ucsInPkg.length === 0) return;
-    
-    // Sort UCs within package by target Y
-    ucsInPkg.sort(function(a, b) {
-      return ucTargetY[a.alias] - ucTargetY[b.alias];
+    var totalInclude = 0;
+    var totalExtend = 0;
+    relations.forEach(function(r) {
+      if (r.type === "UMLInclude") totalInclude++;
+      if (r.type === "UMLExtend") totalExtend++;
     });
 
-    var pkgTop = START_Y + currentGlobalUcIndex * globalUcSpacing - PADDING;
-    // Step 1: Pre-calculate the maximum UC width in this package
-    var maxUcWidth = 0;
-    ucsInPkg.forEach(function(uc) {
-      uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
-      if (uc.width > maxUcWidth) {
-         maxUcWidth = uc.width;
+    if (totalInclude + totalExtend === 0) return 0;
+    if (totalExtend > totalInclude) return 1;
+    if (totalExtend < totalInclude) return 2;
+
+    var centrality = {};
+    relations.forEach(function(r) {
+      centrality[r.from] = (centrality[r.from] || 0) + 1;
+      centrality[r.to] = (centrality[r.to] || 0) + 1;
+    });
+
+    var mainUC = null;
+    var maxScore = -1;
+    parsedUseCases.forEach(function(uc) {
+      var score = centrality[uc.alias] || 0;
+      if (score > maxScore) {
+        maxScore = score;
+        mainUC = uc;
       }
     });
 
-    var pkgWidth = Math.max(350, maxUcWidth + PADDING * 2);
+    if (mainUC) {
+       var outInclude = 0;
+       relations.forEach(function(r) {
+         if (r.type === "UMLInclude" && r.from === mainUC.alias) outInclude++;
+       });
+       if (outInclude >= 2) return 2;
+       return 1;
+    }
+    return 0;
+  }
 
-    // Step 2: Layout UCs centered inside the package
-    ucsInPkg.forEach(function(uc) {
-      // Center horizontally
-      uc.x = currentX + (pkgWidth - uc.width) / 2;
-      uc.y = parsedUseCases.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + currentGlobalUcIndex * globalUcSpacing;
-      
-      currentGlobalUcIndex++;
+  function createViews(ucs, actors) {
+    ucs.forEach(function (uc) {
+      try {
+        var view = app.factory.createModelAndView({
+          id: "UMLUseCase",
+          parent: parentModel,
+          diagram: diagram,
+          modelInitializer: function (model) {
+            model.name = sanitizeName(uc.name);
+            if (uc.stereotype) model.stereotype = uc.stereotype;
+          },
+          viewInitializer: function (v) {
+            v.left = uc.x;
+            v.top = uc.y;
+            v.width = uc.width || 150;
+            v.height = 55;
+          }
+        });
+        if (view) elementsMap[uc.alias] = view;
+      } catch (e) {}
     });
 
-    var pkgBottom = START_Y + (currentGlobalUcIndex - 1) * globalUcSpacing + 55 + PADDING;
-    var pkgHeight = Math.max(150, pkgBottom - pkgTop);
+    actors.forEach(function (actor) {
+      try {
+        var view = app.factory.createModelAndView({
+          id: "UMLActor",
+          parent: parentModel,
+          diagram: diagram,
+          modelInitializer: function (model) {
+            model.name = sanitizeName(actor.name);
+            if (actor.stereotype) model.stereotype = actor.stereotype;
+          },
+          viewInitializer: function (v) {
+            v.left = actor.x;
+            v.top = actor.y;
+            v.width = 60;
+            v.height = 80;
+          }
+        });
+        if (view) elementsMap[actor.alias] = view;
+      } catch (e) {}
+    });
+  }
 
-    try {
+  function layoutLevel0() {
+    var leftActors = [];
+    var rightActors = [];
+    parsedActors.forEach(function (actor) {
+      if (isSecondaryActor(actor.name, actor.alias)) rightActors.push(actor);
+      else leftActors.push(actor);
+    });
+
+    var PADDING = 40;
+    var COL_WIDTH = 250;
+    var ROW_HEIGHT = 100;
+    var START_Y = 100;
+
+    var maxElements = Math.max(leftActors.length, rightActors.length, parsedUseCases.length);
+    var TOTAL_HEIGHT = Math.max(1, maxElements - 1) * ROW_HEIGHT;
+
+    function getSpacing(count) {
+      if (count <= 1) return 0;
+      return TOTAL_HEIGHT / (count - 1);
+    }
+
+    var leftSpacing = getSpacing(leftActors.length);
+    var rightSpacing = getSpacing(rightActors.length);
+
+    var actorsMap = {};
+    leftActors.forEach(function (actor, index) {
+      actor.x = 50;
+      actor.y = leftActors.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + index * leftSpacing;
+      actorsMap[actor.alias] = actor;
+    });
+    rightActors.forEach(function (actor, index) {
+      actor.y = rightActors.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + index * rightSpacing;
+      actorsMap[actor.alias] = actor;
+    });
+
+    var ucTargetY = {};
+    parsedUseCases.forEach(function (uc) {
+      var connectedActors = [];
+      relations.forEach(function (rel) {
+        if (rel.from === uc.alias && actorsMap[rel.to]) connectedActors.push(actorsMap[rel.to]);
+        if (rel.to === uc.alias && actorsMap[rel.from]) connectedActors.push(actorsMap[rel.from]);
+      });
+      if (connectedActors.length > 0) {
+        var sumY = 0;
+        connectedActors.forEach(function (a) { sumY += a.y; });
+        ucTargetY[uc.alias] = sumY / connectedActors.length;
+      } else {
+        ucTargetY[uc.alias] = START_Y + TOTAL_HEIGHT / 2;
+      }
+    });
+
+    var currentX = 300;
+    var rightActorStartX = currentX + COL_WIDTH * 2;
+    var pkgTargetY = {};
+    parsedPackages.forEach(function(pkg) {
+      var ucs = parsedUseCases.filter(function(u){ return u.parent === pkg.alias; });
+      var sum = 0;
+      ucs.forEach(function(u) { sum += ucTargetY[u.alias]; });
+      pkgTargetY[pkg.alias] = ucs.length > 0 ? sum / ucs.length : START_Y + TOTAL_HEIGHT / 2;
+    });
+
+    parsedPackages.sort(function(a, b) {
+      return pkgTargetY[a.alias] - pkgTargetY[b.alias];
+    });
+
+    var globalUcSpacing = getSpacing(parsedUseCases.length);
+    var currentGlobalUcIndex = 0;
+
+    parsedPackages.forEach(function (pkg) {
+      var ucsInPkg = parsedUseCases.filter(function(u){ return u.parent === pkg.alias; });
+      if (ucsInPkg.length === 0) return;
+      ucsInPkg.sort(function(a, b) { return ucTargetY[a.alias] - ucTargetY[b.alias]; });
+      var pkgTop = START_Y + currentGlobalUcIndex * globalUcSpacing - PADDING;
+      var maxUcWidth = 0;
+      ucsInPkg.forEach(function(uc) {
+        uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
+        if (uc.width > maxUcWidth) maxUcWidth = uc.width;
+      });
+
+      var pkgWidth = Math.max(350, maxUcWidth + PADDING * 2);
+
+      ucsInPkg.forEach(function(uc) {
+        uc.x = currentX + (pkgWidth - uc.width) / 2;
+        uc.y = parsedUseCases.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + currentGlobalUcIndex * globalUcSpacing;
+        currentGlobalUcIndex++;
+      });
+
+      var pkgBottom = START_Y + (currentGlobalUcIndex - 1) * globalUcSpacing + 55 + PADDING;
+      var pkgHeight = Math.max(150, pkgBottom - pkgTop);
+
+      try {
+        var subjectView = app.factory.createModelAndView({
+          id: "UMLUseCaseSubject",
+          parent: parentModel,
+          diagram: diagram,
+          modelInitializer: function (model) { model.name = pkg.name; },
+          viewInitializer: function (v) {
+            v.left = currentX;
+            v.top = pkgTop;
+            v.width = pkgWidth;
+            v.height = pkgHeight;
+          }
+        });
+        elementsMap[pkg.alias] = subjectView;
+      } catch (e) {}
+
+      rightActorStartX = Math.max(rightActorStartX, currentX + pkgWidth + 150);
+    });
+
+    var unassignedUCs = parsedUseCases.filter(function(u){ return !u.parent; });
+    unassignedUCs.sort(function(a, b) { return ucTargetY[a.alias] - ucTargetY[b.alias]; });
+
+    unassignedUCs.forEach(function(uc) {
+      uc.x = currentX;
+      uc.y = parsedUseCases.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + currentGlobalUcIndex * globalUcSpacing;
+      uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
+      currentGlobalUcIndex++;
+      rightActorStartX = Math.max(rightActorStartX, uc.x + uc.width + 150);
+    });
+
+    rightActors.forEach(function(a) { a.x = rightActorStartX; });
+    createViews(parsedUseCases, parsedActors);
+    maxDiagramHeight = START_Y + TOTAL_HEIGHT + 100;
+  }
+
+  function layoutLevel1() {
+    var centrality = {};
+    relations.forEach(function(r) {
+      centrality[r.from] = (centrality[r.from] || 0) + 1;
+      centrality[r.to] = (centrality[r.to] || 0) + 1;
+    });
+
+    var mainUC = null;
+    var maxScore = -1;
+    parsedUseCases.forEach(function(uc) {
+      var score = centrality[uc.alias] || 0;
+      if (score > maxScore) {
+        maxScore = score;
+        mainUC = uc;
+      }
+    });
+
+    if (!mainUC) {
+      layoutLevel0();
+      return;
+    }
+
+    var includes = [];
+    var extendsUCs = [];
+    var others = [];
+    parsedUseCases.forEach(function(uc) {
+      if (uc === mainUC) return;
+      var isInclude = relations.some(function(r) { return r.type === "UMLInclude" && r.from === mainUC.alias && r.to === uc.alias; });
+      var isExtend = relations.some(function(r) { return r.type === "UMLExtend" && r.to === mainUC.alias && r.from === uc.alias; });
+      if (isInclude) includes.push(uc);
+      else if (isExtend) extendsUCs.push(uc);
+      else others.push(uc);
+    });
+
+    var centerX = 400;
+    var centerY = 300;
+
+    mainUC.width = Math.max(150, (mainUC.name ? mainUC.name.length : 10) * 8 + 60);
+    mainUC.x = centerX;
+    mainUC.y = centerY;
+
+    var actorSpacing = 100;
+    var actorStartY = centerY - (parsedActors.length - 1) * actorSpacing / 2;
+    parsedActors.forEach(function(a, i) {
+      a.x = 50;
+      a.y = actorStartY + i * actorSpacing;
+    });
+
+    var includeSpacing = 150;
+    var includeStartX = centerX - (includes.length - 1) * includeSpacing / 2;
+    includes.forEach(function(uc, i) {
+      uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
+      uc.x = includeStartX + i * includeSpacing;
+      uc.y = centerY + 150;
+    });
+
+    var extendSpacing = 80;
+    var extendStartY = centerY - (extendsUCs.length - 1) * extendSpacing / 2;
+    extendsUCs.forEach(function(uc, i) {
+      uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
+      uc.x = centerX + mainUC.width + 100;
+      uc.y = extendStartY + i * extendSpacing;
+    });
+
+    var otherY = Math.max(centerY + 300, extendStartY + extendsUCs.length * extendSpacing + 100);
+    others.forEach(function(uc, i) {
+      uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
+      uc.x = centerX + (i % 3) * 200;
+      uc.y = otherY + Math.floor(i / 3) * 100;
+    });
+
+    parsedPackages.forEach(function(pkg) {
+      var pkgTop = Math.min(centerY - 100, extendStartY - 50);
+      var pkgBottom = otherY + 100;
+      var pkgLeft = centerX - 100;
+      var pkgRight = centerX + mainUC.width + 400;
       var subjectView = app.factory.createModelAndView({
         id: "UMLUseCaseSubject",
         parent: parentModel,
         diagram: diagram,
         modelInitializer: function (model) { model.name = pkg.name; },
         viewInitializer: function (v) {
-          v.left = currentX;
+          v.left = pkgLeft;
           v.top = pkgTop;
-          v.width = pkgWidth;
-          v.height = pkgHeight;
+          v.width = pkgRight - pkgLeft;
+          v.height = pkgBottom - pkgTop;
         }
       });
       elementsMap[pkg.alias] = subjectView;
-    } catch (e) {
-      console.error("[usecase-parser] Error creating subject", e);
+    });
+
+    createViews(parsedUseCases, parsedActors);
+    maxDiagramHeight = Math.max(actorStartY + parsedActors.length * actorSpacing, otherY + 100);
+  }
+
+  function layoutLevel2() {
+    var centrality = {};
+    relations.forEach(function(r) {
+      centrality[r.from] = (centrality[r.from] || 0) + 1;
+      centrality[r.to] = (centrality[r.to] || 0) + 1;
+    });
+
+    var mainUC = null;
+    var maxScore = -1;
+    parsedUseCases.forEach(function(uc) {
+      var score = centrality[uc.alias] || 0;
+      if (score > maxScore) {
+        maxScore = score;
+        mainUC = uc;
+      }
+    });
+
+    if (!mainUC) {
+      layoutLevel0();
+      return;
     }
 
-    rightActorStartX = Math.max(rightActorStartX, currentX + pkgWidth + 150);
-  });
+    var includes = [];
+    var extendsUCs = [];
+    var others = [];
+    parsedUseCases.forEach(function(uc) {
+      if (uc === mainUC) return;
+      var isInclude = relations.some(function(r) { return r.type === "UMLInclude" && r.from === mainUC.alias && r.to === uc.alias; });
+      var isExtend = relations.some(function(r) { return r.type === "UMLExtend" && r.to === mainUC.alias && r.from === uc.alias; });
+      if (isInclude) includes.push(uc);
+      else if (isExtend) extendsUCs.push(uc);
+      else others.push(uc);
+    });
 
-  // Process unassigned Use Cases
-  var unassignedUCs = parsedUseCases.filter(function(u){ return !u.parent; });
-  unassignedUCs.sort(function(a, b) {
-    return ucTargetY[a.alias] - ucTargetY[b.alias];
-  });
+    parsedActors.forEach(function(a, i) {
+      a.x = 50 + i * 100;
+      a.y = 100;
+    });
 
-  unassignedUCs.forEach(function(uc) {
-    uc.x = currentX;
-    uc.y = parsedUseCases.length === 1 ? START_Y + TOTAL_HEIGHT / 2 : START_Y + currentGlobalUcIndex * globalUcSpacing;
-    uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
-    currentGlobalUcIndex++;
-    rightActorStartX = Math.max(rightActorStartX, uc.x + uc.width + 150);
-  });
+    mainUC.width = Math.max(150, (mainUC.name ? mainUC.name.length : 10) * 8 + 60);
+    mainUC.x = 250;
+    mainUC.y = 100;
 
-  // Create Use Case Views
-  parsedUseCases.forEach(function (uc) {
-    try {
-      var view = app.factory.createModelAndView({
-        id: "UMLUseCase",
+    var stepSpacing = 100;
+    includes.forEach(function(uc, i) {
+      uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
+      uc.x = 250;
+      uc.y = 250 + i * stepSpacing;
+    });
+
+    var extendSpacing = 100;
+    extendsUCs.forEach(function(uc, i) {
+      uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
+      uc.x = 550;
+      uc.y = 250 + i * extendSpacing;
+    });
+
+    var otherY = 250 + Math.max(includes.length, extendsUCs.length) * stepSpacing + 50;
+    others.forEach(function(uc, i) {
+      uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
+      uc.x = 250 + (i % 3) * 200;
+      uc.y = otherY + Math.floor(i / 3) * 100;
+    });
+
+    parsedPackages.forEach(function(pkg) {
+      var pkgTop = 50;
+      var pkgBottom = otherY + 100;
+      var pkgLeft = 200;
+      var pkgRight = 800;
+      var subjectView = app.factory.createModelAndView({
+        id: "UMLUseCaseSubject",
         parent: parentModel,
         diagram: diagram,
-        modelInitializer: function (model) {
-          model.name = sanitizeName(uc.name);
-          if (uc.stereotype) model.stereotype = uc.stereotype;
-        },
+        modelInitializer: function (model) { model.name = pkg.name; },
         viewInitializer: function (v) {
-          v.left = uc.x;
-          v.top = uc.y;
-          v.width = uc.width || 150;
-          v.height = 55;
+          v.left = pkgLeft;
+          v.top = pkgTop;
+          v.width = pkgRight - pkgLeft;
+          v.height = pkgBottom - pkgTop;
         }
       });
-      if (view) elementsMap[uc.alias] = view;
-    } catch (e) {
-      console.error("[usecase-parser] Error creating UC", e);
-    }
-  });
+      elementsMap[pkg.alias] = subjectView;
+    });
 
-  // 6. Draw Actors (using their evenly distributed Y)
-  leftActors.forEach(function (actor) {
-    try {
-      var view = app.factory.createModelAndView({
-        id: "UMLActor",
-        parent: parentModel,
-        diagram: diagram,
-        modelInitializer: function (model) {
-          model.name = sanitizeName(actor.name);
-          if (actor.stereotype) model.stereotype = actor.stereotype;
-        },
-        viewInitializer: function (v) {
-          v.left = 50;
-          v.top = actor.y;
-          v.width = 60;
-          v.height = 80;
-        }
-      });
-      if (view) elementsMap[actor.alias] = view;
-    } catch (e) {}
-  });
+    createViews(parsedUseCases, parsedActors);
+    maxDiagramHeight = otherY + 100;
+  }
 
-  rightActors.forEach(function (actor) {
-    try {
-      var view = app.factory.createModelAndView({
-        id: "UMLActor",
-        parent: parentModel,
-        diagram: diagram,
-        modelInitializer: function (model) {
-          model.name = sanitizeName(actor.name);
-          if (actor.stereotype) model.stereotype = actor.stereotype;
-        },
-        viewInitializer: function (v) {
-          v.left = rightActorStartX;
-          v.top = actor.y;
-          v.width = 60;
-          v.height = 80;
-        }
-      });
-      if (view) elementsMap[actor.alias] = view;
-    } catch (e) {}
-  });
+  var diagramLevel = detectLevel(text, relations, parsedUseCases);
+  if (diagramLevel === 1) {
+    layoutLevel1();
+  } else if (diagramLevel === 2) {
+    layoutLevel2();
+  } else {
+    layoutLevel0();
+  }
 
-  var maxDiagramHeight = START_Y + TOTAL_HEIGHT + 100;
-
-
-  // Notes
+    // Notes
   var noteY = maxDiagramHeight + 50;
   var noteX = 50;
   parsedNotes.forEach(function (note) {

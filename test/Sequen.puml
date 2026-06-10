@@ -1,4 +1,3 @@
-```plantuml
 @startuml
 title SD-01 — Đăng nhập và kiểm tra quyền truy cập
 
@@ -73,4 +72,3 @@ else Không có quyền
 end
 
 @enduml
-```
