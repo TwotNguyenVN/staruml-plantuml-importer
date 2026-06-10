@@ -12,22 +12,22 @@ Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các
 
 ## 📊 Sơ đồ hỗ trợ & Kế hoạch phát triển
 
-| Loại sơ đồ | Trạng thái | Ghi chú |
-|:---|:---|:---|
-| **Use Case Diagram** (Biểu đồ Use Case) | ✅ Đã hỗ trợ | Phân phối dạng cột, bọc hệ thống |
-| **Class Diagram** (Biểu đồ lớp) | ✅ Đã hỗ trợ | Bố cục dạng lưới, đầy đủ thuộc tính/phương thức & quan hệ |
-| **Sequence Diagram** (Biểu đồ tuần tự) | ✅ Đã hỗ trợ | Sắp xếp theo trình tự thời gian, loại thông điệp, lifelines |
-| **Activity Diagram** (Biểu đồ hoạt động) | ✅ Đã hỗ trợ | Phân chia swimlanes (làn bơi), các luồng hành động và rẽ nhánh |
-| **State Diagram** (Biểu đồ trạng thái) | ✅ Đã hỗ trợ | Hỗ trợ composite state, phân vùng region con, các pseudostate |
-| **ER Diagram** (Biểu đồ ERD) | ✅ Đã hỗ trợ | Thực thể, kiểu dữ liệu cột (PK/FK/Nullable), quan hệ chân chim |
-| **Mindmap** (Sơ đồ tư duy) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai |
-| **Requirement Diagram** (Biểu đồ yêu cầu) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai |
+| Loại sơ đồ                                | Trạng thái    | Ghi chú                                                        |
+| :---------------------------------------- | :------------ | :------------------------------------------------------------- |
+| **Use Case Diagram** (Biểu đồ Use Case)   | ✅ Đã hỗ trợ  | Phân phối dạng cột, bọc hệ thống                               |
+| **Class Diagram** (Biểu đồ lớp)           | ✅ Đã hỗ trợ  | Bố cục dạng lưới, đầy đủ thuộc tính/phương thức & quan hệ      |
+| **Sequence Diagram** (Biểu đồ tuần tự)    | ✅ Đã hỗ trợ  | Sắp xếp theo trình tự thời gian, loại thông điệp, lifelines    |
+| **Activity Diagram** (Biểu đồ hoạt động)  | ✅ Đã hỗ trợ  | Phân chia swimlanes (làn bơi), các luồng hành động và rẽ nhánh |
+| **State Diagram** (Biểu đồ trạng thái)    | ✅ Đã hỗ trợ  | Hỗ trợ composite state, phân vùng region con, các pseudostate  |
+| **ER Diagram** (Biểu đồ ERD)              | ✅ Đã hỗ trợ  | Thực thể, kiểu dữ liệu cột (PK/FK/Nullable), quan hệ chân chim |
+| **Mindmap** (Sơ đồ tư duy)                | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai                          |
+| **Requirement Diagram** (Biểu đồ yêu cầu) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai                          |
 
 ## ✨ Các tính năng nổi bật
 
-- **Xem trước trực tuyến (Live Server Preview):** Hộp thoại chia đôi màn hình cho phép dán code bên trái và bấm **Preview** để xem trước ảnh render sơ đồ từ máy chủ PlantUML bên phải trước khi import.
+- **Xem trước trực tuyến (Live Server Preview):** Hộp thoại chia đôi màn hình cho phép dán code bên trái và **Preview** để xem trước ảnh render sơ đồ từ máy chủ PlantUML bên phải trước khi import.
 - Phân tích cú pháp PlantUML cho biểu đồ Use Case, Class, Sequence, Activity, State và ERD.
-- Thuật toán bố cục tự động cực kỳ thông minh: 
+- Thuật toán bố cục tự động cực kỳ thông minh:
   - **Thuật toán Phân tầng Enhanced Sugiyama** cho sơ đồ Class giúp dóng hàng thẳng tắp và hạn chế tối đa việc đan chéo dây.
   - **Thuật toán Độ rộng động (Dynamic Width Occupancy Grid)** cho sơ đồ Activity giúp tự động nới rộng làn bơi và ngăn các khối đâm vào nhau.
   - Căn cột ngang cho Use Case, xếp chồng trục đứng trên Sequence, và lồng phân tầng cho State.
@@ -42,12 +42,23 @@ Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các
 ### Cài đặt nhanh
 
 #### Windows
+
 1. Tải về hoặc nhân bản (clone) kho lưu trữ này.
 2. **Nhấp đúp** vào file `install.bat`.
 3. Khởi động lại StarUML.
 
-#### macOS / Linux
+##### hoặc terminal tại thư mục
+
 Chạy lệnh sau trong Terminal:
+
+```bash
+./install.bat
+```
+
+#### macOS / Linux
+
+Chạy lệnh sau trong Terminal:
+
 ```bash
 chmod +x install.sh
 ./install.sh
@@ -57,11 +68,11 @@ chmod +x install.sh
 
 Sao chép toàn bộ nội dung của kho lưu trữ này vào thư mục extension tương ứng của StarUML:
 
-| Hệ điều hành | Đường dẫn thư mục cài đặt |
-|:---|:---|
-| Windows | `%APPDATA%\StarUML\extensions\user\staruml-plantuml-importer` |
-| macOS | `~/Library/Application Support/StarUML/extensions/user/staruml-plantuml-importer` |
-| Linux | `~/.config/StarUML/extensions/user/staruml-plantuml-importer` |
+| Hệ điều hành | Đường dẫn thư mục cài đặt                                                         |
+| :----------- | :-------------------------------------------------------------------------------- |
+| Windows      | `%APPDATA%\StarUML\extensions\user\staruml-plantuml-importer`                     |
+| macOS        | `~/Library/Application Support/StarUML/extensions/user/staruml-plantuml-importer` |
+| Linux        | `~/.config/StarUML/extensions/user/staruml-plantuml-importer`                     |
 
 Sau đó khởi động lại StarUML.
 
@@ -78,6 +89,7 @@ Sau đó khởi động lại StarUML.
 3. Vào menu **`Tools` → `PlantUML Importer...`**
 
    ![Bước 1](picture/step1.png)
+   Tool sẽ tự động nhận diện loại sơ đồ từ code.
 
 4. Màn hình tool sẽ xuất hiện.
 
@@ -90,6 +102,7 @@ Sau đó khởi động lại StarUML.
 6. Ấn **Import** và chờ đợi tool hoạt động.
 
    ![Bước 4](picture/step4.png)
+   Tool sẽ báo lỗi nếu bạn chọn sai sơ đồ.
 
 7. Ấn **OK**, xem và chỉnh sửa lại sơ đồ.
 
@@ -211,10 +224,13 @@ User ||--o{ Order
 Nếu bạn chỉ muốn gỡ cài đặt **Tiện ích PlantUML Importer**, bạn chỉ cần xóa thư mục `staruml-plantuml-importer` nằm trong thư mục `extensions/user/` của StarUML là xong.
 
 #### Windows
+
 **Nhấp đúp** vào file `clear.bat` hoặc chạy nó qua Command Prompt.
 
 #### macOS
+
 Chạy lệnh sau:
+
 ```bash
 chmod +x clear.sh
 ./clear.sh
