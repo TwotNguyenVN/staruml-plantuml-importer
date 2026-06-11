@@ -4,7 +4,7 @@ echo "  StarUML PlantUML Importer - Installer"
 echo "============================================"
 echo ""
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Detect OS
 if [[ "$OSTYPE" == "darwin"* ]]; then
