@@ -43,6 +43,8 @@ function generateDiagram(diagram, text) {
   // 1. Parsing PlantUML Sequence lines
   var inNote = false;
   var currentNote = null;
+  var isAutonumber = false;
+  var msgCount = 1;
 
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i].trim();
@@ -54,10 +56,7 @@ function generateDiagram(diagram, text) {
       line.indexOf("@startuml") === 0 ||
       line.indexOf("@enduml") === 0 ||
       line.indexOf("title ") === 0 ||
-      line.indexOf("autonumber") === 0 ||
       line.indexOf("hide footbox") === 0 ||
-      line.indexOf("activate ") === 0 ||
-      line.indexOf("deactivate ") === 0 ||
       line.indexOf("skinparam") === 0
     ) {
       if (line.indexOf("skinparam") === 0 && line.indexOf("{") !== -1) {
@@ -65,6 +64,29 @@ function generateDiagram(diagram, text) {
           i++;
         }
       }
+      continue;
+    }
+
+    if (line === "autonumber") {
+      isAutonumber = true;
+      continue;
+    }
+
+    var matchActivate = line.match(/^activate\s+([a-zA-Z0-9_\-]+)$/i);
+    if (matchActivate) {
+      events.push({ type: "activate", target: matchActivate[1] });
+      continue;
+    }
+
+    var matchDeactivate = line.match(/^deactivate\s+([a-zA-Z0-9_\-]+)$/i);
+    if (matchDeactivate) {
+      events.push({ type: "deactivate", target: matchDeactivate[1] });
+      continue;
+    }
+
+    var matchDivider = line.match(/^==\s*(.+?)\s*==$/);
+    if (matchDivider) {
+      events.push({ type: "divider", text: matchDivider[1].trim() });
       continue;
     }
 
@@ -185,6 +207,7 @@ function generateDiagram(diagram, text) {
     else if (ev.type === "fragment_start") yCursor += 30;
     else if (ev.type === "operand") yCursor += 25;
     else if (ev.type === "fragment_end") yCursor += 25;
+    else if (ev.type === "divider") yCursor += 40;
   });
   
   var lifelineHeight = Math.max(300, yCursor + 50);
@@ -251,6 +274,7 @@ function generateDiagram(diagram, text) {
     var fragmentStack = [];
     var notesToDraw = [];
     var fragmentsToDraw = [];
+    var msgViewsToInsert = [];
 
     events.forEach(function (ev, index) {
       if (ev.type === "message") {
@@ -268,6 +292,13 @@ function generateDiagram(diagram, text) {
             cleanLabel = cleanLabel.replace(/<<[^>]+>>/g, "").trim();
           }
         }
+        // StarUML tự động đánh số Message trong Sequence Diagram.
+        // Cần luôn luôn cắt bỏ số do người dùng tự gõ (VD: "1: ", "2.", "3 -") để tránh hiển thị "1 : 1. "
+        cleanLabel = cleanLabel.replace(/^\d+[\s\.\-:]*\s*/, "");
+
+        if (isAutonumber) {
+          msgModel.sequenceNumber = String(msgCount++);
+        }
         msgModel.name = cleanLabel;
         if (stereo) msgModel.stereotype = stereo;
         msgModel.messageSort = ev.sort;
@@ -282,6 +313,7 @@ function generateDiagram(diagram, text) {
         msgView.model = msgModel;
         msgView.tail = tailData.view.linePart;
         msgView.head = headData.view.linePart;
+        if (!msgView.activation) msgView.activation = {};
         msgView.activation.height = 0;
 
         var x1 = tailData.posX;
@@ -294,8 +326,10 @@ function generateDiagram(diagram, text) {
           });
         }
 
-        builder.insert(msgView);
-        builder.fieldInsert(diagram, "ownedViews", msgView);
+        // Defer insertion until activation height is calculated
+        msgViewsToInsert.push(msgView);
+
+        headData.lastReceivedMsgView = msgView;
 
         fragmentStack.forEach(function(fState) {
             fState.minX = Math.min(fState.minX, x1, x2);
@@ -303,6 +337,34 @@ function generateDiagram(diagram, text) {
         });
 
         currentY += 45;
+
+      } else if (ev.type === "activate") {
+        var targetData = elementsMap[ev.target];
+        if (targetData && targetData.lastReceivedMsgView) {
+            targetData.activations = targetData.activations || [];
+            targetData.activations.push({
+                msgView: targetData.lastReceivedMsgView,
+                startY: currentY
+            });
+        }
+      } else if (ev.type === "deactivate") {
+        var targetData = elementsMap[ev.target];
+        if (targetData && targetData.activations && targetData.activations.length > 0) {
+            var act = targetData.activations.pop();
+            act.msgView.activation.height = Math.max(20, currentY - act.startY);
+        }
+      } else if (ev.type === "divider") {
+        var totalWidth = parsedLifelines.length > 0 ? (parsedLifelines.length - 1) * spacingX + 100 : 800;
+        var width = Math.max(200, ev.text.length * 8 + 40);
+        notesToDraw.push({
+            text: "== " + ev.text + " ==",
+            left: (totalWidth / 2) - (width / 2) + 50,
+            top: currentY,
+            width: width,
+            height: 30,
+            targetView: null
+        });
+        currentY += 40;
 
       } else if (ev.type === "note") {
         var targetData = elementsMap[ev.target];
@@ -379,6 +441,12 @@ function generateDiagram(diagram, text) {
       }
     });
 
+    // Now that all activation heights are calculated, insert message views
+    msgViewsToInsert.forEach(function (mView) {
+      builder.insert(mView);
+      builder.fieldInsert(diagram, "ownedViews", mView);
+    });
+
     builder.end();
     var cmd = builder.getOperation();
     app.repository.doOperation(cmd);
@@ -401,7 +469,7 @@ function generateDiagram(diagram, text) {
                     v.height = noteData.height;
                 }
             });
-            if (noteView) {
+            if (noteView && noteData.targetView) {
                 app.factory.createModelAndView({
                     id: "UMLNoteLink",
                     parent: interaction,
