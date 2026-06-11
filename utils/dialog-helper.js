@@ -46,6 +46,15 @@ function encodePlantUML(text) {
   return r;
 }
 
+var activeDialog = null;
+
+function closeImportDialog() {
+  if (activeDialog) {
+    try { activeDialog.close("cancel"); } catch (e) {}
+    activeDialog = null;
+  }
+}
+
 function showImportDialog(title, sampleCode) {
   if (typeof app === "undefined") {
     return Promise.reject(new Error("StarUML 'app' context not found."));
@@ -102,6 +111,7 @@ function showImportDialog(title, sampleCode) {
     try {
       // 2. Render Modal
       var dialog = app.dialogs.showModalDialogUsingTemplate(template, true);
+      activeDialog = dialog;
       var $dlg = dialog.getElement();
 
       // Custom Resizing Logic (All 4 edges and corners)
@@ -367,6 +377,18 @@ function showImportDialog(title, sampleCode) {
 
       // Initial update when dialog opens
       updatePreview();
+      
+      // Auto-focus the textarea and position cursor
+      setTimeout(function() {
+        $textarea.focus();
+        var val = $textarea.val() || "";
+        var targetStr = "' Paste your PlantUML code here";
+        var pos = val.indexOf(targetStr);
+        if (pos !== -1) {
+          var cursorIndex = pos + targetStr.length;
+          $textarea[0].setSelectionRange(cursorIndex, cursorIndex);
+        }
+      }, 50);
 
       // Clear Code button handler
       var $btnClearCode = $dlg.find(".btn-clear-code");
@@ -491,6 +513,7 @@ function showImportDialog(title, sampleCode) {
         isResolved = true;
         cleanUpEvents();
         dialog.close("cancel");
+        activeDialog = null;
         resolve(null);
       });
 
@@ -501,6 +524,7 @@ function showImportDialog(title, sampleCode) {
         isResolved = true;
         cleanUpEvents();
         dialog.close("ok");
+        activeDialog = null;
         resolve(valueToReturn);
       });
 
@@ -511,6 +535,7 @@ function showImportDialog(title, sampleCode) {
           if (!isResolved) {
             isResolved = true;
             cleanUpEvents();
+            activeDialog = null;
             resolve(buttonId === "ok" ? ($textarea.val() || "") : null);
           }
         });
@@ -519,6 +544,7 @@ function showImportDialog(title, sampleCode) {
           if (!isResolved) {
             isResolved = true;
             cleanUpEvents();
+            activeDialog = null;
             resolve(buttonId === "ok" ? ($textarea.val() || "") : null);
           }
         });
@@ -531,5 +557,6 @@ function showImportDialog(title, sampleCode) {
 
 module.exports = {
   showImportDialog: showImportDialog,
+  closeImportDialog: closeImportDialog,
   encodePlantUML: encodePlantUML
 };
