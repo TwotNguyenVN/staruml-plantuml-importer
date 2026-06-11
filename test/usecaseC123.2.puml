@@ -1,0 +1,338 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle stickman
+skinparam usecase {
+    BackgroundColor #FDFEFE
+    BorderColor #2C3E50
+}
+skinparam rectangle {
+    BorderColor #2C3E50
+}
+skinparam package {
+    BackgroundColor #F8F9F9
+    BorderColor #566573
+}
+
+title USE CASE TỔNG HỢP CẤP 0 - 1 - 2 - 3\nHỆ THỐNG QUẢN LÝ THƯ VIỆN
+
+' =======================
+' ACTOR
+' =======================
+actor "Đọc Giả" as DocGia
+actor "Nhân Viên" as NhanVien
+actor "Thủ Thư" as ThuThu
+actor "NV Cấp Thẻ" as NVCepThe
+actor "NV Quản Lý Sách" as NVQLSach
+actor "NV Thống Kê" as NVThongKe
+
+ThuThu --|> NhanVien
+NVCepThe --|> NhanVien
+NVQLSach --|> NhanVien
+NVThongKe --|> NhanVien
+
+' =======================
+' BOUNDARY HỆ THỐNG
+' =======================
+rectangle "Hệ Thống Quản Lý Thư Viện" {
+
+    ' =======================
+    ' CẤP 0
+    ' =======================
+    package "CẤP 0 - TỔNG QUAN TOÀN HỆ THỐNG" {
+        usecase "Quản Lý\nMượn Trả" as UC0_MuonTra
+        usecase "Quản Lý\nThẻ Thư Viện" as UC0_TheTV
+        usecase "Quản Lý\nSách" as UC0_Sach
+        usecase "Quản Lý\nNgười Dùng" as UC0_NguoiDung
+        usecase "Quản Lý\nBáo Cáo Thống Kê" as UC0_BaoCao
+    }
+
+    ' =======================
+    ' CẤP 1
+    ' =======================
+    package "CẤP 1 - PHÂN RÃ CÁC PHÂN HỆ CHÍNH" {
+
+        package "Cấp 1 - Quản Lý Mượn Trả" {
+            usecase "QL Mượn Trả" as UC1_MuonTra
+            usecase "Đăng Nhập" as UC_Login_MuonTra
+            usecase "Lập Phiếu Mượn" as UC1_LapPhieuMuon
+            usecase "Lập Phiếu Trả" as UC1_LapPhieuTra
+        }
+
+        package "Cấp 1 - Quản Lý Thẻ Thư Viện" {
+            usecase "QL Thẻ Thư Viện" as UC1_TheTV
+            usecase "Đăng Nhập" as UC_Login_TheTV
+            usecase "Tiếp Nhận\nHồ Sơ Cấp Thẻ" as UC1_TiepNhanHoSo
+            usecase "Kiểm Tra\nThông Tin Đọc Giả" as UC1_KiemTraTTDocGia
+            usecase "Cấp Thẻ\nThư Viện" as UC1_CapThe
+            usecase "Gia Hạn\nThẻ Thư Viện" as UC1_GiaHanThe
+            usecase "Ghi Nhận\nĐóng Lệ Phí" as UC1_GhiNhanLePhi
+            usecase "Kiểm Tra\nHiệu Lực Thẻ" as UC1_KiemTraHieuLucThe
+            usecase "Từ Chối\nCấp Thẻ" as UC1_TuChoiCapThe
+        }
+
+        package "Cấp 1 - Quản Lý Sách" {
+            usecase "QL Sách" as UC1_Sach
+            usecase "Đăng Nhập" as UC_Login_Sach
+            usecase "Quản Lý\nĐầu Sách" as UC1_DauSach
+            usecase "Quản Lý\nThể Loại Sách" as UC1_TheLoai
+            usecase "Quản Lý\nNhà Xuất Bản" as UC1_NXB
+            usecase "Tra Cứu Sách" as UC1_TraCuuSach
+            usecase "Cập Nhật\nSố Lượng Sách" as UC1_CapNhatSoLuongSach
+        }
+
+        package "Cấp 1 - Quản Lý Người Dùng" {
+            usecase "QL Người Dùng" as UC1_NguoiDung
+            usecase "Đăng Nhập" as UC_Login_NguoiDung
+            usecase "Thêm Nhân Viên" as UC1_ThemNhanVien
+            usecase "Cập Nhật\nThông Tin Nhân Viên" as UC1_CapNhatNhanVien
+            usecase "Xóa Nhân Viên" as UC1_XoaNhanVien
+            usecase "Tra Cứu Nhân Viên" as UC1_TraCuuNhanVien
+            usecase "Phân Quyền\nTheo Chức Vụ" as UC1_PhanQuyen
+        }
+
+        package "Cấp 1 - Quản Lý Báo Cáo Thống Kê" {
+            usecase "QL Báo Cáo\nThống Kê" as UC1_BaoCao
+            usecase "Đăng Nhập" as UC_Login_BaoCao
+            usecase "Thống Kê\nSách Đã Mượn" as UC1_TKSachMuon
+            usecase "Thống Kê\nSách Quá Hạn" as UC1_TKSachQuaHan
+            usecase "Thống Kê\nSách Bị Mất" as UC1_TKSachMat
+            usecase "Thống Kê\nSách Hư Hỏng" as UC1_TKSachHuHong
+            usecase "Lập Kế Hoạch\nNhập Sách" as UC1_LapKeHoachNhapSach
+        }
+    }
+
+    ' =======================
+    ' CẤP 2
+    ' =======================
+    package "CẤP 2 - PHÂN RÃ NGHIỆP VỤ MƯỢN TRẢ" {
+
+        package "Cấp 2 - Lập Phiếu Mượn" {
+            usecase "Lập Phiếu Mượn" as UC2_LapPhieuMuon
+            usecase "Kiểm Tra\nThông Tin Đọc Giả" as UC2_KTDocGiaMuon
+            usecase "Kiểm Tra\nThẻ Thư Viện" as UC2_KTTheMuon
+            usecase "Kiểm Tra\nHiệu Lực Thẻ" as UC2_KTHieuLucTheMuon
+            usecase "Kiểm Tra\nSách Mượn" as UC2_KTSachMuon
+            usecase "Kiểm Tra\nSố Lượng Mượn Tối Đa" as UC2_KTSoLuongMuon
+            usecase "Kiểm Tra\nSách Quá Hạn Chưa Trả" as UC2_KTSachQuaHanChuaTra
+            usecase "Kiểm Tra\nSố Lượng Sách Hiện Có" as UC2_KTSoLuongSachHienCo
+            usecase "Nhập Thông Tin\nPhiếu Mượn" as UC2_NhapPhieuMuon
+            usecase "Lưu Phiếu Mượn" as UC2_LuuPhieuMuon
+            usecase "Lưu Chi Tiết\nPhiếu Mượn" as UC2_LuuCTPhieuMuon
+            usecase "Cập Nhật\nSố Lượng Sách" as UC2_CapNhatSachSauMuon
+            usecase "Từ Chối Mượn" as UC2_TuChoiMuon
+        }
+
+        package "Cấp 2 - Lập Phiếu Trả" {
+            usecase "Lập Phiếu Trả" as UC2_LapPhieuTra
+            usecase "Tìm Phiếu Mượn" as UC2_TimPhieuMuon
+            usecase "Kiểm Tra\nThông Tin Đọc Giả" as UC2_KTDocGiaTra
+            usecase "Kiểm Tra\nDanh Sách Sách Mượn" as UC2_KTDanhSachSachMuon
+            usecase "Kiểm Tra\nNgày Trả" as UC2_KTNgayTra
+            usecase "Kiểm Tra\nTình Trạng Sách" as UC2_KTTinhTrangSach
+            usecase "Cập Nhật\nThông Tin Trả Sách" as UC2_CapNhatTraSach
+            usecase "Cập Nhật\nSố Lượng Sách" as UC2_CapNhatSachSauTra
+            usecase "Hoàn Tất\nPhiếu Trả" as UC2_HoanTatPhieuTra
+            usecase "Lập Phiếu Phạt" as UC2_LapPhieuPhat
+        }
+    }
+
+    ' =======================
+    ' CẤP 3
+    ' =======================
+    package "CẤP 3 - PHÂN RÃ NGHIỆP VỤ PHÁT SINH" {
+        package "Cấp 3 - Lập Phiếu Phạt" {
+            usecase "Lập Phiếu Phạt" as UC3_LapPhieuPhat
+            usecase "Xác Định\nSách Bị Phạt" as UC3_XacDinhSachBiPhat
+            usecase "Xác Định\nLý Do Phạt" as UC3_XacDinhLyDoPhat
+            usecase "Nhập Phí Phạt\nCho Từng Sách" as UC3_NhapPhiPhat
+            usecase "Tính Tổng\nTiền Phạt" as UC3_TinhTongTienPhat
+            usecase "Lưu Chi Tiết\nPhiếu Phạt" as UC3_LuuCTPhieuPhat
+            usecase "Lưu Phiếu Phạt" as UC3_LuuPhieuPhat
+            usecase "Thông Báo\nPhí Phạt" as UC3_ThongBaoPhiPhat
+        }
+    }
+}
+
+' =======================
+' ASSOCIATION CẤP 0
+' =======================
+DocGia -- UC0_MuonTra
+DocGia -- UC0_TheTV
+
+ThuThu -- UC0_MuonTra
+ThuThu -- UC0_BaoCao
+
+NVCepThe -- UC0_TheTV
+NVQLSach -- UC0_Sach
+NhanVien -- UC0_NguoiDung
+NVThongKe -- UC0_BaoCao
+
+' =======================
+' LIÊN KẾT CẤP 0 SANG CẤP 1
+' Dùng dependency "phân rã" để biểu diễn cùng một nhóm chức năng được mở chi tiết.
+' Không dùng include/extend ở cấp 0.
+' =======================
+UC0_MuonTra ..> UC1_MuonTra : phân rã
+UC0_TheTV ..> UC1_TheTV : phân rã
+UC0_Sach ..> UC1_Sach : phân rã
+UC0_NguoiDung ..> UC1_NguoiDung : phân rã
+UC0_BaoCao ..> UC1_BaoCao : phân rã
+
+' =======================
+' ASSOCIATION CẤP 1
+' =======================
+DocGia -- UC1_MuonTra
+ThuThu -- UC1_MuonTra
+
+DocGia -- UC1_TheTV
+NVCepThe -- UC1_TheTV
+
+NVQLSach -- UC1_Sach
+NhanVien -- UC1_NguoiDung
+
+ThuThu -- UC1_BaoCao
+NVThongKe -- UC1_BaoCao
+
+' =======================
+' INCLUDE / EXTEND CẤP 1 - QL MƯỢN TRẢ
+' =======================
+UC1_MuonTra ..> UC_Login_MuonTra : <<include>>
+UC1_LapPhieuMuon ..> UC1_MuonTra : <<extend>>
+UC1_LapPhieuTra ..> UC1_MuonTra : <<extend>>
+
+UC1_LapPhieuMuon ..> UC2_LapPhieuMuon : phân rã
+UC1_LapPhieuTra ..> UC2_LapPhieuTra : phân rã
+
+' =======================
+' INCLUDE / EXTEND CẤP 1 - QL THẺ TV
+' =======================
+UC1_TheTV ..> UC_Login_TheTV : <<include>>
+
+UC1_TiepNhanHoSo ..> UC1_TheTV : <<extend>>
+UC1_KiemTraTTDocGia ..> UC1_TheTV : <<extend>>
+UC1_CapThe ..> UC1_TheTV : <<extend>>
+UC1_GiaHanThe ..> UC1_TheTV : <<extend>>
+UC1_GhiNhanLePhi ..> UC1_TheTV : <<extend>>
+UC1_KiemTraHieuLucThe ..> UC1_TheTV : <<extend>>
+UC1_TuChoiCapThe ..> UC1_TheTV : <<extend>>
+
+' =======================
+' INCLUDE / EXTEND CẤP 1 - QL SÁCH
+' =======================
+UC1_Sach ..> UC_Login_Sach : <<include>>
+
+UC1_DauSach ..> UC1_Sach : <<extend>>
+UC1_TheLoai ..> UC1_Sach : <<extend>>
+UC1_NXB ..> UC1_Sach : <<extend>>
+UC1_TraCuuSach ..> UC1_Sach : <<extend>>
+UC1_CapNhatSoLuongSach ..> UC1_Sach : <<extend>>
+
+' =======================
+' INCLUDE / EXTEND CẤP 1 - QL NGƯỜI DÙNG
+' =======================
+UC1_NguoiDung ..> UC_Login_NguoiDung : <<include>>
+
+UC1_ThemNhanVien ..> UC1_NguoiDung : <<extend>>
+UC1_CapNhatNhanVien ..> UC1_NguoiDung : <<extend>>
+UC1_XoaNhanVien ..> UC1_NguoiDung : <<extend>>
+UC1_TraCuuNhanVien ..> UC1_NguoiDung : <<extend>>
+UC1_PhanQuyen ..> UC1_NguoiDung : <<extend>>
+
+' =======================
+' INCLUDE / EXTEND CẤP 1 - QL BÁO CÁO THỐNG KÊ
+' =======================
+UC1_BaoCao ..> UC_Login_BaoCao : <<include>>
+
+UC1_TKSachMuon ..> UC1_BaoCao : <<extend>>
+UC1_TKSachQuaHan ..> UC1_BaoCao : <<extend>>
+UC1_TKSachMat ..> UC1_BaoCao : <<extend>>
+UC1_TKSachHuHong ..> UC1_BaoCao : <<extend>>
+UC1_LapKeHoachNhapSach ..> UC1_BaoCao : <<extend>>
+
+' =======================
+' ASSOCIATION CẤP 2
+' =======================
+DocGia -- UC2_LapPhieuMuon
+ThuThu -- UC2_LapPhieuMuon
+
+DocGia -- UC2_LapPhieuTra
+ThuThu -- UC2_LapPhieuTra
+
+' =======================
+' INCLUDE / EXTEND CẤP 2 - LẬP PHIẾU MƯỢN
+' =======================
+UC2_LapPhieuMuon ..> UC2_KTDocGiaMuon : <<include>>
+UC2_LapPhieuMuon ..> UC2_KTTheMuon : <<include>>
+UC2_LapPhieuMuon ..> UC2_KTHieuLucTheMuon : <<include>>
+UC2_LapPhieuMuon ..> UC2_KTSachMuon : <<include>>
+UC2_LapPhieuMuon ..> UC2_KTSoLuongMuon : <<include>>
+UC2_LapPhieuMuon ..> UC2_KTSachQuaHanChuaTra : <<include>>
+UC2_LapPhieuMuon ..> UC2_KTSoLuongSachHienCo : <<include>>
+UC2_LapPhieuMuon ..> UC2_NhapPhieuMuon : <<include>>
+UC2_LapPhieuMuon ..> UC2_LuuPhieuMuon : <<include>>
+UC2_LapPhieuMuon ..> UC2_LuuCTPhieuMuon : <<include>>
+UC2_LapPhieuMuon ..> UC2_CapNhatSachSauMuon : <<include>>
+
+UC2_TuChoiMuon ..> UC2_LapPhieuMuon : <<extend>>
+
+' =======================
+' INCLUDE / EXTEND CẤP 2 - LẬP PHIẾU TRẢ
+' =======================
+UC2_LapPhieuTra ..> UC2_TimPhieuMuon : <<include>>
+UC2_LapPhieuTra ..> UC2_KTDocGiaTra : <<include>>
+UC2_LapPhieuTra ..> UC2_KTDanhSachSachMuon : <<include>>
+UC2_LapPhieuTra ..> UC2_KTNgayTra : <<include>>
+UC2_LapPhieuTra ..> UC2_KTTinhTrangSach : <<include>>
+UC2_LapPhieuTra ..> UC2_CapNhatTraSach : <<include>>
+UC2_LapPhieuTra ..> UC2_CapNhatSachSauTra : <<include>>
+UC2_LapPhieuTra ..> UC2_HoanTatPhieuTra : <<include>>
+
+UC2_LapPhieuPhat ..> UC2_LapPhieuTra : <<extend>>
+UC2_LapPhieuPhat ..> UC3_LapPhieuPhat : phân rã
+
+' =======================
+' ASSOCIATION CẤP 3
+' =======================
+DocGia -- UC3_LapPhieuPhat
+ThuThu -- UC3_LapPhieuPhat
+
+' =======================
+' INCLUDE CẤP 3 - LẬP PHIẾU PHẠT
+' =======================
+UC3_LapPhieuPhat ..> UC3_XacDinhSachBiPhat : <<include>>
+UC3_LapPhieuPhat ..> UC3_XacDinhLyDoPhat : <<include>>
+UC3_LapPhieuPhat ..> UC3_NhapPhiPhat : <<include>>
+UC3_LapPhieuPhat ..> UC3_TinhTongTienPhat : <<include>>
+UC3_LapPhieuPhat ..> UC3_LuuCTPhieuPhat : <<include>>
+UC3_LapPhieuPhat ..> UC3_LuuPhieuPhat : <<include>>
+UC3_LapPhieuPhat ..> UC3_ThongBaoPhiPhat : <<include>>
+
+' =======================
+' GHI CHÚ
+' =======================
+note right of UC2_TuChoiMuon
+Từ chối mượn khi:
+- Thẻ hết hạn
+- Chưa đóng lệ phí
+- Mượn quá 3 cuốn
+- Còn sách quá hạn chưa trả
+- Sách không đủ số lượng
+- Mượn trùng đầu sách
+end note
+
+note right of UC2_LapPhieuPhat
+Lập phiếu phạt khi:
+- Trả sách trễ hạn
+- Mất sách
+- Rách sách
+- Hư hỏng sách
+end note
+
+note bottom of UC0_MuonTra
+Cấp 0 chỉ thể hiện tổng quan.
+Các đường "phân rã" dùng để liên kết
+sang sơ đồ chi tiết cấp dưới.
+end note
+
+@enduml
