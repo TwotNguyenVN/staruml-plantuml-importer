@@ -22,7 +22,7 @@ function generateDiagram(diagram, text) {
   var lines = text.split("\n");
   var elementsMap = {};
   var parsedLifelines = [];
-  var parsedMessages = [];
+  var events = [];
 
   // Helper to find or implicitly create lifelines
   function getOrCreateLifeline(alias) {
@@ -41,28 +41,95 @@ function generateDiagram(diagram, text) {
   }
 
   // 1. Parsing PlantUML Sequence lines
+  var inNote = false;
+  var currentNote = null;
+
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i].trim();
 
-    // Skip comments, empty lines, start/end, title, autonumber
+    // Skip empty lines, start/end, title, autonumber
     if (
       !line ||
       line.indexOf("'") === 0 ||
       line.indexOf("@startuml") === 0 ||
       line.indexOf("@enduml") === 0 ||
       line.indexOf("title ") === 0 ||
-      line.indexOf("autonumber") === 0
+      line.indexOf("autonumber") === 0 ||
+      line.indexOf("hide footbox") === 0 ||
+      line.indexOf("activate ") === 0 ||
+      line.indexOf("deactivate ") === 0 ||
+      line.indexOf("skinparam") === 0
     ) {
-      continue;
-    }
-
-    // Skip skinparam block
-    if (line.indexOf("skinparam") === 0) {
-      if (line.indexOf("{") !== -1) {
+      if (line.indexOf("skinparam") === 0 && line.indexOf("{") !== -1) {
         while (i < lines.length && lines[i].indexOf("}") === -1) {
           i++;
         }
       }
+      continue;
+    }
+
+    if (inNote) {
+      if (line === "end note") {
+        events.push(currentNote);
+        inNote = false;
+        currentNote = null;
+      } else {
+        if (currentNote.text !== "") currentNote.text += "\n";
+        currentNote.text += line;
+      }
+      continue;
+    }
+
+    // Parse note start
+    var matchNote = line.match(/^note\s+(right|left|over)(?:\s+of)?\s+([a-zA-Z0-9_\-]+)(?:\s*:\s*(.*))?$/i);
+    if (matchNote) {
+      var position = matchNote[1].toLowerCase();
+      var target = matchNote[2];
+      var singleLineText = matchNote[3];
+
+      getOrCreateLifeline(target);
+
+      if (singleLineText !== undefined && singleLineText !== "") {
+        events.push({
+          type: "note",
+          position: position,
+          target: target,
+          text: singleLineText.trim()
+        });
+      } else {
+        inNote = true;
+        currentNote = {
+          type: "note",
+          position: position,
+          target: target,
+          text: ""
+        };
+      }
+      continue;
+    }
+
+    // Parse Fragments (group, loop, alt, opt)
+    var matchFragment = line.match(/^(group|loop|alt|opt|par)(?:\s+(.*))?$/i);
+    if (matchFragment) {
+      events.push({
+        type: "fragment_start",
+        fragType: matchFragment[1].toLowerCase(),
+        label: matchFragment[2] ? matchFragment[2].trim() : ""
+      });
+      continue;
+    }
+
+    if (line.indexOf("else") === 0) {
+      var matchElse = line.match(/^else(?:\s+(.*))?$/i);
+      events.push({
+        type: "operand",
+        label: matchElse && matchElse[1] ? matchElse[1].trim() : ""
+      });
+      continue;
+    }
+
+    if (line === "end") {
+      events.push({ type: "fragment_end" });
       continue;
     }
 
@@ -91,11 +158,15 @@ function generateDiagram(diagram, text) {
       var to = matchMsg[3];
       var label = matchMsg[4] ? matchMsg[4].trim() : "";
 
+      // Replace \n with space as per user feedback
+      label = label.replace(/\\n/g, " ");
+
       // Implicitly register lifelines if they weren't declared
       getOrCreateLifeline(from);
       getOrCreateLifeline(to);
 
-      parsedMessages.push({
+      events.push({
+        type: "message",
         from: from,
         to: to,
         sort: getMessageSort(arrow),
@@ -106,8 +177,17 @@ function generateDiagram(diagram, text) {
 
   // 2. Element Positioning & Layout Calculations
   var spacingX = 220;
-  var totalMessages = parsedMessages.length;
-  var lifelineHeight = Math.max(300, totalMessages * 45 + 120);
+  
+  var yCursor = 100;
+  events.forEach(function(ev) {
+    if (ev.type === "message") yCursor += 45;
+    else if (ev.type === "note") yCursor += 50 + (ev.text.split("\n").length * 15);
+    else if (ev.type === "fragment_start") yCursor += 30;
+    else if (ev.type === "operand") yCursor += 25;
+    else if (ev.type === "fragment_end") yCursor += 25;
+  });
+  
+  var lifelineHeight = Math.max(300, yCursor + 50);
 
   var interaction = diagram._parent;
   var collaboration = interaction ? interaction._parent : null;
@@ -115,10 +195,7 @@ function generateDiagram(diagram, text) {
     collaboration = app.project.getProject();
   }
 
-  // Use app.type explicitly to prevent any variable shadowing issues (e.g. from local `type` variables)
   var types = app.type;
-
-  // Prepare repository operation builder
   var builder = app.repository.getOperationBuilder();
   builder.begin("Import Sequence Diagram");
 
@@ -130,7 +207,6 @@ function generateDiagram(diagram, text) {
       var nameClean = sanitizeName(life.name);
       var isActor = life.type === "actor";
 
-      // Create Actor model if type is actor
       var actorModel = null;
       if (isActor) {
         actorModel = new types.UMLActor();
@@ -140,117 +216,246 @@ function generateDiagram(diagram, text) {
         builder.fieldInsert(collaboration, "ownedElements", actorModel);
       }
 
-      // Create Role (Attribute)
       var roleModel = new types.UMLAttribute();
       roleModel.name = nameClean + "Role";
-      if (isActor) {
-        roleModel.type = actorModel;
-      }
+      if (isActor) roleModel.type = actorModel;
       roleModel._parent = collaboration;
       builder.insert(roleModel);
       builder.fieldInsert(collaboration, "attributes", roleModel);
 
-      // Create Lifeline model
       var lifelineModel = new types.UMLLifeline();
       lifelineModel.name = nameClean;
       lifelineModel.represent = roleModel;
       lifelineModel._parent = interaction;
-      if (life.stereotype) {
-        lifelineModel.stereotype = life.stereotype;
-      }
+      if (life.stereotype) lifelineModel.stereotype = life.stereotype;
       builder.insert(lifelineModel);
       builder.fieldInsert(interaction, "participants", lifelineModel);
 
-      // Create LifelineView
       var lifelineView = new types.UMLSeqLifelineView();
       lifelineView._parent = diagram;
       lifelineView.model = lifelineModel;
-      if (isActor) {
-        lifelineView.stereotypeDisplay = types.UMLGeneralNodeView.SD_ICON;
-      }
+      if (isActor) lifelineView.stereotypeDisplay = types.UMLGeneralNodeView.SD_ICON;
       lifelineView.initialize(null, posX, posY, posX + 100, posY + lifelineHeight);
       builder.insert(lifelineView);
       builder.fieldInsert(diagram, "ownedViews", lifelineView);
 
       elementsMap[life.alias] = {
         model: lifelineModel,
-        view: lifelineView
+        view: lifelineView,
+        posX: posX + 50, // center line X
+        linePart: lifelineView.linePart
       };
     });
 
-    // Create Messages
-    parsedMessages.forEach(function (msg, index) {
-      var tailData = elementsMap[msg.from];
-      var headData = elementsMap[msg.to];
+    var currentY = 120;
+    var fragmentStack = [];
+    var notesToDraw = [];
+    var fragmentsToDraw = [];
 
-      if (!tailData || !headData) {
-        console.warn(
-          "[sequence-parser] Skipping message: " +
-          msg.from + " -> " + msg.to + " (missing lifeline)"
-        );
-        return;
-      }
+    events.forEach(function (ev, index) {
+      if (ev.type === "message") {
+        var tailData = elementsMap[ev.from];
+        var headData = elementsMap[ev.to];
+        if (!tailData || !headData) return;
 
-      var tailView = tailData.view;
-      var headView = headData.view;
-      var tailModel = tailData.model;
-      var headModel = headData.model;
+        var msgModel = new types.UMLMessage();
+        var stereo = "";
+        var cleanLabel = ev.label;
+        if (cleanLabel.indexOf("<<") !== -1) {
+          var matchStereo = cleanLabel.match(/<<([^>]+)>>/);
+          if (matchStereo) {
+            stereo = matchStereo[1].trim();
+            cleanLabel = cleanLabel.replace(/<<[^>]+>>/g, "").trim();
+          }
+        }
+        msgModel.name = cleanLabel;
+        if (stereo) msgModel.stereotype = stereo;
+        msgModel.messageSort = ev.sort;
+        msgModel.source = tailData.model;
+        msgModel.target = headData.model;
+        msgModel._parent = interaction;
+        builder.insert(msgModel);
+        builder.fieldInsert(interaction, "messages", msgModel);
 
-      var y = 120 + index * 45;
+        var msgView = new types.UMLSeqMessageView();
+        msgView._parent = diagram;
+        msgView.model = msgModel;
+        msgView.tail = tailData.view.linePart;
+        msgView.head = headData.view.linePart;
+        msgView.activation.height = 0;
 
-      // Create Message model
-      var msgModel = new types.UMLMessage();
-      var stereo = "";
-      var cleanLabel = msg.label || "";
-      if (cleanLabel.indexOf("<<") !== -1) {
-        var matchStereo = cleanLabel.match(/<<([^>]+)>>/);
-        if (matchStereo) {
-          stereo = matchStereo[1].trim();
-          cleanLabel = cleanLabel.replace(/<<[^>]+>>/g, "").trim();
+        var x1 = tailData.posX;
+        var x2 = headData.posX;
+        msgView.initialize(null, x1, currentY, x2, currentY);
+
+        if (msgView.points && msgView.points.points) {
+          msgView.points.points.forEach(function (point) {
+            point.y = currentY;
+          });
+        }
+
+        builder.insert(msgView);
+        builder.fieldInsert(diagram, "ownedViews", msgView);
+
+        fragmentStack.forEach(function(fState) {
+            fState.minX = Math.min(fState.minX, x1, x2);
+            fState.maxX = Math.max(fState.maxX, x1, x2);
+        });
+
+        currentY += 45;
+
+      } else if (ev.type === "note") {
+        var targetData = elementsMap[ev.target];
+        if (!targetData) return;
+        
+        var lines = ev.text.split("\n");
+        var width = 150;
+        var height = Math.max(40, lines.length * 15 + 20);
+        
+        var nx = targetData.posX;
+        if (ev.position === "right") {
+           nx = targetData.posX + 30;
+        } else if (ev.position === "left") {
+           nx = targetData.posX - width - 30;
+        } else {
+           nx = targetData.posX - (width / 2);
+        }
+        
+        notesToDraw.push({
+            text: ev.text,
+            left: nx,
+            top: currentY,
+            width: width,
+            height: height,
+            targetView: targetData.view.linePart
+        });
+
+        fragmentStack.forEach(function(fState) {
+            fState.minX = Math.min(fState.minX, nx);
+            fState.maxX = Math.max(fState.maxX, nx + width);
+        });
+
+        currentY += height + 15;
+
+      } else if (ev.type === "fragment_start") {
+        fragmentStack.push({
+            fragType: ev.fragType,
+            top: currentY,
+            minX: 999999,
+            maxX: -999999,
+            operands: [{ name: ev.label || "", top: currentY }]
+        });
+        currentY += 30;
+
+      } else if (ev.type === "operand") {
+        if (fragmentStack.length > 0) {
+            var fState = fragmentStack[fragmentStack.length - 1];
+            var prevOp = fState.operands[fState.operands.length - 1];
+            prevOp.height = currentY - prevOp.top;
+
+            fState.operands.push({ name: ev.label || "", top: currentY });
+            currentY += 30;
+        }
+
+      } else if (ev.type === "fragment_end") {
+        if (fragmentStack.length > 0) {
+            var fState = fragmentStack.pop();
+            var prevOp = fState.operands[fState.operands.length - 1];
+            prevOp.height = currentY - prevOp.top + 15;
+            
+            currentY += 20;
+
+            if (fState.minX > fState.maxX) {
+                fState.minX = 100;
+                fState.maxX = 300;
+            } else {
+                fState.minX -= 40;
+                fState.maxX += 40;
+            }
+
+            fState.bottom = currentY;
+            fragmentsToDraw.push(fState);
         }
       }
-      msgModel.name = cleanLabel;
-      if (stereo) {
-        msgModel.stereotype = stereo;
-      }
-      msgModel.messageSort = msg.sort;
-      msgModel.source = tailModel;
-      msgModel.target = headModel;
-      msgModel._parent = interaction;
-      builder.insert(msgModel);
-      builder.fieldInsert(interaction, "messages", msgModel);
-
-      // Create UMLSeqMessageView
-      var msgView = new types.UMLSeqMessageView();
-      msgView._parent = diagram;
-      msgView.model = msgModel;
-      msgView.tail = tailView.linePart;
-      msgView.head = headView.linePart;
-      msgView.activation.height = 0;
-
-      var x1 = tailView.left + tailView.width / 2;
-      var x2 = headView.left + headView.width / 2;
-
-      msgView.initialize(null, x1, y, x2, y);
-
-      // Adjust points to be exactly horizontal at Y
-      if (msgView.points && msgView.points.points) {
-        msgView.points.points.forEach(function (point) {
-          point.y = y;
-        });
-      }
-
-      builder.insert(msgView);
-      builder.fieldInsert(diagram, "ownedViews", msgView);
     });
 
-    // Execute the bulk repository operation
     builder.end();
     var cmd = builder.getOperation();
     app.repository.doOperation(cmd);
 
     // Refresh display
     app.diagrams.setCurrentDiagram(diagram);
+
+    // Draw Notes using app.factory
+    notesToDraw.forEach(function(noteData) {
+        try {
+            var noteView = app.factory.createModelAndView({
+                id: "UMLNote",
+                parent: interaction, // model parent
+                diagram: diagram,
+                modelInitializer: function(m) { m.text = noteData.text; },
+                viewInitializer: function(v) {
+                    v.left = noteData.left;
+                    v.top = noteData.top;
+                    v.width = noteData.width;
+                    v.height = noteData.height;
+                }
+            });
+            if (noteView) {
+                app.factory.createModelAndView({
+                    id: "UMLNoteLink",
+                    parent: interaction,
+                    diagram: diagram,
+                    tailView: noteView,
+                    headView: noteData.targetView
+                });
+            }
+        } catch(e) { console.error("Error drawing note", e); }
+    });
+
+    // Draw Fragments using app.factory
+    fragmentsToDraw.forEach(function(fState) {
+        try {
+            var fragView = app.factory.createModelAndView({
+                id: "UMLCombinedFragment",
+                parent: interaction,
+                diagram: diagram,
+                modelInitializer: function(m) {
+                    m.name = "";
+                    m.interactionOperator = fState.fragType;
+                },
+                viewInitializer: function(v) {
+                    v.left = fState.minX;
+                    v.top = fState.top;
+                    v.width = fState.maxX - fState.minX;
+                    v.height = fState.bottom - fState.top;
+                }
+            });
+
+            if (fragView && fragView.model) {
+                // Remove auto-generated default operand
+                if (fragView.model.operands && fragView.model.operands.length > 0) {
+                    // It's safer to just overwrite the first one's name instead of deleting
+                    var defaultOp = fragView.model.operands[0];
+                    if (fState.operands.length > 0) {
+                        defaultOp.name = fState.operands[0].name;
+                        // For subsequent operands, create them
+                        for (var i = 1; i < fState.operands.length; i++) {
+                            app.factory.createModelAndView({
+                                id: "UMLInteractionOperand",
+                                parent: fragView.model,
+                                diagram: diagram,
+                                modelInitializer: function(m) {
+                                    m.name = fState.operands[i].name;
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        } catch(e) { console.error("Error drawing fragment", e); }
+    });
+
   } catch (e) {
     builder.discard();
     console.error("[sequence-parser] Failed to import sequence diagram:", e);
@@ -261,3 +466,4 @@ function generateDiagram(diagram, text) {
 module.exports = {
   generateDiagram: generateDiagram
 };
+
