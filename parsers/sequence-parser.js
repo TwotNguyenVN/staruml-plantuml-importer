@@ -257,6 +257,7 @@ function generateDiagram(diagram, text) {
       var lifelineView = new types.UMLSeqLifelineView();
       lifelineView._parent = diagram;
       lifelineView.model = lifelineModel;
+      lifelineView.showType = false; // Ẩn phần Type để tránh lặp tên (VD: Độc Giả: Độc Giả)
       if (isActor) lifelineView.stereotypeDisplay = types.UMLGeneralNodeView.SD_ICON;
       lifelineView.initialize(null, posX, posY, posX + 100, posY + lifelineHeight);
       builder.insert(lifelineView);
@@ -422,6 +423,8 @@ function generateDiagram(diagram, text) {
       } else if (ev.type === "fragment_end") {
         if (fragmentStack.length > 0) {
             var fState = fragmentStack.pop();
+            var depth = fragmentStack.length; // 0 for outermost, 1 for inner...
+            
             var prevOp = fState.operands[fState.operands.length - 1];
             prevOp.height = currentY - prevOp.top + 15;
             
@@ -431,8 +434,11 @@ function generateDiagram(diagram, text) {
                 fState.minX = 100;
                 fState.maxX = 300;
             } else {
-                fState.minX -= 40;
-                fState.maxX += 40;
+                // Fragment ngoài cùng sẽ có padding lớn nhất, các fragment bên trong sẽ có padding nhỏ dần
+                // để tạo hiệu ứng thụt lề (indentation) không bị trùng nét.
+                var paddingX = Math.max(20, 60 - (depth * 15));
+                fState.minX -= paddingX;
+                fState.maxX += paddingX;
             }
 
             fState.bottom = currentY;

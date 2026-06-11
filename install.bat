@@ -27,6 +27,7 @@ if not exist "%TARGET%" mkdir "%TARGET%"
 if not exist "%TARGET%\menus" mkdir "%TARGET%\menus"
 if not exist "%TARGET%\utils" mkdir "%TARGET%\utils"
 if not exist "%TARGET%\parsers" mkdir "%TARGET%\parsers"
+if not exist "%TARGET%\keymaps" mkdir "%TARGET%\keymaps"
 
 :: Copy files
 echo [*] Installing extension to:
@@ -37,6 +38,7 @@ copy /Y "%~dp0PlantUML_Importer.png" "%TARGET%\PlantUML_Importer.png" >nul
 copy /Y "%~dp0main.js" "%TARGET%\main.js" >nul
 copy /Y "%~dp0package.json" "%TARGET%\package.json" >nul
 copy /Y "%~dp0menus\menu.json" "%TARGET%\menus\menu.json" >nul
+copy /Y "%~dp0keymaps\keymap.json" "%TARGET%\keymaps\keymap.json" >nul
 copy /Y "%~dp0utils\dialog-helper.js" "%TARGET%\utils\dialog-helper.js" >nul
 copy /Y "%~dp0parsers\usecase-parser.js" "%TARGET%\parsers\usecase-parser.js" >nul
 copy /Y "%~dp0parsers\class-parser.js" "%TARGET%\parsers\class-parser.js" >nul
