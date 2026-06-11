@@ -1,0 +1,158 @@
+@startuml
+title Sequence Diagram - Đăng nhập hệ thống có phân quyền
+
+autonumber
+hide footbox
+
+skinparam sequence {
+    ArrowColor Black
+    LifeLineBorderColor Gray
+    LifeLineBackgroundColor White
+    ParticipantBorderColor Black
+    ParticipantBackgroundColor White
+    ActorBorderColor Black
+    ActorBackgroundColor White
+    DatabaseBorderColor Black
+    DatabaseBackgroundColor White
+    MessageAlign center
+}
+
+actor "Người dùng" as ND
+boundary "Màn hình chính" as MHC
+boundary "Màn hình đăng nhập" as MHDN
+control "Xử lý đăng nhập" as XLDN
+control "Xử lý phân quyền" as XLPQ
+database "CSDL" as CSDL
+
+note over ND
+Người dùng có thể là:
+- Thủ thư
+- Nhân viên quản lý sách
+- Nhân viên cấp thẻ
+- Nhân viên thống kê
+- Quản trị viên
+end note
+
+ND -> MHC : Chọn chức năng đăng nhập
+activate MHC
+
+MHC -> MHDN : Mở màn hình đăng nhập
+activate MHDN
+
+MHDN --> ND : Hiển thị form đăng nhập
+deactivate MHC
+
+loop Người dùng nhập lại khi đăng nhập thất bại
+
+    ND -> MHDN : Nhập tên đăng nhập,\nmật khẩu
+    MHDN -> XLDN : Gửi yêu cầu đăng nhập\n(tenDangNhap, matKhau)
+    activate XLDN
+
+    group Kiểm tra dữ liệu nhập
+        XLDN -> XLDN : Kiểm tra tên đăng nhập rỗng
+        XLDN -> XLDN : Kiểm tra mật khẩu rỗng
+    end
+
+    group Xác thực tài khoản
+        XLDN -> CSDL : Tìm tài khoản theo tên đăng nhập
+        activate CSDL
+        CSDL --> XLDN : Trả thông tin tài khoản
+        deactivate CSDL
+
+        XLDN -> XLDN : Kiểm tra tài khoản có tồn tại không
+        XLDN -> XLDN : Kiểm tra trạng thái tài khoản
+        XLDN -> XLDN : Kiểm tra mật khẩu
+    end
+
+    group Kiểm tra vai trò và quyền hạn
+        XLDN -> XLPQ : Yêu cầu kiểm tra phân quyền\n(maTaiKhoan)
+        activate XLPQ
+
+        XLPQ -> CSDL : Lấy danh sách vai trò của tài khoản
+        activate CSDL
+        CSDL --> XLPQ : Trả danh sách vai trò
+        deactivate CSDL
+
+        XLPQ -> CSDL : Lấy danh sách quyền theo vai trò
+        activate CSDL
+        CSDL --> XLPQ : Trả danh sách quyền
+        deactivate CSDL
+
+        XLPQ -> XLPQ : Kiểm tra vai trò hợp lệ
+        XLPQ -> XLPQ : Kiểm tra quyền sử dụng hệ thống
+
+        XLPQ --> XLDN : Trả kết quả phân quyền
+        deactivate XLPQ
+    end
+
+    group Tổng hợp kết quả đăng nhập
+        XLDN -> XLDN : Tổng hợp kết quả kiểm tra
+        XLDN -> XLDN : Xác định trạng thái đăng nhập
+    end
+
+    alt Thiếu tên đăng nhập hoặc mật khẩu
+        XLDN --> MHDN : Trả lỗi thiếu thông tin
+        MHDN --> ND : Hiển thị thông báo:\n"Vui lòng nhập đầy đủ thông tin"
+
+    else Tài khoản không tồn tại
+        XLDN --> MHDN : Trả lỗi tài khoản không tồn tại
+        MHDN --> ND : Hiển thị thông báo:\n"Tài khoản không tồn tại"
+
+    else Tài khoản bị khóa hoặc ngừng hoạt động
+        XLDN --> MHDN : Trả lỗi tài khoản bị khóa
+        MHDN --> ND : Hiển thị thông báo:\n"Tài khoản đã bị khóa hoặc ngừng hoạt động"
+
+    else Mật khẩu không đúng
+        XLDN -> CSDL : Ghi nhận lần đăng nhập thất bại
+        activate CSDL
+        CSDL --> XLDN : Cập nhật thành công
+        deactivate CSDL
+
+        XLDN --> MHDN : Trả lỗi sai mật khẩu
+        MHDN --> ND : Hiển thị thông báo:\n"Mật khẩu không đúng"
+
+    else Tài khoản chưa được phân quyền
+        XLDN --> MHDN : Trả lỗi chưa có quyền sử dụng
+        MHDN --> ND : Hiển thị thông báo:\n"Tài khoản chưa được cấp quyền"
+
+    else Đăng nhập thành công
+        XLDN -> CSDL : Cập nhật thời gian đăng nhập cuối
+        activate CSDL
+        CSDL --> XLDN : Cập nhật thành công
+        deactivate CSDL
+
+        XLDN -> XLDN : Tạo phiên đăng nhập
+        XLDN -> XLDN : Sinh menu chức năng theo vai trò
+
+        note right of XLDN
+        Menu sau đăng nhập:
+        - Thủ thư:
+          Mượn sách, trả sách, phiếu phạt
+
+        - Nhân viên quản lý sách:
+          Quản lý đầu sách, thể loại, NXB
+
+        - Nhân viên cấp thẻ:
+          Cấp thẻ, gia hạn thẻ, lệ phí
+
+        - Nhân viên thống kê:
+          Báo cáo thống kê
+
+        - Quản trị viên:
+          Quản lý tài khoản, phân quyền
+        end note
+
+        XLDN --> MHDN : Trả kết quả đăng nhập thành công\nkèm vai trò và danh sách quyền
+
+        MHDN -> MHC : Chuyển đến màn hình chính
+        activate MHC
+
+        MHC --> ND : Hiển thị màn hình chính\nphù hợp với vai trò
+        deactivate MHC
+    end
+
+    deactivate XLDN
+
+end
+
+@enduml

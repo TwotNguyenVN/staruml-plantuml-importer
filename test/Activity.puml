@@ -1,0 +1,143 @@
+@startuml
+title Activity Diagram - Độc giả mượn sách
+
+scale 0.85
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam activity {
+    BackgroundColor #F8FBFF
+    BorderColor #2F5597
+    DiamondBackgroundColor #FFF2CC
+    DiamondBorderColor #BF9000
+    StartColor #548235
+    EndColor #C00000
+}
+
+|Độc giả|
+start
+:Chọn sách cần mượn;
+:Xuất trình thẻ thư viện\nvà sách cho thủ thư;
+
+|Thủ thư|
+:Tiếp nhận yêu cầu mượn;
+:Nhập hoặc quét mã thẻ;
+
+|Hệ thống|
+:Tra cứu thông tin độc giả\nvà thẻ thư viện;
+
+note right
+Thẻ hợp lệ khi:
+- Thẻ tồn tại
+- Thẻ còn hạn
+- Đã đóng lệ phí
+end note
+
+if (Thẻ hợp lệ?) then (Có)
+    :Kiểm tra tình trạng mượn sách;
+else (Không)
+    :Thông báo thẻ không hợp lệ;
+
+    |Thủ thư|
+    :Từ chối cho mượn;
+
+    |Độc giả|
+    :Nhận lại thẻ;
+    stop
+endif
+
+|Hệ thống|
+note right
+Điều kiện mượn:
+- Không có sách quá hạn
+- Chưa mượn đủ 3 cuốn
+end note
+
+if (Đủ điều kiện mượn?) then (Có)
+else (Không)
+    :Thông báo không đủ\nđiều kiện mượn;
+
+    |Thủ thư|
+    :Giải thích lý do từ chối;
+
+    |Độc giả|
+    :Nhận thông báo;
+    stop
+endif
+
+|Thủ thư|
+:Quét mã từng cuốn sách;
+
+while (Còn sách cần kiểm tra?) is (Có)
+
+    |Hệ thống|
+    :Tra cứu thông tin sách;
+
+    note right
+    Sách hợp lệ khi:
+    - Sách tồn tại
+    - Sách còn để mượn
+    - Không trùng đầu sách
+    - Tổng số sách không quá 3
+    end note
+
+    if (Sách hợp lệ?) then (Có)
+        :Thêm vào danh sách mượn;
+    else (Không)
+        :Thông báo sách không hợp lệ;
+
+        |Thủ thư|
+        :Loại sách khỏi danh sách;
+    endif
+
+    |Thủ thư|
+    :Quét sách tiếp theo;
+
+endwhile (Không)
+
+|Hệ thống|
+if (Có sách hợp lệ?) then (Có)
+    :Hiển thị danh sách sách;
+    :Xác định ngày mượn\nvà ngày phải trả;
+else (Không)
+    :Thông báo không có sách\nđủ điều kiện;
+
+    |Độc giả|
+    :Nhận lại sách và thẻ;
+    stop
+endif
+
+|Thủ thư|
+:Kiểm tra thông tin mượn;
+
+if (Xác nhận cho mượn?) then (Có)
+
+    |Hệ thống|
+    :Tạo phiếu mượn;
+    :Lưu độc giả, thủ thư,\nngày mượn và ngày trả;
+
+    :Lưu chi tiết các sách mượn;
+    :Cập nhật trạng thái sách\nthành đang được mượn;
+
+    :Thông báo lập phiếu thành công;
+
+    |Thủ thư|
+    :Giao sách, thẻ\nvà phiếu mượn;
+
+    |Độc giả|
+    :Nhận sách và thông tin\nngày phải trả;
+    stop
+
+else (Không)
+
+    |Hệ thống|
+    :Hủy yêu cầu mượn;
+
+    |Thủ thư|
+    :Trả lại sách và thẻ;
+
+    |Độc giả|
+    :Nhận lại sách và thẻ;
+    stop
+endif
+
+@enduml

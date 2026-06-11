@@ -43,13 +43,13 @@ A StarUML extension that imports **Use Case, Class, Sequence, Activity, State, a
 
 #### Windows
 1. Download or clone this repository
-2. **Double-click** `install.bat`
+2. **Double-click** `scripts/install.bat`
 3. Restart StarUML
 
 #### macOS / Linux
 ```bash
-chmod +x install.sh
-./install.sh
+chmod +x scripts/install.sh
+./scripts/install.sh
 ```
 
 ### Manual Installation
@@ -214,13 +214,13 @@ User ||--o{ Order
 If you only want to uninstall the **PlantUML Importer Extension**, simply delete the `staruml-plantuml-importer` folder from your StarUML `extensions/user/` directory.
 
 #### Windows
-**Double-click** `clear.bat` or run it from command prompt.
+**Double-click** `scripts/clear.bat` or run it from command prompt.
 
 #### macOS
 Run:
 ```bash
-chmod +x clear.sh
-./clear.sh
+chmod +x scripts/clear.sh
+./scripts/clear.sh
 ```
 
 ## 📄 License

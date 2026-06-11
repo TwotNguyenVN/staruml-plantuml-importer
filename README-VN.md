@@ -44,7 +44,7 @@ Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các
 #### Windows
 
 1. Tải về hoặc nhân bản (clone) kho lưu trữ này.
-2. **Nhấp đúp** vào file `install.bat`.
+2. **Nhấp đúp** vào file `scripts/install.bat`.
 3. Khởi động lại StarUML.
 
 ##### hoặc terminal tại thư mục
@@ -52,7 +52,7 @@ Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các
 Chạy lệnh sau trong Terminal:
 
 ```bash
-./install.bat
+./scripts/install.bat
 ```
 
 #### macOS / Linux
@@ -60,8 +60,8 @@ Chạy lệnh sau trong Terminal:
 Chạy lệnh sau trong Terminal:
 
 ```bash
-chmod +x install.sh
-./install.sh
+chmod +x scripts/install.sh
+./scripts/install.sh
 ```
 
 ### Cài đặt thủ công
@@ -229,15 +229,15 @@ Nếu bạn chỉ muốn gỡ cài đặt **Tiện ích PlantUML Importer**, b�
 
 #### Windows
 
-**Nhấp đúp** vào file `clear.bat` hoặc chạy nó qua Command Prompt.
+**Nhấp đúp** vào file `scripts/clear.bat` hoặc chạy nó qua Command Prompt.
 
 #### macOS
 
 Chạy lệnh sau:
 
 ```bash
-chmod +x clear.sh
-./clear.sh
+chmod +x scripts/clear.sh
+./scripts/clear.sh
 ```
 
 ## 📄 Giấy phép

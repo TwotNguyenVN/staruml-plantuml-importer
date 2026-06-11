@@ -1,0 +1,54 @@
+@startuml
+title SequenceDiagram1 - Đăng nhập
+
+hide footbox
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 90
+
+actor "Độc Giả" as DocGia
+participant "Màn hình chính" as MainUI
+participant "Màn hình đăng nhập" as LoginUI
+participant "Xử lý" as XuLy
+database "CSDL" as CSDL
+
+DocGia -> MainUI : 1 : Chọn chức năng ĐN
+activate MainUI
+
+loop Đăng nhập
+    MainUI -> LoginUI : 2 : Mở trang đăng nhập
+    activate LoginUI
+
+    LoginUI --> DocGia : 3 : Hiển thị màn hình đăng nhập
+    deactivate LoginUI
+
+    deactivate MainUI
+
+    DocGia -> LoginUI : 4 : Nhập thông tin ND
+    activate LoginUI
+
+    LoginUI -> XuLy : 5 : Kiểm tra thông tin
+    activate XuLy
+
+    XuLy -> CSDL : 6 : Kiểm tra dl ND
+    activate CSDL
+
+    CSDL --> XuLy : 7 : Kết quả kiểm tra ND
+    deactivate CSDL
+
+    alt Đăng nhập thất bại
+        XuLy --> LoginUI : 8 : Thông báo lỗi đăng nhập
+        LoginUI --> DocGia : 9 : Hiển thị thông báo
+
+    else Đăng nhập thành công
+        XuLy --> LoginUI : 10 : Thông báo đăng nhập thành công
+        deactivate XuLy
+
+        LoginUI --> MainUI : 11 : Hiển thị màn hình chính HT
+        deactivate LoginUI
+
+        MainUI --> DocGia : 12 : Hiển thị thông báo ĐN thành công
+    end
+end
+
+@enduml

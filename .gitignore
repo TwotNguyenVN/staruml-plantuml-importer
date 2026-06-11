@@ -140,6 +140,5 @@ dist
 skills-lock.json
 
 # Scratch and test files
-test/
 test-*.js
 plan*.md

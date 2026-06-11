@@ -1,0 +1,65 @@
+@startuml
+autonumber
+actor "Nhân Viên" as NV
+boundary "Giao diện\nDịch Vụ" as UI
+control "QuanLyDichVu\nController" as CTRL
+entity "DichVu" as DV
+entity "PhieuSuDung" as Phieu
+entity "ChiTietSuDung" as CT
+
+NV -> UI: Chọn "Thêm dịch vụ cho phòng"
+activate UI
+UI -> CTRL: YeuCauDanhSach()
+activate CTRL
+CTRL -> DV: LayDanhSachDichVu()
+activate DV
+DV --> CTRL: TraVe(List<DichVu>)
+deactivate DV
+CTRL --> UI: HienThiForm(List<DichVu>)
+deactivate CTRL
+
+NV -> UI: Nhập (Mã phòng, Mã dịch vụ, Số lượng)
+UI -> CTRL: TaoPhieuDichVu(MaPhong, MaDV, SoLuong)
+activate CTRL
+
+CTRL -> DV: LayDonGia(MaDV)
+activate DV
+DV --> CTRL: TraVe(DonGia)
+deactivate DV
+
+CTRL -> CTRL: TinhThanhTien = SoLuong * DonGia
+
+CTRL -> Phieu: KiemTraPhieuTrongNgay(MaPhong, NgayHienTai)
+activate Phieu
+Phieu --> CTRL: TraVe(MaPhieu / Null)
+deactivate Phieu
+
+alt Nếu chưa có phiếu trong ngày
+    CTRL -> Phieu: TaoPhieuMoi(MaPhong, NgayHienTai, NhanVien)
+    activate Phieu
+    Phieu --> CTRL: TraVe(MaPhieuMoi)
+    deactivate Phieu
+end
+
+CTRL -> CT: KiemTraDichVuDaDung(MaPhieu, MaDV)
+activate CT
+CT --> CTRL: TraVe(ChiTiet / Null)
+deactivate CT
+
+alt Đã sử dụng dịch vụ này trong ngày
+    CTRL -> CT: CapNhatCongDon(MaPhieu, MaDV, SoLuongThem, TienThem)
+    activate CT
+    CT --> CTRL: Success
+    deactivate CT
+else Chưa sử dụng dịch vụ này
+    CTRL -> CT: TaoChiTietMoi(MaPhieu, MaDV, SoLuong, ThanhTien)
+    activate CT
+    CT --> CTRL: Success
+    deactivate CT
+end
+
+CTRL --> UI: ThongBaoThanhCong(ThongTinPhieu)
+deactivate CTRL
+UI --> NV: Hiển thị/In phiếu sử dụng dịch vụ
+deactivate UI
+@enduml
