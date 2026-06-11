@@ -35,6 +35,7 @@ fi
 mkdir -p "$TARGET/menus"
 mkdir -p "$TARGET/utils"
 mkdir -p "$TARGET/parsers"
+mkdir -p "$TARGET/keymaps"
 
 # Copy files
 echo "[*] Installing extension to:"
@@ -45,6 +46,7 @@ cp "$SCRIPT_DIR/PlantUML_Importer.png" "$TARGET/PlantUML_Importer.png"
 cp "$SCRIPT_DIR/main.js" "$TARGET/main.js"
 cp "$SCRIPT_DIR/package.json" "$TARGET/package.json"
 cp "$SCRIPT_DIR/menus/menu.json" "$TARGET/menus/menu.json"
+cp "$SCRIPT_DIR/keymaps/keymap.json" "$TARGET/keymaps/keymap.json"
 cp "$SCRIPT_DIR/utils/dialog-helper.js" "$TARGET/utils/dialog-helper.js"
 cp "$SCRIPT_DIR/parsers/usecase-parser.js" "$TARGET/parsers/usecase-parser.js"
 cp "$SCRIPT_DIR/parsers/class-parser.js" "$TARGET/parsers/class-parser.js"

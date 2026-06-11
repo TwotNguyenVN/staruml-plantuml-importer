@@ -49,8 +49,27 @@ function detectDiagramType(code) {
   return null;
 }
 
+var isDialogOpen = false;
+var lastToggleTime = 0;
+
 function handleImportAuto() {
   try {
+    var now = Date.now();
+    var diff = now - lastToggleTime;
+    lastToggleTime = now; // Always update to catch continuous key holding
+
+    if (diff < 600) {
+      return; // Prevent spamming/holding key
+    }
+
+    if (isDialogOpen) {
+      if (dialogHelper.closeImportDialog) {
+        dialogHelper.closeImportDialog();
+      }
+      isDialogOpen = false;
+      return;
+    }
+
     var diagram = app.diagrams.getCurrentDiagram();
     if (!diagram) {
       app.dialogs.showAlertDialog("Please create and open a diagram first.");
@@ -59,6 +78,7 @@ function handleImportAuto() {
 
     var sampleCode = "@startuml\n\n' Paste your PlantUML code here\n\n@enduml";
 
+    isDialogOpen = true;
     dialogHelper.showImportDialog("PlantUML Importer", sampleCode)
       .then(function (code) {
         if (code !== null) {
@@ -102,6 +122,10 @@ function handleImportAuto() {
       })
       .catch(function (err) {
         console.error("[plantuml-importer] Dialog error:", err);
+      })
+      .finally(function () {
+        isDialogOpen = false;
+        lastToggleTime = Date.now();
       });
   } catch (outerErr) {
     console.error("[plantuml-importer] handleImportAuto error:", outerErr);
