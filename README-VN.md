@@ -86,7 +86,11 @@ Sau đó khởi động lại StarUML.
    - Sơ đồ Activity: `Model` → `Add Diagram` → `Activity Diagram`
    - Sơ đồ State: `Model` → `Add Diagram` → `Statechart Diagram`
    - Sơ đồ ERD: `Model` → `Add Diagram` → `ER Diagram`
-3. Vào menu **`Tools` → `PlantUML Importer...`**
+3. Vào menu **`Tools` → `PlantUML Importer...`** hoặc sử dụng phím tắt:
+   - **Mac:** `Cmd + I`
+   - **Windows/Linux:** `Ctrl + I`
+   
+   *(💡 Mẹo: Ấn phím tắt thêm lần nữa để đóng nhanh màn hình. Con trỏ chuột sẽ tự động chờ sẵn để bạn có thể dán code ngay lập tức!)*
 
    ![Bước 1](picture/step1.png)
    Tool sẽ tự động nhận diện loại sơ đồ từ code.
