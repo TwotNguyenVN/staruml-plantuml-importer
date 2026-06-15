@@ -24,6 +24,7 @@ function generateDiagram(diagram, text) {
   var noteLinks = [];
   
   var currentPackage = null;
+  var packageStack = []; // stores nested package context
   var inSkinparam = false;
   var currentNote = null; // for multiline notes
 
@@ -142,14 +143,25 @@ function generateDiagram(diagram, text) {
     if (matchSub) {
       var pkgName = matchSub[2] || matchSub[3];
       var pkgAlias = matchSub[4] || pkgName;
-      var newPkg = { name: pkgName, alias: pkgAlias, children: [] };
+      var newPkg = { 
+        name: pkgName, 
+        alias: pkgAlias, 
+        children: [],
+        parent: packageStack.length > 0 ? packageStack[packageStack.length - 1].alias : null 
+      };
       parsedPackages.push(newPkg);
+      packageStack.push(newPkg);
       currentPackage = pkgAlias;
       continue;
     }
     
     if (line === "}") {
-      currentPackage = null;
+      if (packageStack.length > 0) {
+        packageStack.pop();
+        currentPackage = packageStack.length > 0 ? packageStack[packageStack.length - 1].alias : null;
+      } else {
+        currentPackage = null;
+      }
       continue;
     }
 
@@ -263,7 +275,14 @@ function generateDiagram(diagram, text) {
   var elementsMap = {};
   var maxDiagramHeight = 1000;
 
-  function detectLevel(text, relations, parsedUseCases) {
+  function detectLevel(text, relations, parsedUseCases, parsedPackages) {
+    // Check for multi-level (level 3) automatically based on nested packages or >= 2 top-level packages
+    var hasNestedPackage = parsedPackages.some(function(p) { return p.parent !== null && p.parent !== undefined; });
+    var topLevelPackages = parsedPackages.filter(function(p) { return p.parent === null || p.parent === undefined; });
+    if (hasNestedPackage || topLevelPackages.length >= 2) {
+      return 3;
+    }
+
     var lowerText = text.toLowerCase();
     if (lowerText.indexOf("cấp 0") !== -1 || lowerText.indexOf("level 0") !== -1 || lowerText.indexOf("uc-00") !== -1) return 0;
     if (lowerText.indexOf("cấp 1") !== -1 || lowerText.indexOf("level 1") !== -1) return 1;
@@ -728,8 +747,216 @@ function generateDiagram(diagram, text) {
     maxDiagramHeight = otherY + 100;
   }
 
-  var diagramLevel = detectLevel(text, relations, parsedUseCases);
-  if (diagramLevel === 1) {
+  function layoutLevel3() {
+    var PADDING = 30;
+    var SPACING_X = 60;
+    var SPACING_Y = 30;
+    var START_X = 250;
+    var START_Y = 100;
+
+    // 1. Calculate global depth for all UseCases
+    var depths = {};
+    var queue = [];
+    var actorAliases = parsedActors.map(function(a) { return a.alias; });
+    
+    parsedUseCases.forEach(function(uc) {
+      var connectedToActor = relations.some(function(r) {
+        return (r.from === uc.alias && actorAliases.indexOf(r.to) !== -1) ||
+               (r.to === uc.alias && actorAliases.indexOf(r.from) !== -1);
+      });
+      if (connectedToActor) {
+        depths[uc.alias] = 0;
+        queue.push(uc.alias);
+      }
+    });
+
+    if (queue.length === 0) {
+      parsedUseCases.forEach(function(uc) {
+        depths[uc.alias] = 0;
+        queue.push(uc.alias);
+      });
+    }
+
+    var visited = {};
+    queue.forEach(function(q) { visited[q] = true; });
+
+    while (queue.length > 0) {
+      var curr = queue.shift();
+      var d = depths[curr];
+
+      relations.forEach(function(r) {
+        var neighbor = null;
+        if (r.from === curr && actorAliases.indexOf(r.to) === -1) neighbor = r.to;
+        else if (r.to === curr && actorAliases.indexOf(r.from) === -1) neighbor = r.from;
+
+        if (neighbor && !visited[neighbor]) {
+          depths[neighbor] = d + 1;
+          visited[neighbor] = true;
+          queue.push(neighbor);
+        }
+      });
+    }
+
+    parsedUseCases.forEach(function(uc) {
+      if (depths[uc.alias] === undefined) depths[uc.alias] = 0;
+    });
+
+    // Calculate depths for packages (min depth of children)
+    function getPackageDepth(pkgAlias) {
+      var minDepth = 9999;
+      parsedUseCases.forEach(function(uc) {
+        if (uc.parent === pkgAlias) {
+          minDepth = Math.min(minDepth, depths[uc.alias]);
+        }
+      });
+      parsedPackages.forEach(function(p) {
+        if (p.parent === pkgAlias) {
+          minDepth = Math.min(minDepth, getPackageDepth(p.alias));
+        }
+      });
+      if (minDepth === 9999) minDepth = 0;
+      return minDepth;
+    }
+
+    // Set initial widths
+    parsedUseCases.forEach(function(uc) {
+      uc.width = Math.max(150, (uc.name ? uc.name.length : 10) * 8 + 60);
+      uc.height = 55;
+      uc.depth = depths[uc.alias];
+      uc.type = "usecase";
+    });
+
+    parsedPackages.forEach(function(pkg) {
+      pkg.depth = getPackageDepth(pkg.alias);
+      pkg.type = "package";
+    });
+
+    // Recursive layout function
+    // Returns { width, height }
+    function layoutElement(element) {
+      if (element.type === "usecase") {
+        return { width: element.width, height: element.height };
+      }
+
+      // It's a package or root
+      var children = [];
+      parsedUseCases.forEach(function(uc) {
+        if (uc.parent === element.alias) children.push(uc);
+      });
+      parsedPackages.forEach(function(pkg) {
+        if (pkg.parent === element.alias) children.push(pkg);
+      });
+
+      if (children.length === 0) {
+        element.width = 200;
+        element.height = 100;
+        return { width: element.width, height: element.height };
+      }
+
+      // Group children by depth
+      var columns = {};
+      children.forEach(function(child) {
+        var d = child.depth;
+        if (!columns[d]) columns[d] = [];
+        columns[d].push(child);
+      });
+
+      var sortedDepths = Object.keys(columns).map(Number).sort(function(a,b){return a-b;});
+      
+      var currentX = PADDING;
+      var maxH = 0;
+
+      sortedDepths.forEach(function(d) {
+        var colChildren = columns[d];
+        var currentY = PADDING + 30; // 30 for package title
+        var colMaxWidth = 0;
+
+        colChildren.forEach(function(child) {
+          layoutElement(child); // Recursively layout the child
+          child.relX = currentX;
+          child.relY = currentY;
+          
+          colMaxWidth = Math.max(colMaxWidth, child.width);
+          currentY += child.height + SPACING_Y;
+        });
+
+        maxH = Math.max(maxH, currentY);
+        currentX += colMaxWidth + SPACING_X;
+      });
+
+      element.width = currentX - SPACING_X + PADDING;
+      element.height = maxH;
+      return { width: element.width, height: element.height };
+    }
+
+    // Identify root elements (parent is null)
+    var rootElement = { type: "package", alias: null };
+    layoutElement(rootElement);
+
+    // Compute absolute coordinates
+    function computeAbsolute(element, absX, absY) {
+      element.x = absX + (element.relX || 0);
+      element.y = absY + (element.relY || 0);
+
+      var children = [];
+      parsedUseCases.forEach(function(uc) {
+        if (uc.parent === element.alias) children.push(uc);
+      });
+      parsedPackages.forEach(function(pkg) {
+        if (pkg.parent === element.alias) children.push(pkg);
+      });
+
+      children.forEach(function(child) {
+        computeAbsolute(child, element.x, element.y);
+      });
+    }
+
+    computeAbsolute(rootElement, START_X, START_Y);
+
+    // 3. Actors Layout
+    var actorY = START_Y + 50;
+    parsedActors.forEach(function(a) {
+      a.x = 50;
+      a.y = actorY;
+      actorY += 120;
+    });
+
+    var actorsTotalHeight = (parsedActors.length - 1) * 120;
+    var rootMidY = START_Y + rootElement.height / 2;
+    var newActorY = Math.max(50, rootMidY - actorsTotalHeight / 2);
+    parsedActors.forEach(function(a) {
+      a.y = newActorY;
+      newActorY += 120;
+    });
+
+    // Render Packages
+    parsedPackages.forEach(function(pkg) {
+      try {
+        var subjectView = app.factory.createModelAndView({
+          id: "UMLUseCaseSubject",
+          parent: parentModel,
+          diagram: diagram,
+          modelInitializer: function (model) { model.name = pkg.name; },
+          viewInitializer: function (v) {
+            v.left = pkg.x;
+            v.top = pkg.y;
+            v.width = pkg.width;
+            v.height = pkg.height;
+          }
+        });
+        if (subjectView) elementsMap[pkg.alias] = subjectView;
+      } catch (e) {}
+    });
+
+    createViews(parsedUseCases, parsedActors);
+
+    maxDiagramHeight = Math.max(newActorY, START_Y + rootElement.height) + 100;
+  }
+
+  var diagramLevel = detectLevel(text, relations, parsedUseCases, parsedPackages);
+  if (diagramLevel === 3) {
+    layoutLevel3();
+  } else if (diagramLevel === 1) {
     layoutLevel1();
   } else if (diagramLevel === 2) {
     layoutLevel2();
