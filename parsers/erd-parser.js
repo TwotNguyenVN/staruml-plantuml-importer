@@ -236,6 +236,9 @@ function generateDiagram(diagram, text) {
             }
             model.name = cleanLabel;
           }
+        },
+        viewInitializer: function (view) {
+          view.lineStyle = 1; // Rectilinear
         }
       });
     } catch (relErr) {

@@ -577,6 +577,9 @@ function generateDiagram(diagram, text) {
               model.stereotype = stereo;
             }
           }
+        },
+        viewInitializer: function (view) {
+          view.lineStyle = 1; // Rectilinear
         }
       });
     } catch (e) {
