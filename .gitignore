@@ -142,3 +142,6 @@ skills-lock.json
 # Scratch and test files
 test-*.js
 plan*.md
+
+# macOS
+.DS_Store
