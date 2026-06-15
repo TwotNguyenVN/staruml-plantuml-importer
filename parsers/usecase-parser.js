@@ -1008,6 +1008,9 @@ function generateDiagram(diagram, text) {
         headModel: headView.model,
         modelInitializer: function (model) {
           if (rel.name) model.name = rel.name;
+        },
+        viewInitializer: function (view) {
+          view.lineStyle = 1; // Rectilinear
         }
       });
     } catch (e) {}
@@ -1024,7 +1027,10 @@ function generateDiagram(diagram, text) {
         parent: parentModel,
         diagram: diagram,
         tailView: tailView,
-        headView: headView
+        headView: headView,
+        viewInitializer: function (view) {
+          view.lineStyle = 1; // Rectilinear
+        }
       });
     } catch (e) {}
   });

@@ -1,0 +1,243 @@
+@startuml
+title Activity Diagram - UC2-SUP-01 Gửi ticket hỗ trợ
+
+scale 0.65
+skinparam shadowing false
+skinparam defaultFontSize 10
+skinparam wrapWidth 180
+
+skinparam activity {
+    BackgroundColor White
+    BorderColor Black
+    DiamondBackgroundColor White
+    DiamondBorderColor Black
+    StartColor Black
+    EndColor Black
+}
+
+|Người dùng|
+start
+:Truy cập chức năng Gửi ticket hỗ trợ;
+
+|Hệ thống LMS|
+:Kiểm tra trạng thái đăng nhập;
+
+if (Người dùng đã đăng nhập?) then (Có)
+    :Hiển thị form gửi ticket hỗ trợ;
+else (Không)
+    :Yêu cầu người dùng đăng nhập;
+
+    |Người dùng|
+    :Nhập thông tin đăng nhập;
+
+    |Hệ thống LMS|
+    :Xác thực thông tin đăng nhập;
+
+    if (Đăng nhập thành công?) then (Có)
+        :Hiển thị form gửi ticket hỗ trợ;
+    else (Không)
+        :Thông báo đăng nhập thất bại;
+        stop
+    endif
+endif
+
+|Người dùng|
+:Chọn loại vấn đề hỗ trợ;
+:Nhập tiêu đề ticket;
+:Nhập nội dung yêu cầu hỗ trợ;
+
+if (Vấn đề liên quan đến khóa học?) then (Có)
+    :Chọn hoặc nhập mã khóa học;
+else (Không)
+    :Bỏ qua thông tin khóa học;
+endif
+
+if (Vấn đề liên quan đến đơn hàng hoặc thanh toán?) then (Có)
+    :Chọn hoặc nhập mã đơn hàng;
+    :Nhập mã giao dịch nếu có;
+else (Không)
+    :Bỏ qua thông tin đơn hàng và giao dịch;
+endif
+
+if (Người dùng muốn đính kèm minh chứng?) then (Có)
+
+    repeat
+        :Chọn tệp minh chứng;
+
+        |Hệ thống LMS|
+        :Kiểm tra tệp minh chứng;
+
+        if (Tệp minh chứng hợp lệ?) then (Có)
+            :Tạm lưu tệp minh chứng;
+        else (Không)
+            :Thông báo tệp minh chứng không hợp lệ;
+
+            |Người dùng|
+            :Chọn lại tệp hoặc bỏ qua tệp lỗi;
+        endif
+
+        |Người dùng|
+
+    repeat while (Tiếp tục đính kèm tệp?) is (Có)
+    -> Không;
+
+else (Không)
+    :Không đính kèm minh chứng;
+endif
+
+if (Người dùng chọn lưu nháp?) then (Có)
+
+    :Nhấn nút Lưu nháp;
+
+    |Hệ thống LMS|
+    :Kiểm tra dữ liệu tối thiểu để lưu nháp;
+
+    if (Đủ dữ liệu tối thiểu?) then (Có)
+
+        fork
+            :Tạo hoặc cập nhật bản ghi ticket nháp;
+        fork again
+            :Lưu thông tin đã nhập;
+        fork again
+            :Lưu tệp minh chứng tạm nếu có;
+        fork again
+            :Ghi thời điểm lưu nháp;
+        end fork
+
+        :Cập nhật trạng thái ticket là Draft;
+
+        |Người dùng|
+        :Nhận thông báo đã lưu nháp ticket;
+        stop
+
+    else (Không)
+        :Thông báo thiếu dữ liệu để lưu nháp;
+
+        |Người dùng|
+        :Bổ sung thông tin hoặc hủy thao tác;
+
+        if (Người dùng hủy thao tác?) then (Có)
+            stop
+        else (Không)
+            :Quay lại chỉnh sửa form ticket;
+        endif
+    endif
+
+else (Không)
+    :Nhấn nút Gửi ticket;
+endif
+
+|Hệ thống LMS|
+:Tiếp nhận yêu cầu gửi ticket;
+:Kiểm tra dữ liệu ticket;
+
+if (Đã chọn loại vấn đề?) then (Có)
+
+    if (Tiêu đề ticket hợp lệ?) then (Có)
+
+        if (Nội dung yêu cầu hợp lệ?) then (Có)
+
+            if (Thông tin khóa học hoặc đơn hàng hợp lệ?) then (Có)
+
+                if (Tệp đính kèm hợp lệ?) then (Có)
+                    :Xác nhận dữ liệu ticket hợp lệ;
+                else (Không)
+                    :Ghi nhận lỗi tệp đính kèm;
+                endif
+
+            else (Không)
+                :Ghi nhận lỗi thông tin khóa học hoặc đơn hàng;
+            endif
+
+        else (Không)
+            :Ghi nhận lỗi nội dung yêu cầu;
+        endif
+
+    else (Không)
+        :Ghi nhận lỗi tiêu đề ticket;
+    endif
+
+else (Không)
+    :Ghi nhận lỗi loại vấn đề;
+endif
+
+if (Có lỗi dữ liệu ticket?) then (Có)
+    :Trả về danh sách lỗi và giữ dữ liệu đã nhập;
+
+    |Người dùng|
+    :Xem thông báo lỗi;
+
+    if (Người dùng tiếp tục chỉnh sửa?) then (Có)
+        :Chỉnh sửa thông tin ticket;
+        :Nhấn nút Gửi ticket lại;
+
+        |Hệ thống LMS|
+        :Kiểm tra lại dữ liệu ticket;
+
+        if (Dữ liệu hợp lệ sau khi chỉnh sửa?) then (Có)
+            :Xác nhận dữ liệu ticket hợp lệ;
+        else (Không)
+            :Thông báo ticket vẫn còn lỗi;
+            stop
+        endif
+
+    else (Không)
+        :Hủy gửi ticket;
+        stop
+    endif
+
+else (Không)
+    :Tiếp tục tạo ticket;
+endif
+
+|Hệ thống LMS|
+:Sinh mã ticket hỗ trợ;
+
+fork
+    :Tạo bản ghi SupportTicket;
+    :Lưu người gửi ticket;
+    :Lưu loại vấn đề hỗ trợ;
+    :Lưu tiêu đề ticket;
+    :Lưu nội dung yêu cầu hỗ trợ;
+fork again
+    :Lưu thông tin khóa học liên quan nếu có;
+    :Lưu thông tin đơn hàng liên quan nếu có;
+fork again
+    :Lưu TicketAttachment nếu có tệp đính kèm;
+fork again
+    :Tạo TicketStatusHistory với trạng thái Open;
+end fork
+
+:Cập nhật trạng thái ticket là Open;
+:Gán mức ưu tiên mặc định cho ticket;
+
+if (Ticket thuộc nhóm cần ưu tiên cao?) then (Có)
+    :Cập nhật mức ưu tiên là High;
+else (Không)
+    :Giữ mức ưu tiên mặc định;
+endif
+
+fork
+    :Ghi log tạo ticket;
+fork again
+    :Tạo thông báo xác nhận trong hệ thống;
+fork again
+    |Email hoặc Notification Service|
+    :Gửi thông báo xác nhận đã tạo ticket;
+end fork
+
+|Hệ thống LMS|
+if (Gửi thông báo thành công?) then (Có)
+    :Ghi nhận trạng thái thông báo là Sent;
+else (Không)
+    :Ghi nhận trạng thái thông báo là Failed;
+    :Giữ ticket ở trạng thái Open;
+endif
+
+|Người dùng|
+:Nhận thông báo tạo ticket thành công;
+:Xem mã ticket hỗ trợ;
+:Xem trạng thái ticket là Open;
+
+stop
+@enduml

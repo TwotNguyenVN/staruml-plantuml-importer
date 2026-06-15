@@ -145,3 +145,6 @@ plan*.md
 
 # macOS
 .DS_Store
+
+# Test outputs
+test/test_output.txt

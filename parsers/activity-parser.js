@@ -19,6 +19,18 @@ function generateDiagram(diagram, text) {
   var stack = [];
   var currentLevel = 0;
   
+  function getOppositeGuard(g) {
+    if (!g) return "";
+    var gl = g.toLowerCase();
+    if (gl === "có" || gl === "yes" || gl === "y" || gl === "true") {
+      return (g.indexOf("Có") === 0 || g.indexOf("C") === 0) ? "Không" : "no";
+    }
+    if (gl === "không" || gl === "no" || gl === "n" || gl === "false") {
+      return (g.indexOf("Không") === 0 || g.indexOf("K") === 0) ? "Có" : "yes";
+    }
+    return "";
+  }
+
   // Helper to attach grid coordinates
   function addNode(node) {
     node.level = currentLevel++;
@@ -53,9 +65,7 @@ function generateDiagram(diagram, text) {
         parsedLanes.push(activeLaneName);
       }
       continue;
-    }
-    
-    // Parse Initial Node: start or (*)
+    }    // Parse Initial Node: start or (*)
     if (line.toLowerCase() === "start" || line === "(*)") {
       var initNode = {
         type: "UMLInitialNode",
@@ -69,12 +79,22 @@ function generateDiagram(diagram, text) {
       if (stack.length > 0) {
         var currentBlock = stack[stack.length - 1];
         if (currentBlock.lastNode) {
-          connections.push({ from: currentBlock.lastNode.id, to: initNode.id });
+          var guardVal = "";
+          if (currentBlock.pendingGuard) {
+            guardVal = currentBlock.pendingGuard;
+            currentBlock.pendingGuard = "";
+          }
+          connections.push({ from: currentBlock.lastNode.id, to: initNode.id, guard: guardVal });
         }
         currentBlock.lastNode = initNode;
       } else {
         if (generateDiagram.lastNodeGlobal) {
-          connections.push({ from: generateDiagram.lastNodeGlobal.id, to: initNode.id });
+          var guardVal = "";
+          if (generateDiagram.pendingGuardGlobal) {
+            guardVal = generateDiagram.pendingGuardGlobal;
+            generateDiagram.pendingGuardGlobal = "";
+          }
+          connections.push({ from: generateDiagram.lastNodeGlobal.id, to: initNode.id, guard: guardVal });
         }
         generateDiagram.lastNodeGlobal = initNode;
       }
@@ -94,12 +114,22 @@ function generateDiagram(diagram, text) {
       if (stack.length > 0) {
         var currentBlock = stack[stack.length - 1];
         if (currentBlock.lastNode) {
-          connections.push({ from: currentBlock.lastNode.id, to: finalNode.id });
+          var guardVal = "";
+          if (currentBlock.pendingGuard) {
+            guardVal = currentBlock.pendingGuard;
+            currentBlock.pendingGuard = "";
+          }
+          connections.push({ from: currentBlock.lastNode.id, to: finalNode.id, guard: guardVal });
         }
         currentBlock.lastNode = null; // branch ends
       } else {
         if (generateDiagram.lastNodeGlobal) {
-          connections.push({ from: generateDiagram.lastNodeGlobal.id, to: finalNode.id });
+          var guardVal = "";
+          if (generateDiagram.pendingGuardGlobal) {
+            guardVal = generateDiagram.pendingGuardGlobal;
+            generateDiagram.pendingGuardGlobal = "";
+          }
+          connections.push({ from: generateDiagram.lastNodeGlobal.id, to: finalNode.id, guard: guardVal });
         }
         generateDiagram.lastNodeGlobal = null;
       }
@@ -131,7 +161,12 @@ function generateDiagram(diagram, text) {
         currentBlock.lastNode = actionNode;
       } else {
         if (generateDiagram.lastNodeGlobal) {
-          connections.push({ from: generateDiagram.lastNodeGlobal.id, to: actionNode.id });
+          connections.push({ 
+            from: generateDiagram.lastNodeGlobal.id, 
+            to: actionNode.id,
+            guard: generateDiagram.pendingGuardGlobal || ""
+          });
+          generateDiagram.pendingGuardGlobal = "";
         }
         generateDiagram.lastNodeGlobal = actionNode;
       }
@@ -154,19 +189,30 @@ function generateDiagram(diagram, text) {
       
       // Connect to last node
       var prevNode = null;
+      var parentBlock = null;
       if (stack.length > 0) {
-        prevNode = stack[stack.length - 1].lastNode;
+        parentBlock = stack[stack.length - 1];
+        prevNode = parentBlock.lastNode;
       } else {
         prevNode = generateDiagram.lastNodeGlobal;
       }
       
       if (prevNode) {
-        connections.push({ from: prevNode.id, to: decNode.id });
+        var guardVal = "";
+        if (parentBlock && parentBlock.pendingGuard) {
+          guardVal = parentBlock.pendingGuard;
+          parentBlock.pendingGuard = "";
+        } else if (generateDiagram.pendingGuardGlobal) {
+          guardVal = generateDiagram.pendingGuardGlobal;
+          generateDiagram.pendingGuardGlobal = "";
+        }
+        connections.push({ from: prevNode.id, to: decNode.id, guard: guardVal });
       }
       
       stack.push({
         type: "if",
         decisionNode: decNode,
+        thenGuard: thenBranchGuard || "",
         thenBranchTail: null,
         elseBranchTail: null,
         lastNode: decNode,
@@ -183,6 +229,8 @@ function generateDiagram(diagram, text) {
       if (stack.length > 0 && stack[stack.length - 1].type === "if") {
         var currentBlock = stack[stack.length - 1];
         currentBlock.thenBranchTail = currentBlock.lastNode;
+        currentBlock.thenBranchGuard = currentBlock.pendingGuard || "";
+        currentBlock.hasElse = true;
         currentBlock.lastNode = currentBlock.decisionNode;
         currentBlock.pendingGuard = matchElse[1] ? matchElse[1].trim() : "";
         
@@ -197,14 +245,22 @@ function generateDiagram(diagram, text) {
         var currentBlock = stack.pop();
         
         var thenTail, elseTail;
-        if (currentBlock.thenBranchTail === null) {
+        var thenGuard = "";
+        var elseGuard = "";
+        if (!currentBlock.hasElse) {
             // No else block was present
             thenTail = currentBlock.lastNode;
             elseTail = currentBlock.decisionNode;
+            
+            thenGuard = currentBlock.pendingGuard || "";
+            elseGuard = getOppositeGuard(currentBlock.thenGuard) || "no";
         } else {
             // Else block was present
             thenTail = currentBlock.thenBranchTail;
             elseTail = currentBlock.lastNode;
+            
+            thenGuard = currentBlock.thenBranchGuard || "";
+            elseGuard = currentBlock.pendingGuard || "";
         }
         
         currentLevel = Math.max(currentLevel, currentBlock.maxLevel || currentLevel);
@@ -229,12 +285,22 @@ function generateDiagram(diagram, text) {
         if (!connectThen && connectElse) {
              // Only else continues
              setLastNode(elseTail);
+             if (stack.length > 0) {
+                 stack[stack.length - 1].pendingGuard = elseGuard;
+             } else {
+                 generateDiagram.pendingGuardGlobal = elseGuard;
+             }
              continue;
         }
         
         if (connectThen && !connectElse) {
              // Only then continues
              setLastNode(thenTail);
+             if (stack.length > 0) {
+                 stack[stack.length - 1].pendingGuard = thenGuard;
+             } else {
+                 generateDiagram.pendingGuardGlobal = thenGuard;
+             }
              continue;
         }
         
@@ -247,8 +313,8 @@ function generateDiagram(diagram, text) {
         };
         addNode(mergeNode);
         
-        connections.push({ from: thenTail.id, to: mergeNode.id });
-        connections.push({ from: elseTail.id, to: mergeNode.id });
+        connections.push({ from: thenTail.id, to: mergeNode.id, guard: thenGuard });
+        connections.push({ from: elseTail.id, to: mergeNode.id, guard: elseGuard });
         
         setLastNode(mergeNode);
       }
@@ -265,9 +331,18 @@ function generateDiagram(diagram, text) {
       };
       addNode(forkNode);
       
-      var prevNode = stack.length > 0 ? stack[stack.length - 1].lastNode : generateDiagram.lastNodeGlobal;
+      var parentBlock = stack.length > 0 ? stack[stack.length - 1] : null;
+      var prevNode = parentBlock ? parentBlock.lastNode : generateDiagram.lastNodeGlobal;
       if (prevNode) {
-        connections.push({ from: prevNode.id, to: forkNode.id });
+        var guardVal = "";
+        if (parentBlock && parentBlock.pendingGuard) {
+          guardVal = parentBlock.pendingGuard;
+          parentBlock.pendingGuard = "";
+        } else if (generateDiagram.pendingGuardGlobal) {
+          guardVal = generateDiagram.pendingGuardGlobal;
+          generateDiagram.pendingGuardGlobal = "";
+        }
+        connections.push({ from: prevNode.id, to: forkNode.id, guard: guardVal });
       }
       
       stack.push({
@@ -326,27 +401,39 @@ function generateDiagram(diagram, text) {
       }
       continue;
     }
-
+ 
     // Parse Repeat: repeat
     if (line.toLowerCase() === "repeat") {
       var repeatMerge = { type: "UMLMergeNode", id: "merge_" + i, name: "Repeat", lane: activeLaneName };
-      var prevRep = stack.length > 0 ? stack[stack.length - 1].lastNode : generateDiagram.lastNodeGlobal;
+      var parentBlock = stack.length > 0 ? stack[stack.length - 1] : null;
+      var prevRep = parentBlock ? parentBlock.lastNode : generateDiagram.lastNodeGlobal;
       addNode(repeatMerge);
-      if (prevRep) connections.push({ from: prevRep.id, to: repeatMerge.id });
+      if (prevRep) {
+        var guardVal = "";
+        if (parentBlock && parentBlock.pendingGuard) {
+          guardVal = parentBlock.pendingGuard;
+          parentBlock.pendingGuard = "";
+        } else if (generateDiagram.pendingGuardGlobal) {
+          guardVal = generateDiagram.pendingGuardGlobal;
+          generateDiagram.pendingGuardGlobal = "";
+        }
+        connections.push({ from: prevRep.id, to: repeatMerge.id, guard: guardVal });
+      }
       stack.push({ type: "repeat", mergeNode: repeatMerge, lastNode: repeatMerge, maxLevel: currentLevel });
       continue;
     }
     
-    // Parse Repeat While: repeat while (cond)
-    var matchRepeatWhile = line.match(/^repeat\s*while\s*(?:\(([^)]+)\))?\s*$/i);
+    // Parse Repeat While: repeat while (cond) is (label)
+    var matchRepeatWhile = line.match(/^repeat\s*while\s*(?:\(([^)]+)\))?(?:\s+is\s*\(([^)]+)\))?\s*$/i);
     if (matchRepeatWhile) {
       if (stack.length > 0 && stack[stack.length - 1].type === "repeat") {
         var currentBlock = stack.pop();
         var cond = matchRepeatWhile[1] ? matchRepeatWhile[1].trim() : "";
+        var loopGuard = matchRepeatWhile[2] ? matchRepeatWhile[2].trim() : "yes";
         var repeatDec = { type: "UMLDecisionNode", id: "dec_" + i, name: cond, lane: activeLaneName };
         addNode(repeatDec);
         if (currentBlock.lastNode) connections.push({ from: currentBlock.lastNode.id, to: repeatDec.id });
-        connections.push({ from: repeatDec.id, to: currentBlock.mergeNode.id, guard: "yes" }); // loop back
+        connections.push({ from: repeatDec.id, to: currentBlock.mergeNode.id, guard: loopGuard }); // loop back
         
         if (stack.length > 0) {
           stack[stack.length - 1].lastNode = repeatDec;
@@ -357,38 +444,64 @@ function generateDiagram(diagram, text) {
       }
       continue;
     }
-
-    // Parse While: while (cond)
-    var matchWhile = line.match(/^while\s*(?:\(([^)]+)\))?\s*$/i);
+ 
+    // Parse While: while (cond) is (label)
+    var matchWhile = line.match(/^while\s*\(([^)]+)\)(?:\s+is\s*\(([^)]+)\))?\s*$/i);
     if (matchWhile) {
       var whileMerge = { type: "UMLMergeNode", id: "merge_" + i, name: "While", lane: activeLaneName };
-      var cond2 = matchWhile[1] ? matchWhile[1].trim() : "";
+      var cond2 = matchWhile[1].trim();
+      var bodyGuard = matchWhile[2] ? matchWhile[2].trim() : "yes";
       var whileDec = { type: "UMLDecisionNode", id: "dec_" + i, name: cond2, lane: activeLaneName };
       
-      var prev2 = stack.length > 0 ? stack[stack.length - 1].lastNode : generateDiagram.lastNodeGlobal;
+      var parentBlock = stack.length > 0 ? stack[stack.length - 1] : null;
+      var prev2 = parentBlock ? parentBlock.lastNode : generateDiagram.lastNodeGlobal;
       addNode(whileMerge);
       addNode(whileDec);
       
-      if (prev2) connections.push({ from: prev2.id, to: whileMerge.id });
+      if (prev2) {
+        var guardVal = "";
+        if (parentBlock && parentBlock.pendingGuard) {
+          guardVal = parentBlock.pendingGuard;
+          parentBlock.pendingGuard = "";
+        } else if (generateDiagram.pendingGuardGlobal) {
+          guardVal = generateDiagram.pendingGuardGlobal;
+          generateDiagram.pendingGuardGlobal = "";
+        }
+        connections.push({ from: prev2.id, to: whileMerge.id, guard: guardVal });
+      }
       connections.push({ from: whileMerge.id, to: whileDec.id });
       
-      stack.push({ type: "while", mergeNode: whileMerge, decisionNode: whileDec, lastNode: whileDec, pendingGuard: "yes", maxLevel: currentLevel });
+      stack.push({ type: "while", mergeNode: whileMerge, decisionNode: whileDec, lastNode: whileDec, pendingGuard: bodyGuard, maxLevel: currentLevel });
       continue;
     }
     
-    // Parse Endwhile: endwhile
-    if (line.toLowerCase() === "endwhile" || line.toLowerCase() === "end while") {
+    // Parse Endwhile: endwhile (label)
+    var matchEndwhile = line.match(/^(?:endwhile|end\s+while)(?:\s*\(([^)]+)\))?\s*$/i);
+    if (matchEndwhile) {
       if (stack.length > 0 && stack[stack.length - 1].type === "while") {
         var currentBlock = stack.pop();
+        var outGuard = matchEndwhile[1] ? matchEndwhile[1].trim() : "no";
         if (currentBlock.lastNode) {
           connections.push({ from: currentBlock.lastNode.id, to: currentBlock.mergeNode.id });
         }
         if (stack.length > 0) {
           stack[stack.length - 1].lastNode = currentBlock.decisionNode;
-          stack[stack.length - 1].pendingGuard = "no";
+          stack[stack.length - 1].pendingGuard = outGuard;
         } else {
           generateDiagram.lastNodeGlobal = currentBlock.decisionNode;
         }
+      }
+      continue;
+    }
+ 
+    // Parse Outward Guard: -> guard;
+    var matchOutGuard = line.match(/^->\s*([^;]+);?$/);
+    if (matchOutGuard) {
+      var guardText = matchOutGuard[1].trim();
+      if (stack.length > 0) {
+        stack[stack.length - 1].pendingGuard = guardText;
+      } else {
+        generateDiagram.pendingGuardGlobal = guardText;
       }
       continue;
     }
@@ -635,6 +748,9 @@ function generateDiagram(diagram, text) {
           if (conn.guard) {
             model.guard = conn.guard;
           }
+        },
+        viewInitializer: function (view) {
+          view.lineStyle = 1; // Rectilinear
         }
       });
     } catch (connErr) {
