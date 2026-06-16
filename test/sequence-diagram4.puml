@@ -1,0 +1,207 @@
+@startuml
+title Sequence Diagram - UC2-SUP-01 Gửi ticket hỗ trợ
+
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam wrapWidth 180
+
+actor "Người dùng" as User
+boundary "Giao diện LMS" as UI
+control "AuthService" as AuthService
+control "SupportTicketController" as TicketController
+control "SupportTicketService" as TicketService
+control "AttachmentService" as AttachmentService
+control "NotificationService" as NotificationService
+database "SupportTicketRepository" as TicketRepo
+database "TicketAttachmentRepository" as AttachmentRepo
+database "TicketStatusHistoryRepository" as StatusHistoryRepo
+database "AuditLogRepository" as AuditLogRepo
+participant "Email hoặc Notification Service" as ExternalNotification
+
+User -> UI: Truy cập chức năng Gửi ticket hỗ trợ
+UI -> AuthService: Kiểm tra trạng thái đăng nhập
+
+alt Người dùng đã đăng nhập
+    AuthService --> UI: Phiên đăng nhập hợp lệ
+    UI --> User: Hiển thị form gửi ticket hỗ trợ
+else Người dùng chưa đăng nhập
+    AuthService --> UI: Phiên đăng nhập không hợp lệ
+    UI --> User: Yêu cầu đăng nhập
+
+    User -> UI: Nhập thông tin đăng nhập
+    UI -> AuthService: Gửi thông tin đăng nhập
+    AuthService -> AuthService: Xác thực thông tin đăng nhập
+
+    alt Đăng nhập thành công
+        AuthService --> UI: Trả về phiên đăng nhập hợp lệ
+        UI --> User: Hiển thị form gửi ticket hỗ trợ
+    else Đăng nhập thất bại
+        AuthService --> UI: Trả về lỗi đăng nhập
+        UI --> User: Thông báo đăng nhập thất bại
+    end
+end
+
+User -> UI: Chọn loại vấn đề hỗ trợ
+User -> UI: Nhập tiêu đề ticket
+User -> UI: Nhập nội dung yêu cầu hỗ trợ
+
+opt Vấn đề liên quan đến khóa học
+    User -> UI: Chọn hoặc nhập mã khóa học
+end
+
+opt Vấn đề liên quan đến đơn hàng hoặc thanh toán
+    User -> UI: Chọn hoặc nhập mã đơn hàng
+    User -> UI: Nhập mã giao dịch nếu có
+end
+
+opt Người dùng muốn đính kèm minh chứng
+    loop Với mỗi tệp minh chứng
+        User -> UI: Chọn tệp minh chứng
+        UI -> AttachmentService: Kiểm tra tệp minh chứng
+        AttachmentService -> AttachmentService: Kiểm tra định dạng dung lượng và bảo mật
+
+        alt Tệp minh chứng hợp lệ
+            AttachmentService --> UI: Tệp hợp lệ
+            UI -> AttachmentService: Tạm lưu tệp minh chứng
+            AttachmentService -> AttachmentRepo: Lưu metadata tệp tạm
+            AttachmentRepo --> AttachmentService: Lưu metadata thành công
+            AttachmentService --> UI: Tạm lưu tệp thành công
+            UI --> User: Hiển thị tệp đã đính kèm
+        else Tệp minh chứng không hợp lệ
+            AttachmentService --> UI: Tệp không hợp lệ
+            UI --> User: Thông báo tệp minh chứng không hợp lệ
+        end
+    end
+end
+
+alt Người dùng chọn lưu nháp
+    User -> UI: Nhấn nút Lưu nháp
+    UI -> TicketController: Gửi yêu cầu lưu nháp ticket
+    TicketController -> TicketService: Lưu nháp ticket
+    TicketService -> TicketService: Kiểm tra dữ liệu tối thiểu để lưu nháp
+
+    alt Đủ dữ liệu tối thiểu
+        par Lưu thông tin ticket nháp
+            TicketService -> TicketRepo: Tạo hoặc cập nhật bản ghi ticket nháp
+            TicketRepo --> TicketService: Lưu ticket nháp thành công
+        else Lưu tệp minh chứng tạm nếu có
+            TicketService -> AttachmentService: Lưu tệp minh chứng tạm nếu có
+            AttachmentService -> AttachmentRepo: Gắn tệp tạm với ticket nháp
+            AttachmentRepo --> AttachmentService: Gắn tệp thành công
+            AttachmentService --> TicketService: Lưu tệp tạm thành công
+        else Ghi thời điểm lưu nháp
+            TicketService -> TicketRepo: Ghi thời điểm lưu nháp
+            TicketRepo --> TicketService: Cập nhật thời điểm thành công
+        end
+
+        TicketService -> TicketRepo: Cập nhật trạng thái ticket là Draft
+        TicketRepo --> TicketService: Cập nhật trạng thái thành công
+        TicketService --> TicketController: Lưu nháp thành công
+        TicketController --> UI: Trả về kết quả lưu nháp thành công
+        UI --> User: Thông báo đã lưu nháp ticket
+
+    else Không đủ dữ liệu tối thiểu
+        TicketService --> TicketController: Trả về lỗi thiếu dữ liệu
+        TicketController --> UI: Trả về danh sách lỗi
+        UI --> User: Thông báo thiếu dữ liệu để lưu nháp
+
+        alt Người dùng hủy thao tác
+            User -> UI: Hủy thao tác
+            UI --> User: Kết thúc tạo ticket
+        else Người dùng tiếp tục chỉnh sửa
+            User -> UI: Bổ sung thông tin ticket
+        end
+    end
+
+else Người dùng chọn gửi ticket
+    User -> UI: Nhấn nút Gửi ticket
+    UI -> TicketController: Gửi yêu cầu tạo ticket
+    TicketController -> TicketService: Tạo ticket hỗ trợ
+    TicketService -> TicketService: Kiểm tra dữ liệu ticket
+
+    alt Có lỗi dữ liệu ticket
+        TicketService --> TicketController: Trả về danh sách lỗi dữ liệu
+        TicketController --> UI: Trả về lỗi tạo ticket
+        UI --> User: Hiển thị lỗi và giữ dữ liệu đã nhập
+
+        alt Người dùng tiếp tục chỉnh sửa
+            User -> UI: Chỉnh sửa thông tin ticket
+            User -> UI: Nhấn nút Gửi ticket lại
+            UI -> TicketController: Gửi lại yêu cầu tạo ticket
+            TicketController -> TicketService: Kiểm tra lại dữ liệu ticket
+
+            alt Dữ liệu hợp lệ sau khi chỉnh sửa
+                TicketService -> TicketService: Xác nhận dữ liệu ticket hợp lệ
+            else Dữ liệu vẫn còn lỗi
+                TicketService --> TicketController: Trả về lỗi còn tồn tại
+                TicketController --> UI: Trả về lỗi tạo ticket
+                UI --> User: Thông báo ticket vẫn còn lỗi
+            end
+        else Người dùng hủy gửi ticket
+            User -> UI: Hủy gửi ticket
+            UI --> User: Kết thúc tạo ticket
+        end
+
+    else Dữ liệu ticket hợp lệ
+        TicketService -> TicketService: Sinh mã ticket hỗ trợ
+
+        par Tạo bản ghi SupportTicket
+            TicketService -> TicketRepo: Tạo bản ghi SupportTicket
+            TicketRepo --> TicketService: Trả về ticketId
+        else Lưu thông tin liên quan
+            TicketService -> TicketRepo: Lưu thông tin khóa học hoặc đơn hàng nếu có
+            TicketRepo --> TicketService: Lưu thông tin liên quan thành công
+        else Lưu tệp đính kèm
+            TicketService -> AttachmentService: Lưu TicketAttachment nếu có
+            AttachmentService -> AttachmentRepo: Lưu TicketAttachment
+            AttachmentRepo --> AttachmentService: Lưu attachment thành công
+            AttachmentService --> TicketService: Lưu attachment hoàn tất
+        else Tạo lịch sử trạng thái
+            TicketService -> StatusHistoryRepo: Tạo TicketStatusHistory với trạng thái Open
+            StatusHistoryRepo --> TicketService: Tạo lịch sử trạng thái thành công
+        end
+
+        TicketService -> TicketRepo: Cập nhật trạng thái ticket là Open
+        TicketRepo --> TicketService: Cập nhật trạng thái thành công
+        TicketService -> TicketService: Gán mức ưu tiên mặc định
+
+        alt Ticket thuộc nhóm cần ưu tiên cao
+            TicketService -> TicketRepo: Cập nhật mức ưu tiên là High
+            TicketRepo --> TicketService: Cập nhật mức ưu tiên thành công
+        else Ticket không thuộc nhóm cần ưu tiên cao
+            TicketService -> TicketRepo: Giữ mức ưu tiên mặc định
+            TicketRepo --> TicketService: Giữ mức ưu tiên thành công
+        end
+
+        par Ghi log tạo ticket
+            TicketService -> AuditLogRepo: Ghi log tạo ticket
+            AuditLogRepo --> TicketService: Ghi log thành công
+        else Tạo thông báo trong hệ thống
+            TicketService -> NotificationService: Tạo thông báo xác nhận trong hệ thống
+            NotificationService --> TicketService: Tạo thông báo thành công
+        else Gửi thông báo bên ngoài
+            TicketService -> ExternalNotification: Gửi email hoặc thông báo xác nhận
+            ExternalNotification --> TicketService: Trả về kết quả gửi thông báo
+        end
+
+        alt Gửi thông báo thành công
+            TicketService -> NotificationService: Ghi nhận trạng thái thông báo là Sent
+            NotificationService --> TicketService: Cập nhật trạng thái thành công
+        else Gửi thông báo thất bại
+            TicketService -> NotificationService: Ghi nhận trạng thái thông báo là Failed
+            NotificationService --> TicketService: Cập nhật trạng thái thất bại
+            TicketService -> TicketRepo: Giữ ticket ở trạng thái Open
+            TicketRepo --> TicketService: Ticket vẫn hợp lệ
+        end
+
+        TicketService --> TicketController: Tạo ticket thành công
+        TicketController --> UI: Trả về mã ticket và trạng thái Open
+        UI --> User: Thông báo tạo ticket thành công
+        UI --> User: Hiển thị mã ticket hỗ trợ
+        UI --> User: Hiển thị trạng thái ticket là Open
+    end
+end
+
+@enduml
