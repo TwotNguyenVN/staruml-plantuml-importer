@@ -16,6 +16,9 @@ function generateDiagram(diagram, text) {
   var nodes = [];
   var connections = [];
   
+  var explicitNodes = [];
+  var explicitConns = [];
+  
   var stack = [];
   var currentLevel = 0;
   
@@ -65,7 +68,38 @@ function generateDiagram(diagram, text) {
         parsedLanes.push(activeLaneName);
       }
       continue;
-    }    // Parse Initial Node: start or (*)
+    }    
+    
+    // Parse Explicit Node (Rectangle as Action)
+    var matchRect = line.match(/^\s*rectangle\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))\s+as\s+([a-zA-Z0-9_]+)/i);
+    if (matchRect) {
+      var nodeName = matchRect[1] || matchRect[2];
+      var nodeId = matchRect[3];
+      explicitNodes.push({
+        id: nodeId,
+        name: nodeName.replace(/\\n/g, "\n")
+      });
+      continue;
+    }
+
+    // Parse Explicit Connections: A -down- B or A -[hidden]right- B
+    var matchConn = line.match(/^([a-zA-Z0-9_]+)\s+-(?:\[(hidden)\])?(up|down|left|right)?-\s+([a-zA-Z0-9_]+)/i);
+    if (matchConn) {
+      var fromNode = matchConn[1];
+      var isHidden = matchConn[2] === "hidden";
+      var direction = matchConn[3] ? matchConn[3].toLowerCase() : "down";
+      var toNode = matchConn[4];
+      
+      explicitConns.push({
+        from: fromNode,
+        to: toNode,
+        hidden: isHidden,
+        direction: direction
+      });
+      continue;
+    }
+
+    // Parse Initial Node: start or (*)
     if (line.toLowerCase() === "start" || line === "(*)") {
       var initNode = {
         type: "UMLInitialNode",
@@ -509,6 +543,105 @@ function generateDiagram(diagram, text) {
   
   // Clean up global last node
   generateDiagram.lastNodeGlobal = null;
+  
+  // Handle Explicit BFD Mode (Rectangles and Arrows)
+  if (explicitNodes.length > 0) {
+     var grid = {}; 
+     grid[explicitNodes[0].id] = {x: 0, y: 0};
+     var resolved = 1;
+     var maxIter = explicitConns.length * 2 + 10;
+     while(resolved < explicitNodes.length && maxIter > 0) {
+        maxIter--;
+        explicitConns.forEach(function(conn) {
+           if (grid[conn.from]) {
+              if (!grid[conn.to]) {
+                 grid[conn.to] = { x: grid[conn.from].x, y: grid[conn.from].y };
+                 resolved++;
+              }
+              if (conn.direction === "right") grid[conn.to].x = grid[conn.from].x + 1;
+              else if (conn.direction === "left") grid[conn.to].x = grid[conn.from].x - 1;
+              else if (conn.direction === "down" || !conn.direction) grid[conn.to].y = grid[conn.from].y + 1;
+              else if (conn.direction === "up") grid[conn.to].y = grid[conn.from].y - 1;
+           } else if (grid[conn.to]) {
+              if (!grid[conn.from]) {
+                 grid[conn.from] = { x: grid[conn.to].x, y: grid[conn.to].y };
+                 resolved++;
+              }
+              if (conn.direction === "right") grid[conn.from].x = grid[conn.to].x - 1;
+              else if (conn.direction === "left") grid[conn.from].x = grid[conn.to].x + 1;
+              else if (conn.direction === "down" || !conn.direction) grid[conn.from].y = grid[conn.to].y - 1;
+              else if (conn.direction === "up") grid[conn.from].y = grid[conn.to].y + 1;
+           }
+        });
+     }
+
+     var minX = 0, minY = 0;
+     explicitNodes.forEach(function(n) {
+        if (!grid[n.id]) grid[n.id] = {x: 0, y: 0};
+        if (grid[n.id].x < minX) minX = grid[n.id].x;
+        if (grid[n.id].y < minY) minY = grid[n.id].y;
+     });
+
+     var gridCellW = 200;
+     var gridCellH = 150;
+     var offsetX = 100;
+     var offsetY = 100;
+
+     var parentModelExp = diagram._parent || app.project.getProject();
+     var activityModelExp = parentModelExp;
+     if (parentModelExp.getClassName() !== "UMLActivity") {
+        var existingActExp = parentModelExp.ownedElements.find(function(el) { return el.getClassName() === "UMLActivity"; });
+        if (existingActExp) { activityModelExp = existingActExp; }
+        else {
+           activityModelExp = app.factory.createModel({
+              id: "UMLActivity", parent: parentModelExp,
+              modelInitializer: function(m) { m.name = "ActivityContext"; }
+           });
+        }
+     }
+
+     var expElementsMap = {};
+
+     explicitNodes.forEach(function(n) {
+        var g = grid[n.id];
+        var posX = (g.x - minX) * gridCellW + offsetX;
+        var posY = (g.y - minY) * gridCellH + offsetY;
+        
+        var view = app.factory.createModelAndView({
+           id: "UMLAction",
+           parent: activityModelExp,
+           diagram: diagram,
+           modelInitializer: function(m) { m.name = n.name; },
+           viewInitializer: function(v) {
+              v.left = posX;
+              v.top = posY;
+              v.width = 160;
+              v.height = 80;
+           }
+        });
+        if (view) expElementsMap[n.id] = view;
+     });
+
+     explicitConns.forEach(function(c) {
+        if (c.hidden) return;
+        var t = expElementsMap[c.from];
+        var h = expElementsMap[c.to];
+        if (t && h) {
+           app.factory.createModelAndView({
+              id: "UMLControlFlow",
+              parent: activityModelExp,
+              diagram: diagram,
+              tailView: t,
+              headView: h,
+              tailModel: t.model,
+              headModel: h.model,
+              viewInitializer: function(v) { v.lineStyle = 1; }
+           });
+        }
+     });
+
+     return;
+  }
   
   // 2. Initialize Models and Views in StarUML
   var parentModel = diagram._parent || app.project.getProject();

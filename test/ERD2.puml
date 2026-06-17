@@ -1,0 +1,725 @@
+@startuml
+title ERD MVP — PharmaAssist AI Intelligence
+
+left to right direction
+
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundcorner 8
+
+skinparam entity {
+  BackgroundColor #FFFFFF
+  BorderColor #1F4E79
+  FontColor #000000
+}
+
+hide circle
+
+' =========================================================
+' 1. IDENTITY & ACCESS
+' =========================================================
+
+entity "user_profiles" as user_profiles {
+  * id : UUID <<PK>>
+  --
+  supabase_user_id : UUID <<UK>>
+  email : VARCHAR <<UK>>
+  full_name : VARCHAR
+  phone : VARCHAR
+  avatar_url : TEXT
+  is_active : BOOLEAN
+  must_change_password : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : UUID <<FK>>
+  updated_by : UUID <<FK>>
+  deactivated_at : TIMESTAMP
+  deactivated_by : UUID <<FK>>
+}
+
+entity "roles" as roles {
+  * id : UUID <<PK>>
+  --
+  key : VARCHAR <<UK>>
+  name : VARCHAR
+  description : TEXT
+  is_active : BOOLEAN
+  is_system : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "permissions" as permissions {
+  * id : UUID <<PK>>
+  --
+  key : VARCHAR <<UK>>
+  module : VARCHAR
+  action : VARCHAR
+  scope : VARCHAR
+  description : TEXT
+  is_active : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "user_roles" as user_roles {
+  * id : UUID <<PK>>
+  --
+  user_id : UUID <<FK>>
+  role_id : UUID <<FK>>
+  is_active : BOOLEAN
+  assigned_at : TIMESTAMP
+  assigned_by : UUID <<FK>>
+  removed_at : TIMESTAMP
+  removed_by : UUID <<FK>>
+}
+
+entity "role_permissions" as role_permissions {
+  * id : UUID <<PK>>
+  --
+  role_id : UUID <<FK>>
+  permission_id : UUID <<FK>>
+  is_active : BOOLEAN
+  created_at : TIMESTAMP
+  created_by : UUID <<FK>>
+}
+
+' =========================================================
+' 2. MEDICINE & ACTIVE INGREDIENT
+' =========================================================
+
+entity "medicines" as medicines {
+  * id : UUID <<PK>>
+  --
+  code : VARCHAR <<UK>>
+  name : VARCHAR
+  normalized_name : VARCHAR
+  description : TEXT
+  unit : VARCHAR
+  dosage_form : VARCHAR
+  strength_text : VARCHAR
+  selling_price : DECIMAL
+  min_stock : INTEGER
+  is_active : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : UUID <<FK>>
+  updated_by : UUID <<FK>>
+  deactivated_at : TIMESTAMP
+  deactivated_by : UUID <<FK>>
+}
+
+entity "active_ingredients" as active_ingredients {
+  * id : UUID <<PK>>
+  --
+  name : VARCHAR
+  normalized_name : VARCHAR <<UK>>
+  description : TEXT
+  is_active : BOOLEAN
+  source_note : TEXT
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : UUID <<FK>>
+  updated_by : UUID <<FK>>
+  deactivated_at : TIMESTAMP
+  deactivated_by : UUID <<FK>>
+}
+
+entity "medicine_ingredients" as medicine_ingredients {
+  * id : UUID <<PK>>
+  --
+  medicine_id : UUID <<FK>>
+  active_ingredient_id : UUID <<FK>>
+  amount_text : VARCHAR
+  sort_order : INTEGER
+  is_active : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : UUID <<FK>>
+  updated_by : UUID <<FK>>
+}
+
+' =========================================================
+' 3. SUPPLIER
+' =========================================================
+
+entity "suppliers" as suppliers {
+  * id : UUID <<PK>>
+  --
+  name : VARCHAR
+  normalized_name : VARCHAR
+  phone : VARCHAR
+  email : VARCHAR
+  address : TEXT
+  tax_code : VARCHAR
+  contact_person : VARCHAR
+  is_active : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : UUID <<FK>>
+  updated_by : UUID <<FK>>
+  deactivated_at : TIMESTAMP
+  deactivated_by : UUID <<FK>>
+}
+
+' =========================================================
+' 4. MEDICINE BATCH & INVENTORY
+' =========================================================
+
+entity "medicine_batches" as medicine_batches {
+  * id : UUID <<PK>>
+  --
+  medicine_id : UUID <<FK>>
+  batch_number : VARCHAR
+  normalized_batch_number : VARCHAR
+  expiry_date : DATE
+  quantity_received : INTEGER
+  quantity_remaining : INTEGER
+  unit_cost : DECIMAL
+  source_stock_import_detail_id : UUID <<FK>>
+  is_active : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : UUID <<FK>>
+  updated_by : UUID <<FK>>
+}
+
+' =========================================================
+' 5. STOCK IMPORT
+' =========================================================
+
+entity "stock_imports" as stock_imports {
+  * id : UUID <<PK>>
+  --
+  supplier_id : UUID <<FK>>
+  status : STOCK_IMPORT_STATUS
+  import_date : DATE
+  note : TEXT
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : UUID <<FK>>
+  updated_by : UUID <<FK>>
+  confirmed_at : TIMESTAMP
+  confirmed_by : UUID <<FK>>
+  cancelled_at : TIMESTAMP
+  cancelled_by : UUID <<FK>>
+  cancel_reason : TEXT
+}
+
+entity "stock_import_details" as stock_import_details {
+  * id : UUID <<PK>>
+  --
+  stock_import_id : UUID <<FK>>
+  medicine_id : UUID <<FK>>
+  batch_number : VARCHAR
+  normalized_batch_number : VARCHAR
+  expiry_date : DATE
+  quantity : INTEGER
+  unit_cost : DECIMAL
+  created_batch_id : UUID <<FK>>
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' =========================================================
+' 6. INVENTORY ADJUSTMENT
+' =========================================================
+
+entity "inventory_adjustments" as inventory_adjustments {
+  * id : UUID <<PK>>
+  --
+  status : INVENTORY_ADJUSTMENT_STATUS
+  reason : TEXT
+  note : TEXT
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : UUID <<FK>>
+  updated_by : UUID <<FK>>
+  confirmed_at : TIMESTAMP
+  confirmed_by : UUID <<FK>>
+  cancelled_at : TIMESTAMP
+  cancelled_by : UUID <<FK>>
+}
+
+entity "inventory_adjustment_details" as inventory_adjustment_details {
+  * id : UUID <<PK>>
+  --
+  inventory_adjustment_id : UUID <<FK>>
+  medicine_batch_id : UUID <<FK>>
+  quantity_change : INTEGER
+  before_quantity : INTEGER
+  after_quantity : INTEGER
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' =========================================================
+' 7. SALES / ORDER
+' =========================================================
+
+entity "orders" as orders {
+  * id : UUID <<PK>>
+  --
+  order_number : VARCHAR <<UK>>
+  status : ORDER_STATUS
+  customer_id : UUID
+  customer_display_name : VARCHAR
+  subtotal_amount : DECIMAL
+  discount_amount : DECIMAL
+  total_amount : DECIMAL
+  note : TEXT
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : UUID <<FK>>
+  processed_by : UUID <<FK>>
+  paid_at : TIMESTAMP
+  cancelled_at : TIMESTAMP
+  cancelled_by : UUID <<FK>>
+  cancel_reason : TEXT
+}
+
+entity "order_items" as order_items {
+  * id : UUID <<PK>>
+  --
+  order_id : UUID <<FK>>
+  medicine_id : UUID <<FK>>
+  quantity : INTEGER
+  unit_price : DECIMAL
+  line_total : DECIMAL
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' =========================================================
+' 8. CHECKOUT / PAYMENT / INVOICE
+' =========================================================
+
+entity "order_item_batch_allocations" as order_item_batch_allocations {
+  * id : UUID <<PK>>
+  --
+  order_id : UUID <<FK>>
+  order_item_id : UUID <<FK>>
+  medicine_batch_id : UUID <<FK>>
+  quantity_allocated : INTEGER
+  expiry_date_snapshot : DATE
+  batch_number_snapshot : VARCHAR
+  created_at : TIMESTAMP
+  created_by : UUID <<FK>>
+}
+
+entity "payments" as payments {
+  * id : UUID <<PK>>
+  --
+  order_id : UUID <<FK>>
+  status : PAYMENT_STATUS
+  method : PAYMENT_METHOD
+  amount_due : DECIMAL
+  amount_tendered : DECIMAL
+  change_amount : DECIMAL
+  transaction_reference : VARCHAR
+  failure_reason : TEXT
+  processed_at : TIMESTAMP
+  processed_by : UUID <<FK>>
+  created_at : TIMESTAMP
+}
+
+entity "invoices" as invoices {
+  * id : UUID <<PK>>
+  --
+  invoice_number : VARCHAR <<UK>>
+  order_id : UUID <<FK>>
+  payment_id : UUID <<FK>>
+  customer_display_name : VARCHAR
+  subtotal_amount : DECIMAL
+  discount_amount : DECIMAL
+  total_amount : DECIMAL
+  issued_at : TIMESTAMP
+  issued_by : UUID <<FK>>
+  created_at : TIMESTAMP
+}
+
+entity "invoice_items" as invoice_items {
+  * id : UUID <<PK>>
+  --
+  invoice_id : UUID <<FK>>
+  order_item_id : UUID <<FK>>
+  medicine_id : UUID <<FK>>
+  medicine_name_snapshot : VARCHAR
+  unit_snapshot : VARCHAR
+  quantity : INTEGER
+  unit_price : DECIMAL
+  line_total : DECIMAL
+  created_at : TIMESTAMP
+}
+
+' =========================================================
+' 9. DRUG INTERACTION
+' =========================================================
+
+entity "drug_interactions" as drug_interactions {
+  * id : UUID <<PK>>
+  --
+  ingredient_a_id : UUID <<FK>>
+  ingredient_b_id : UUID <<FK>>
+  canonical_pair_key : VARCHAR <<UK>>
+  severity : INTERACTION_SEVERITY
+  description : TEXT
+  recommendation : TEXT
+  source : VARCHAR
+  source_version : VARCHAR
+  is_active : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : UUID <<FK>>
+  updated_by : UUID <<FK>>
+  deactivated_at : TIMESTAMP
+  deactivated_by : UUID <<FK>>
+}
+
+' =========================================================
+' 10. INTERACTION ALERT
+' =========================================================
+
+entity "interaction_alerts" as interaction_alerts {
+  * id : UUID <<PK>>
+  --
+  order_id : UUID <<FK>>
+  drug_interaction_id : UUID <<FK>>
+  ingredient_a_id : UUID <<FK>>
+  ingredient_b_id : UUID <<FK>>
+  severity : INTERACTION_SEVERITY
+  description_snapshot : TEXT
+  recommendation_snapshot : TEXT
+  is_active : BOOLEAN
+  display_count : INTEGER
+  first_displayed_at : TIMESTAMP
+  last_displayed_at : TIMESTAMP
+  acknowledged_by : UUID <<FK>>
+  acknowledged_at : TIMESTAMP
+  consultation_note : TEXT
+  consultation_note_by : UUID <<FK>>
+  consultation_note_at : TIMESTAMP
+  inactivated_at : TIMESTAMP
+  inactivation_reason : TEXT
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' =========================================================
+' 11. AI / PROMPT / AUDIT
+' =========================================================
+
+entity "prompt_templates" as prompt_templates {
+  * id : UUID <<PK>>
+  --
+  key : VARCHAR
+  version : VARCHAR
+  title : VARCHAR
+  template_text : TEXT
+  purpose : TEXT
+  status : PROMPT_STATUS
+  is_official : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  created_by : UUID <<FK>>
+  approved_at : TIMESTAMP
+  approved_by : UUID <<FK>>
+}
+
+entity "ai_provider_configs" as ai_provider_configs {
+  * id : UUID <<PK>>
+  --
+  provider_key : VARCHAR
+  model_name : VARCHAR
+  priority : INTEGER
+  is_enabled : BOOLEAN
+  timeout_ms : INTEGER
+  config_json : JSON
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  updated_by : UUID <<FK>>
+}
+
+entity "ai_audit_logs" as ai_audit_logs {
+  * id : UUID <<PK>>
+  --
+  user_id : UUID <<FK>>
+  action_type : AI_ACTION_TYPE
+  related_order_id : UUID <<FK>>
+  related_interaction_alert_id : UUID <<FK>>
+  prompt_template_id : UUID <<FK>>
+  prompt_version : VARCHAR
+  provider_requested : VARCHAR
+  provider_used : VARCHAR
+  model_used : VARCHAR
+  fallback_used : BOOLEAN
+  fallback_reason : TEXT
+  input_guardrail_status : GUARDRAIL_STATUS
+  output_guardrail_status : GUARDRAIL_STATUS
+  schema_validation_status : VARCHAR
+  latency_ms : INTEGER
+  request_summary : TEXT
+  response_summary : TEXT
+  error_code : VARCHAR
+  created_at : TIMESTAMP
+}
+
+' =========================================================
+' 12. GRAPH SYNC
+' =========================================================
+
+entity "graph_sync_outbox" as graph_sync_outbox {
+  * id : UUID <<PK>>
+  --
+  event_type : GRAPH_EVENT_TYPE
+  aggregate_type : VARCHAR
+  aggregate_id : UUID
+  source_version : INTEGER
+  payload : JSON
+  status : GRAPH_SYNC_STATUS
+  retry_count : INTEGER
+  next_retry_at : TIMESTAMP
+  last_error_code : VARCHAR
+  last_error_message : TEXT
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  processed_at : TIMESTAMP
+}
+
+entity "graph_sync_attempts" as graph_sync_attempts {
+  * id : UUID <<PK>>
+  --
+  outbox_id : UUID <<FK>>
+  attempt_number : INTEGER
+  status : GRAPH_SYNC_ATTEMPT_STATUS
+  started_at : TIMESTAMP
+  finished_at : TIMESTAMP
+  duration_ms : INTEGER
+  error_code : VARCHAR
+  error_message : TEXT
+  neo4j_operation_summary : TEXT
+  created_at : TIMESTAMP
+}
+
+entity "graph_projection_versions" as graph_projection_versions {
+  * id : UUID <<PK>>
+  --
+  aggregate_type : VARCHAR
+  aggregate_id : UUID
+  projected_source_version : INTEGER
+  is_active_projection : BOOLEAN
+  synced_at : TIMESTAMP
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' =========================================================
+' 13. SETTINGS / AUDIT / IDEMPOTENCY
+' =========================================================
+
+entity "system_settings" as system_settings {
+  * id : UUID <<PK>>
+  --
+  key : VARCHAR <<UK>>
+  value_json : JSON
+  value_type : VARCHAR
+  description : TEXT
+  is_active : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  updated_by : UUID <<FK>>
+}
+
+entity "audit_logs" as audit_logs {
+  * id : UUID <<PK>>
+  --
+  actor_user_id : UUID <<FK>>
+  action : VARCHAR
+  resource_type : VARCHAR
+  resource_id : UUID
+  result : VARCHAR
+  request_id : VARCHAR
+  ip_address : VARCHAR
+  user_agent : TEXT
+  summary : TEXT
+  metadata : JSON
+  error_code : VARCHAR
+  created_at : TIMESTAMP
+}
+
+entity "idempotency_records" as idempotency_records {
+  * id : UUID <<PK>>
+  --
+  idempotency_key : VARCHAR
+  user_id : UUID <<FK>>
+  operation : VARCHAR
+  request_hash : VARCHAR
+  status : IDEMPOTENCY_STATUS
+  resource_type : VARCHAR
+  resource_id : UUID
+  response_summary : TEXT
+  error_code : VARCHAR
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+  completed_at : TIMESTAMP
+}
+
+' =========================================================
+' RELATIONSHIPS — IDENTITY & ACCESS
+' =========================================================
+
+user_profiles ||--o{ user_roles : "has"
+roles ||--o{ user_roles : "assigned_to"
+
+roles ||--o{ role_permissions : "has"
+permissions ||--o{ role_permissions : "granted_by"
+
+user_profiles ||--o{ user_roles : "assigned_by"
+user_profiles ||--o{ role_permissions : "created_by"
+
+' =========================================================
+' RELATIONSHIPS — MEDICINE & INGREDIENT
+' =========================================================
+
+medicines ||--o{ medicine_ingredients : "contains"
+active_ingredients ||--o{ medicine_ingredients : "included_in"
+
+medicines ||--o{ medicine_batches : "has_batches"
+
+' =========================================================
+' RELATIONSHIPS — SUPPLIER / STOCK IMPORT
+' =========================================================
+
+suppliers ||--o{ stock_imports : "supplies"
+
+stock_imports ||--o{ stock_import_details : "has_details"
+medicines ||--o{ stock_import_details : "imported_medicine"
+
+stock_import_details ||--o| medicine_batches : "creates_batch"
+medicine_batches }o--|| stock_import_details : "source_detail"
+
+' =========================================================
+' RELATIONSHIPS — INVENTORY ADJUSTMENT
+' =========================================================
+
+inventory_adjustments ||--o{ inventory_adjustment_details : "has_details"
+medicine_batches ||--o{ inventory_adjustment_details : "adjusted_batch"
+
+' =========================================================
+' RELATIONSHIPS — ORDER / POS
+' =========================================================
+
+user_profiles ||--o{ orders : "created_by"
+orders ||--o{ order_items : "has_items"
+medicines ||--o{ order_items : "ordered_medicine"
+
+orders ||--o{ order_item_batch_allocations : "has_allocations"
+order_items ||--o{ order_item_batch_allocations : "allocated_from"
+medicine_batches ||--o{ order_item_batch_allocations : "deducted_batch"
+
+' =========================================================
+' RELATIONSHIPS — PAYMENT / INVOICE
+' =========================================================
+
+orders ||--o{ payments : "has_payment_attempts"
+user_profiles ||--o{ payments : "processed_by"
+
+orders ||--o| invoices : "generates"
+payments ||--o| invoices : "paid_by"
+
+invoices ||--o{ invoice_items : "has_items"
+order_items ||--o{ invoice_items : "snapshot_from"
+medicines ||--o{ invoice_items : "medicine_snapshot"
+
+' =========================================================
+' RELATIONSHIPS — DRUG INTERACTION / ALERT
+' =========================================================
+
+active_ingredients ||--o{ drug_interactions : "ingredient_a"
+active_ingredients ||--o{ drug_interactions : "ingredient_b"
+
+orders ||--o{ interaction_alerts : "has_alerts"
+drug_interactions ||--o{ interaction_alerts : "triggers"
+active_ingredients ||--o{ interaction_alerts : "alert_ingredient_a"
+active_ingredients ||--o{ interaction_alerts : "alert_ingredient_b"
+
+user_profiles ||--o{ interaction_alerts : "acknowledged_by"
+user_profiles ||--o{ interaction_alerts : "consultation_note_by"
+
+' =========================================================
+' RELATIONSHIPS — AI
+' =========================================================
+
+user_profiles ||--o{ prompt_templates : "created_or_approved"
+prompt_templates ||--o{ ai_audit_logs : "used_by"
+
+user_profiles ||--o{ ai_audit_logs : "performed_by"
+orders ||--o{ ai_audit_logs : "related_order"
+interaction_alerts ||--o{ ai_audit_logs : "related_alert"
+
+' =========================================================
+' RELATIONSHIPS — GRAPH SYNC
+' =========================================================
+
+graph_sync_outbox ||--o{ graph_sync_attempts : "has_attempts"
+
+' graph_projection_versions dùng aggregate_type + aggregate_id
+' nên không vẽ FK cứng tới từng bảng nguồn.
+
+' =========================================================
+' RELATIONSHIPS — SETTINGS / AUDIT / IDEMPOTENCY
+' =========================================================
+
+user_profiles ||--o{ system_settings : "updated_by"
+user_profiles ||--o{ audit_logs : "actor"
+user_profiles ||--o{ idempotency_records : "request_user"
+
+' =========================================================
+' NOTES
+' =========================================================
+
+note right of medicine_batches
+MedicineBatch là source of truth cho tồn kho.
+Không dùng bảng inventory aggregate làm nguồn chính.
+quantity_remaining chỉ thay đổi qua:
+1. Confirm Stock Import
+2. Confirm Inventory Adjustment
+3. Checkout FEFO allocation
+end note
+
+note bottom of orders
+Order MVP dùng trạng thái chính:
+DRAFT, PAID, CANCELLED.
+Checkout thất bại không làm mất Draft Order.
+end note
+
+note right of drug_interactions
+DrugInteraction Rule ở cấp:
+ActiveIngredient ↔ ActiveIngredient.
+Không dùng Medicine ↔ Medicine
+làm rule chính thức trong MVP.
+end note
+
+note right of interaction_alerts
+HIGH alert cần:
+1. acknowledged_by
+2. acknowledged_at
+3. consultation_note
+trước khi checkout.
+end note
+
+note bottom of graph_sync_outbox
+Neo4j chỉ là graph projection.
+PostgreSQL vẫn là source of truth.
+Graph Sync dùng outbox, attempts,
+projection versions để kiểm soát freshness.
+end note
+
+note bottom of ai_audit_logs
+AI Audit lưu metadata và summary.
+Không lưu raw PII.
+AI chỉ hỗ trợ tham khảo,
+không thay thế chuyên gia y tế.
+end note
+
+@enduml
