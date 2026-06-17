@@ -1,0 +1,66 @@
+@startuml
+top to bottom direction
+
+skinparam shadowing false
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 18
+skinparam linetype ortho
+
+skinparam rectangle {
+  BackgroundColor #F8FBFF
+  BorderColor #0B2F80
+  FontColor #0B2F80
+  FontStyle bold
+  RoundCorner 8
+}
+
+skinparam ArrowColor #0B2F80
+skinparam ArrowThickness 2
+
+title BFD mức 1 — Hệ thống LMS N18
+
+rectangle "LMS N18" as LMS
+
+rectangle "P1 Quản lý\ntài khoản và\nphân quyền" as P1
+rectangle "P2 Quản lý\ngiảng viên" as P2
+rectangle "P3 Quản lý\nkhóa học" as P3
+rectangle "P4 Kiểm duyệt\nnội dung" as P4
+rectangle "P5 Học tập\ntrực tuyến" as P5
+rectangle "P6 Thanh toán,\nđơn hàng, voucher\nvà hoàn tiền" as P6
+
+rectangle "P7 Tài chính,\ndoanh thu,\nđối soát và\nrút tiền" as P7
+rectangle "P8 Quản lý\nchứng chỉ" as P8
+rectangle "P9 Hỗ trợ\nkhách hàng và\nxử lý vi phạm" as P9
+rectangle "P10 Báo cáo\nvà thống kê" as P10
+rectangle "P11 Bảo mật video\nvà kiểm soát\ntruy cập nội dung" as P11
+
+LMS -down- P1
+LMS -down- P2
+LMS -down- P3
+LMS -down- P4
+LMS -down- P5
+LMS -down- P6
+LMS -down- P7
+LMS -down- P8
+LMS -down- P9
+LMS -down- P10
+LMS -down- P11
+
+P1 -[hidden]right- P2
+P2 -[hidden]right- P3
+P3 -[hidden]right- P4
+P4 -[hidden]right- P5
+P5 -[hidden]right- P6
+
+P7 -[hidden]right- P8
+P8 -[hidden]right- P9
+P9 -[hidden]right- P10
+P10 -[hidden]right- P11
+
+P1 -[hidden]down- P7
+P2 -[hidden]down- P8
+P3 -[hidden]down- P9
+P4 -[hidden]down- P10
+P5 -[hidden]down- P11
+
+@enduml
