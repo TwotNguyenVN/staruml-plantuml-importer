@@ -155,12 +155,30 @@ function generateDiagram(diagram, text) {
   
   // 3. Create Entity Models and Views
   var colsCount = Math.ceil(Math.sqrt(entities.length + 1));
+  var columnHeights = [];
+  for (var c = 0; c < colsCount; c++) {
+    columnHeights.push(100); // Initial Y offset
+  }
+
   entities.forEach(function (entity, index) {
-    var colIndex = index % colsCount;
-    var rowIndex = Math.floor(index / colsCount);
+    // Find the column with the minimum current height
+    var colIndex = 0;
+    var minHeight = columnHeights[0];
+    for (var i = 1; i < colsCount; i++) {
+      if (columnHeights[i] < minHeight) {
+        minHeight = columnHeights[i];
+        colIndex = i;
+      }
+    }
     
-    var posX = colIndex * 260 + 80;
-    var posY = rowIndex * 200 + 100;
+    var posX = colIndex * 450 + 80; // 450px column width to prevent wide entities overlapping
+    var posY = columnHeights[colIndex];
+    var height = 40 + (entity.columns.length * 25); // 25px per column to overestimate and be safe
+    
+    // Update column height for the next entity in this column
+    columnHeights[colIndex] += height + 120; // 120px vertical padding
+
+
     
     try {
       var view = app.factory.createModelAndView({

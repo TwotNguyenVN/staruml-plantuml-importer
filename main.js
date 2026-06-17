@@ -35,8 +35,9 @@ function detectDiagramType(code) {
   if (hasSequenceKeywords) return "UMLSequenceDiagram";
   if (/^\s*usecase\s+/im.test(code) || /^\s*\(/im.test(code)) return "UMLUseCaseDiagram";
   if (/^\s*(class|interface|abstract class|enum)\s+/im.test(code)) return "UMLClassDiagram";
-  if (/^\s*(start|stop|if\s*\(|:\w+;)/im.test(code)) return "UMLActivityDiagram";
-  if (/^\s*(state|\[\*\])/im.test(code)) return "UMLStatechartDiagram";
+  if (/^\s*(start\b|stop\b|if\s*\(|:\w+;)/im.test(code)) return "UMLActivityDiagram";
+  if (/^\s*rectangle\s+/im.test(code) && /-(?:\[hidden\])?(?:up|down|left|right)?-/im.test(code)) return "UMLActivityDiagram";
+  if (/^\s*(state\b|\[\*\])/im.test(code)) return "UMLStatechartDiagram";
   if (/^\s*actor\s+/im.test(code)) {
     if (/\.\.>[^>]/m.test(code) || /--[^>]/m.test(code)) return "UMLUseCaseDiagram";
     return "UMLSequenceDiagram";
