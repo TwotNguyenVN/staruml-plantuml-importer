@@ -37,32 +37,30 @@ A StarUML extension that imports **Use Case, Class, Sequence, Activity, State, a
 - Support for ERD columns (Primary Keys, Foreign Keys, Nullability) and crow's foot notation.
 - Compatible with **StarUML v7+**
 
-## 📦 Installation
+## 📦 Installation & Management
 
-### Quick Install
+This extension comes with a unified, cross-platform management script (`manage.js`) that handles installation, updates, and uninstallation across Windows, macOS, and Linux.
 
-#### Windows
-1. Download or clone this repository
-2. **Double-click** `scripts/install.bat`
-3. Restart StarUML
+**Requirements:** [Node.js](https://nodejs.org/) installed on your machine.
 
-#### macOS / Linux
-```bash
-chmod +x scripts/install.sh
-./scripts/install.sh
-```
+### Usage
 
-### Manual Installation
+Run the following commands in your terminal from the repository root:
 
-Copy the content of this repository (or the folder `staruml-plantuml-importer`) to:
+- **Install extension:**
+  ```bash
+  node manage.js install
+  ```
+- **Update extension:** (Pulls the latest code from GitHub and reinstalls)
+  ```bash
+  node manage.js update
+  ```
+- **Remove extension:**
+  ```bash
+  node manage.js clear
+  ```
 
-| OS      | Path                                                                   |
-|---------|------------------------------------------------------------------------|
-| Windows | `%APPDATA%\StarUML\extensions\user\staruml-plantuml-importer`           |
-| macOS   | `~/Library/Application Support/StarUML/extensions/user/staruml-plantuml-importer` |
-| Linux   | `~/.config/StarUML/extensions/user/staruml-plantuml-importer`           |
-
-Then restart StarUML.
+After installing or updating, restart StarUML.
 
 ## 🚀 How to Use
 
@@ -209,18 +207,11 @@ User ||--o{ Order
 
 ## 🗑️ Clean Uninstallation of StarUML (Windows & macOS)
 
-> **⚠️ WARNING:** The `clear.bat` and `clear.sh` scripts **DO NOT** just uninstall the extension. They will **COMPLETELY UNINSTALL** the StarUML application from your system and wipe all of its configurations, caches, extensions, and logs. Only use this if you want a fresh start or want to remove StarUML completely!
+> **⚠️ WARNING:** The following command **DOES NOT** just uninstall the extension. It will **COMPLETELY UNINSTALL** the StarUML application from your system and wipe all of its configurations, caches, extensions, and logs. Only use this if you want a fresh start or want to remove StarUML completely!
+> (The script will prompt for a `y/N` confirmation before proceeding).
 
-If you only want to uninstall the **PlantUML Importer Extension**, simply delete the `staruml-plantuml-importer` folder from your StarUML `extensions/user/` directory.
-
-#### Windows
-**Double-click** `scripts/clear.bat` or run it from command prompt.
-
-#### macOS
-Run:
 ```bash
-chmod +x scripts/clear.sh
-./scripts/clear.sh
+node manage.js clear-all
 ```
 
 ## 📄 License
