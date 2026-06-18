@@ -37,44 +37,30 @@ Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các
 - Hỗ trợ đầy đủ định nghĩa cột ERD (Khóa chính PK, Khóa ngoại FK, Nullable) và các chân quan hệ chân chim chuẩn xác.
 - Tương thích tốt với **StarUML v7+**.
 
-## 📦 Cài đặt
+## 📦 Cài đặt & Quản lý
 
-### Cài đặt nhanh
+Tiện ích này đi kèm với một script quản lý hợp nhất đa nền tảng (`manage.js`), tự động nhận diện hệ điều hành và xử lý cài đặt, cập nhật, cũng như gỡ cài đặt trên Windows, macOS và Linux.
 
-#### Windows
+**Yêu cầu:** Máy tính đã cài sẵn [Node.js](https://nodejs.org/).
 
-1. Tải về hoặc nhân bản (clone) kho lưu trữ này.
-2. **Nhấp đúp** vào file `scripts/install.bat`.
-3. Khởi động lại StarUML.
+### Cách sử dụng
 
-##### hoặc terminal tại thư mục
+Chạy các lệnh sau trong Terminal tại thư mục gốc của kho lưu trữ:
 
-Chạy lệnh sau trong Terminal:
+- **Cài đặt tiện ích:**
+  ```bash
+  node manage.js install
+  ```
+- **Cập nhật tiện ích:** (Tự động kéo code mới nhất từ GitHub về và cài đặt lại)
+  ```bash
+  node manage.js update
+  ```
+- **Gỡ tiện ích:** (Chỉ xóa tiện ích khỏi StarUML)
+  ```bash
+  node manage.js clear
+  ```
 
-```bash
-./scripts/install.bat
-```
-
-#### macOS / Linux
-
-Chạy lệnh sau trong Terminal:
-
-```bash
-chmod +x scripts/install.sh
-./scripts/install.sh
-```
-
-### Cài đặt thủ công
-
-Sao chép toàn bộ nội dung của kho lưu trữ này vào thư mục extension tương ứng của StarUML:
-
-| Hệ điều hành | Đường dẫn thư mục cài đặt                                                         |
-| :----------- | :-------------------------------------------------------------------------------- |
-| Windows      | `%APPDATA%\StarUML\extensions\user\staruml-plantuml-importer`                     |
-| macOS        | `~/Library/Application Support/StarUML/extensions/user/staruml-plantuml-importer` |
-| Linux        | `~/.config/StarUML/extensions/user/staruml-plantuml-importer`                     |
-
-Sau đó khởi động lại StarUML.
+Sau khi cài đặt hoặc cập nhật, vui lòng khởi động lại StarUML.
 
 ## 🚀 Cách sử dụng
 
@@ -223,21 +209,11 @@ User ||--o{ Order
 
 ## 🗑️ Gỡ cài đặt hoàn toàn StarUML (Windows & macOS)
 
-> **⚠️ CẢNH BÁO:** Các file `clear.bat` và `clear.sh` **KHÔNG PHẢI** dùng để gỡ mỗi tiện ích này. Chúng sẽ **GỠ CÀI ĐẶT HOÀN TOÀN** phần mềm StarUML khỏi máy tính của bạn, đồng thời xóa sạch toàn bộ cấu hình, cache, tiện ích mở rộng và log. Chỉ sử dụng khi bạn muốn cài lại từ đầu hoặc xóa hẳn StarUML!
-
-Nếu bạn chỉ muốn gỡ cài đặt **Tiện ích PlantUML Importer**, bạn chỉ cần xóa thư mục `staruml-plantuml-importer` nằm trong thư mục `extensions/user/` của StarUML là xong.
-
-#### Windows
-
-**Nhấp đúp** vào file `scripts/clear.bat` hoặc chạy nó qua Command Prompt.
-
-#### macOS
-
-Chạy lệnh sau:
+> **⚠️ CẢNH BÁO:** Lệnh sau đây **KHÔNG PHẢI** chỉ dùng để gỡ tiện ích. Nó sẽ **GỠ CÀI ĐẶT HOÀN TOÀN** phần mềm StarUML khỏi máy tính của bạn, đồng thời xóa sạch toàn bộ cấu hình, cache, tiện ích mở rộng và log. Chỉ sử dụng khi bạn muốn cài lại từ đầu hoặc xóa hẳn StarUML!
+> (Script sẽ yêu cầu bạn gõ `y/N` để xác nhận trước khi thực hiện).
 
 ```bash
-chmod +x scripts/clear.sh
-./scripts/clear.sh
+node manage.js clear-all
 ```
 
 ## 📄 Giấy phép
