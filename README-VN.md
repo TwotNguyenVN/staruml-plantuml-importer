@@ -45,8 +45,15 @@ Tiện ích này đi kèm với một script quản lý hợp nhất đa nền t
 
 ### Cách sử dụng
 
-Chạy các lệnh sau trong Terminal tại thư mục gốc của kho lưu trữ:
+Mở Terminal tại thư mục gốc của kho lưu trữ. Bạn có hai cách để sử dụng:
 
+#### 1. Chạy tương tác (Hiển thị Menu - Khuyên dùng)
+Gõ lệnh sau để mở menu tương tác đa chức năng và làm theo hướng dẫn trên màn hình:
+```bash
+node manage.js
+```
+
+#### 2. Chạy nhanh qua dòng lệnh
 - **Cài đặt tiện ích:**
   ```bash
   node manage.js install
@@ -60,7 +67,20 @@ Chạy các lệnh sau trong Terminal tại thư mục gốc của kho lưu tr�
   node manage.js clear
   ```
 
-Sau khi cài đặt hoặc cập nhật, vui lòng khởi động lại StarUML.
+#### 3. Chạy bằng Script hệ thống (Không cần cài Node.js)
+Nếu máy bạn không có Node.js, bạn có thể chạy trực tiếp các tệp kịch bản (script) có sẵn:
+
+**Dành cho Windows:**
+- **Cài đặt tiện ích:** Nhấp đúp chuột vào tệp `install.bat` hoặc chạy lệnh `.\install.bat` trong Command Prompt.
+
+**Dành cho macOS / Linux:**
+- **Cài đặt tiện ích:** Mở Terminal tại thư mục dự án và chạy:
+  ```bash
+  chmod +x install.sh
+  ./install.sh
+  ```
+
+> **💡 Lưu ý:** Sau khi cài đặt hoặc cập nhật, vui lòng khởi động lại StarUML.
 
 ## 🚀 Cách sử dụng
 
@@ -215,6 +235,14 @@ User ||--o{ Order
 ```bash
 node manage.js clear-all
 ```
+
+**Cách dùng Script (Không cần Node.js):**
+- **Windows:** Nhấp đúp chuột vào tệp `clear.bat` hoặc chạy `.\clear.bat` trong Command Prompt.
+- **macOS / Linux:** Mở Terminal và chạy:
+  ```bash
+  chmod +x clear.sh
+  ./clear.sh
+  ```
 
 ## 📄 Giấy phép
 

@@ -45,8 +45,15 @@ This extension comes with a unified, cross-platform management script (`manage.j
 
 ### Usage
 
-Run the following commands in your terminal from the repository root:
+Open your terminal at the root of the repository. You can use the tool in two ways:
 
+#### 1. Interactive Mode (Recommended)
+Run the following command to open the interactive menu and follow the on-screen instructions:
+```bash
+node manage.js
+```
+
+#### 2. Quick Command-Line Mode
 - **Install extension:**
   ```bash
   node manage.js install
@@ -55,12 +62,25 @@ Run the following commands in your terminal from the repository root:
   ```bash
   node manage.js update
   ```
-- **Remove extension:**
+- **Remove extension:** (Only removes the extension from StarUML)
   ```bash
   node manage.js clear
   ```
 
-After installing or updating, restart StarUML.
+#### 3. Native Scripts Mode (No Node.js required)
+If you don't have Node.js installed, you can directly run the OS-specific scripts:
+
+**For Windows:**
+- **Install extension:** Double-click the `install.bat` file or run `.\install.bat` in Command Prompt.
+
+**For macOS / Linux:**
+- **Install extension:** Open Terminal in the project directory and run:
+  ```bash
+  chmod +x install.sh
+  ./install.sh
+  ```
+
+> **💡 Note:** After installing or updating, please restart StarUML.
 
 ## 🚀 How to Use
 
@@ -213,6 +233,14 @@ User ||--o{ Order
 ```bash
 node manage.js clear-all
 ```
+
+**Using Native Scripts (No Node.js required):**
+- **Windows:** Double-click the `clear.bat` file or run `.\clear.bat` in Command Prompt.
+- **macOS / Linux:** Open Terminal and run:
+  ```bash
+  chmod +x clear.sh
+  ./clear.sh
+  ```
 
 ## 📄 License
 
