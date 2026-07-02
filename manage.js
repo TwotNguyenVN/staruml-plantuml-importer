@@ -67,8 +67,10 @@ function showBanner() {
   console.log(`  ${cyan}╔════════════════════════════════════${magenta}════════════════════════════════════╗`);
   
   logo.forEach(line => {
-    const part1 = line.substring(0, 39);
-    const part2 = line.substring(39);
+    const pad = " ".repeat(14);
+    const paddedLine = pad + line + pad;
+    const part1 = paddedLine.substring(0, 36);
+    const part2 = paddedLine.substring(36);
     console.log(`  ${cyan}║${part1}${magenta}${part2}║`);
   });
   
@@ -89,7 +91,20 @@ function checkNodeVersion() {
   const majorVersion = parseInt(currentVersion.replace('v', '').split('.')[0], 10);
   
   console.log(`${COLORS.bright}Kiểm tra môi trường:${COLORS.reset}`);
-  console.log(`- Hệ điều hành: ${COLORS.yellow}${os.type()} (${os.arch()})${COLORS.reset}`);
+  
+  let osName = os.type();
+  let arch = os.arch();
+  let displayOs = `${osName} (${arch})`;
+  
+  if (osName === 'Darwin') {
+    displayOs = arch === 'arm64' ? 'macOS (Chip Apple Silicon / M-series)' : 'macOS (Chip Intel)';
+  } else if (osName === 'Windows_NT') {
+    displayOs = `Windows (${arch})`;
+  } else if (osName === 'Linux') {
+    displayOs = `Linux (${arch})`;
+  }
+  
+  console.log(`- Hệ điều hành: ${COLORS.yellow}${displayOs}${COLORS.reset}`);
   console.log(`- Phiên bản Node.js hiện tại: ${COLORS.yellow}${currentVersion}${COLORS.reset}`);
   
   if (majorVersion < REQUIRED_NODE_VERSION) {
