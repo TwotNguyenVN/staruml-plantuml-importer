@@ -51,12 +51,18 @@ function showBanner() {
   console.clear();
   
   const logo = [
-    "   _____ _             _    _ __  __ _      ",
-    "  / ____| |           | |  | |  \\/  | |     ",
-    " | (___ | |_ __ _ _ __| |  | | \\  / | |     ",
-    "  \\___ \\| __/ _` | '__| |  | | |\\/| | |     ",
-    "  ____) | || (_| | |  | |__| | |  | | |____ ",
-    " |_____/ \\__\\__,_|_|   \\____/|_|  |_|______|"
+    "  _____  _             _   _    _ __  __ _      ",
+    " |  __ \\| |           | | | |  | |  \\/  | |     ",
+    " | |__) | | __ _ _ __ | |_| |  | | \\  / | |     ",
+    " |  ___/| |/ _` | '_ \\| __| |  | | |\\/| | |     ",
+    " | |    | | (_| | | | | |_| |__| | |  | | |____ ",
+    " |_|    |_|\\__,_|_| |_|\\__|\\____/|_|  |_|______|",
+    "  _____ __  __ _____   ____  _____ _______ ______ _____  ",
+    " |_   _|  \\/  |  __ \\ / __ \\|  __ \\__   __|  ____|  __ \\ ",
+    "   | | | \\  / | |__) | |  | | |__) | | |  | |__  | |__) |",
+    "   | | | |\\/| |  ___/| |  | |  _  /  | |  |  __| |  _  / ",
+    "  _| |_| |  | | |    | |__| | | \\ \\  | |  | |____| | \\ \\ ",
+    " |_____|_|  |_|_|     \\____/|_|  \\_\\ |_|  |______|_|  \\_\\"
   ];
   
   const cyan = `${COLORS.cyan}${COLORS.bright}`;
@@ -64,24 +70,31 @@ function showBanner() {
   const yellow = `${COLORS.yellow}${COLORS.bright}`;
   const reset = COLORS.reset;
   
-  console.log(`  ${cyan}╔════════════════════════════════════${magenta}════════════════════════════════════╗`);
+  const boxWidth = 72;
+  console.log(`  ${cyan}┌${"─".repeat(boxWidth / 2)}${magenta}${"─".repeat(boxWidth / 2)}┐`);
   
   logo.forEach(line => {
-    const pad = " ".repeat(14);
-    const paddedLine = pad + line + pad;
-    const part1 = paddedLine.substring(0, 36);
-    const part2 = paddedLine.substring(36);
-    console.log(`  ${cyan}║${part1}${magenta}${part2}║`);
+    const totalPad = boxWidth - line.length;
+    const padLeft = " ".repeat(Math.floor(totalPad / 2));
+    const padRight = " ".repeat(Math.ceil(totalPad / 2));
+    const paddedLine = padLeft + line + padRight;
+    const part1 = paddedLine.substring(0, boxWidth / 2);
+    const part2 = paddedLine.substring(boxWidth / 2);
+    console.log(`  ${cyan}│${part1}${magenta}${part2}│`);
   });
   
-  console.log(`  ${cyan}║                                    ${magenta}                                    ║`);
+  console.log(`  ${cyan}│${" ".repeat(boxWidth)}│`);
   
-  const subtitleText = "✨  PLANTUML IMPORTER - CROSS-PLATFORM MANAGEMENT TOOL  ✨";
-  const leftSpaces = " ".repeat(8);
-  const rightSpaces = " ".repeat(8);
-  console.log(`  ${cyan}║${leftSpaces}${yellow}${subtitleText}${magenta}${rightSpaces}║`);
+  const subtitleText = "✨ PLANTUML IMPORTER - CROSS-PLATFORM DEV TOOL ✨";
+  // subtitleText string length is 47, but emojis ✨ take 2 visual columns each.
+  // So visual width is 49.
+  const visualLength = 49;
+  const subtitlePad = boxWidth - visualLength; 
+  const leftSpaces = " ".repeat(Math.floor(subtitlePad / 2));
+  const rightSpaces = " ".repeat(Math.ceil(subtitlePad / 2));
+  console.log(`  ${cyan}│${leftSpaces}${yellow}${subtitleText}${magenta}${rightSpaces}│`);
   
-  console.log(`  ${cyan}╚════════════════════════════════════${magenta}════════════════════════════════════╝`);
+  console.log(`  ${cyan}└${"─".repeat(boxWidth / 2)}${magenta}${"─".repeat(boxWidth / 2)}┘`);
   console.log(reset);
 }
 
