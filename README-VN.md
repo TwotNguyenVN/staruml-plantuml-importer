@@ -20,7 +20,7 @@ Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các
 | **Activity Diagram** (Biểu đồ hoạt động)  | ✅ Đã hỗ trợ  | Phân chia swimlanes (làn bơi), các luồng hành động và rẽ nhánh |
 | **State Diagram** (Biểu đồ trạng thái)    | ✅ Đã hỗ trợ  | Hỗ trợ composite state, phân vùng region con, các pseudostate  |
 | **ER Diagram** (Biểu đồ ERD)              | ✅ Đã hỗ trợ  | Thực thể, kiểu dữ liệu cột (PK/FK/Nullable), quan hệ chân chim |
-| **Mindmap** (Sơ đồ tư duy)                | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai                          |
+| **Mindmap** (Sơ đồ tư duy)                | ✅ Đã hỗ trợ  | Bố cục hướng tâm, phân cấp sâu, hỗ trợ hướng trái/phải         |
 | **Requirement Diagram** (Biểu đồ yêu cầu) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai                          |
 
 ## ✨ Các tính năng nổi bật

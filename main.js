@@ -11,6 +11,7 @@ const sequenceParser = require("./parsers/sequence-parser");
 const activityParser = require("./parsers/activity-parser");
 const stateParser = require("./parsers/state-parser");
 const erdParser = require("./parsers/erd-parser");
+const mindmapParser = require("./parsers/mindmap-parser");
 
 function init() {
   if (typeof app === "undefined" || !app.commands) {
@@ -44,6 +45,7 @@ function detectDiagramType(code) {
   }
   
   if (hasERDRelations || (/^\s*entity\s+/im.test(code) && !hasSequenceArrows)) return "ERDDiagram";
+  if (/^\s*(@startmindmap|[*+-]{1,}\s+)/im.test(code)) return "MMDiagram"; // Assuming MMDiagram or generic
   
   if (hasSequenceArrows) return "UMLSequenceDiagram";
 
@@ -108,6 +110,8 @@ function handleImportAuto() {
               stateParser.generateDiagram(diagram, code);
             } else if (diagramClass === "ERDDiagram") {
               erdParser.generateDiagram(diagram, code);
+            } else if (diagramClass.indexOf("MMDiagram") !== -1 || diagramClass.indexOf("Mindmap") !== -1) {
+              mindmapParser.generateDiagram(diagram, code);
             } else {
               app.dialogs.showAlertDialog("Unsupported diagram type for importing PlantUML.");
               return;
