@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "============================================"
-echo "  StarUML PlantUML Importer - Installer"
+echo "  PlantUML Importer - Installer"
 echo "============================================"
 echo ""
 
