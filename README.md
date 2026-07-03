@@ -20,7 +20,7 @@ A StarUML extension that imports **Use Case, Class, Sequence, Activity, State, a
 | **Activity Diagram** | ✅ Supported | Partition swimlanes, action flows, and decisions |
 | **State Diagram** | ✅ Supported | Composite states, region sub-containers, transitions |
 | **ER Diagram** | ✅ Supported | Entities, columns (PK/FK/Nullable), crow's foot cardinalities |
-| **Mindmap** | ⏳ Planned | Planned for future update |
+| **Mindmap Diagram** | ✅ Supported | Radial layout, deep hierarchies, left/right direction support |
 | **Requirement Diagram** | ⏳ Planned | Planned for future update |
 
 ## ✨ Features
