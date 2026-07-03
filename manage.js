@@ -2,7 +2,7 @@
 
 /**
  * ==============================================================================
- * STARUML PLANTUML IMPORTER - CROSS-PLATFORM DEV TOOL
+ * PLANTUML IMPORTER - CROSS-PLATFORM DEV TOOL
  * ==============================================================================
  * 
  * Đây là tệp tin công cụ duy nhất dùng để cài đặt (install), cập nhật (update), 
