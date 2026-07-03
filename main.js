@@ -1,5 +1,5 @@
 /**
- * StarUML PlantUML Diagram Importer Extension (v2.1)
+ * PlantUML Importer Extension (v2.1)
  * Compatible with StarUML v7+
  * Imports multiple diagram types (Use Case, Class) from PlantUML syntax
  */

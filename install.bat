@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ============================================
-echo   StarUML PlantUML Importer - Installer
+echo   PlantUML Importer - Installer
 echo ============================================
 echo.
 
