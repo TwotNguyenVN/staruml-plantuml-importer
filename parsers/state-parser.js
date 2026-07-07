@@ -286,6 +286,7 @@ function generateDiagram(diagram, text) {
       var view = app.factory.createModelAndView({
         id: "UMLState",
         parent: parentRegion,
+        field: "vertices",
         diagram: diagram,
         modelInitializer: function (model) {
           model.name = sanitizeName(state.name);
@@ -328,6 +329,7 @@ function generateDiagram(diagram, text) {
       var view = app.factory.createModelAndView({
         id: typeId,
         parent: parentRegion,
+        field: "vertices",
         diagram: diagram,
         modelInitializer: function (model) {
           if (isInitial) {
@@ -384,6 +386,7 @@ function generateDiagram(diagram, text) {
       app.factory.createModelAndView({
         id: "UMLTransition",
         parent: parentRegion,
+        field: "transitions",
         diagram: diagram,
         tailView: tailView,
         headView: headView,
