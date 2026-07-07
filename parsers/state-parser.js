@@ -10,6 +10,13 @@ function sanitizeName(name) {
 function generateDiagram(diagram, text) {
   try {
     global.hasShownStateError = false;
+    
+    // Strict diagram type checking to prevent StarUML internal crash
+    if (diagram && diagram.getClassName() !== "UMLStatechartDiagram") {
+      app.dialogs.showAlertDialog("Please create and open a 'Statechart Diagram' first before importing PlantUML State Code. Current diagram is: " + diagram.getClassName());
+      return;
+    }
+    
     var lines = text.split("\n");
     var elementsMap = {};
     
