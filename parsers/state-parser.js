@@ -382,7 +382,10 @@ function generateDiagram(diagram, text) {
           });
           
           for (var r = 0; r < state.regionSizes.length; r++) {
-            var regModel = view.model.regions[r];
+            var regModel = (view.model.regions && view.model.regions.length > r) ? view.model.regions[r] : null;
+            if (!regModel) {
+               try { regModel = app.factory.createModel({ id: "UMLRegion", parent: view.model, field: "regions" }); } catch(e){}
+            }
             var rSize = state.regionSizes[r];
             var regView = null;
             
