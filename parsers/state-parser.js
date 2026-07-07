@@ -337,23 +337,27 @@ function generateDiagram(diagram, text) {
       
       var view = null;
       try {
-        var viewArgs = {
-          id: "UMLState",
-          parent: parentRegionModel,
-          field: "vertices",
-          diagram: diagram,
+        
+        var stateModel = app.factory.createModel({
+          id: "UMLState", parent: parentRegionModel, field: "vertices",
           modelInitializer: function(m) {
             m.name = sanitizeName(state.name);
             if (state.stereotype) m.stereotype = state.stereotype;
-          },
-          viewInitializer: function(v) {
-            v.left = state.x; v.top = state.y; v.width = state.w; v.height = state.h;
           }
-        };
+        });
+        
+        view = typeof type !== "undefined" ? new type.UMLStateView() : { model: null };
+        view.model = stateModel;
+        view.left = state.x; view.top = state.y; view.width = state.w; view.height = state.h;
+        
         if (parentContainerView && parentContainerView !== diagram) {
-          viewArgs.containerView = parentContainerView;
+           view._parent = parentContainerView;
+           if (parentContainerView.subViews && parentContainerView.subViews.add) parentContainerView.subViews.add(view);
+        } else {
+           view._parent = diagram;
+           if (diagram.ownedViews) diagram.ownedViews.push(view);
         }
-        view = app.factory.createModelAndView(viewArgs);
+  
       } catch (e) {
         console.error("Error creating state", state.name, e);
         app.dialogs.showAlertDialog("Failed to create state '" + state.name + "': " + String(e));
@@ -445,23 +449,25 @@ function generateDiagram(diagram, text) {
       pseudostateCount++;
       
       try {
-        var pViewArgs = {
-          id: typeId,
-          parent: parentRegionModel,
-          field: "vertices",
-          diagram: diagram,
-          modelInitializer: function (model) {
-            if (isInitial) model.kind = "initial";
-          },
-          viewInitializer: function (dgmView) {
-            dgmView.left = posX; dgmView.top = posY; dgmView.width = 25; dgmView.height = 25;
-          }
-        };
+        
+        var psModel = app.factory.createModel({
+          id: typeId, parent: parentRegionModel, field: "vertices",
+          modelInitializer: function(m) { if (isInitial) m.kind = "initial"; }
+        });
+        
+        var view = typeof type !== "undefined" ? (typeId === "UMLPseudostate" ? new type.UMLPseudostateView() : new type.UMLFinalStateView()) : { model: null };
+        view.model = psModel;
+        view.left = posX; view.top = posY; view.width = 25; view.height = 25;
+        
         if (parentContainerView && parentContainerView !== diagram) {
-          pViewArgs.containerView = parentContainerView;
+           view._parent = parentContainerView;
+           if (parentContainerView.subViews && parentContainerView.subViews.add) parentContainerView.subViews.add(view);
+        } else {
+           view._parent = diagram;
+           if (diagram.ownedViews) diagram.ownedViews.push(view);
         }
-        var view = app.factory.createModelAndView(pViewArgs);
         return view;
+  
       } catch (err) {
         console.error("[state-parser] Failed to create pseudostate:", err);
         return null;
