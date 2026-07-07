@@ -8,415 +8,514 @@ function sanitizeName(name) {
 }
 
 function generateDiagram(diagram, text) {
-  var lines = text.split("\n");
-  var elementsMap = {};
-  
-  var parsedStates = [];
-  var parsedTransitions = [];
-  
-  var stack = [];
-  var activeRegionName = "main";
-
-  function getOrCreateStateInfo(alias, parentAlias) {
-    if (alias === "[*]") return null;
-    var existing = parsedStates.find(function(s) { return s.alias === alias; });
-    if (existing) return existing;
+  try {
+    global.hasShownStateError = false;
+    var lines = text.split("\n");
+    var elementsMap = {};
     
-    var newState = {
-      type: "UMLState",
-      name: alias,
-      alias: alias,
-      stereotype: "",
-      parentAlias: parentAlias,
-      isComposite: false
-    };
-    parsedStates.push(newState);
-    return newState;
-  }
-  
-  // 1. First Pass: Parse lines to build State and Transition AST
-  for (var i = 0; i < lines.length; i++) {
-    var line = lines[i].trim();
+    var parsedStates = [];
+    var parsedTransitions = [];
     
-    // Skip empty, comments, start/end UML directives, title
-    if (
-      !line ||
-      line.indexOf("'") === 0 ||
-      line.indexOf("@startuml") === 0 ||
-      line.indexOf("@enduml") === 0 ||
-      line.indexOf("title ") === 0
-    ) {
-      continue;
-    }
+    var stack = [];
     
-    // End of block
-    if (line === "}") {
-      if (stack.length > 0) {
-        stack.pop();
-      }
-      continue;
-    }
-    
-    // Parse State with block definition: state "name" as alias <<stereotype>> {
-    var matchStateBlock = line.match(/^state\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))(?:\s+as\s+(\w+))?(?:\s+<<([^>]+)>>)?\s*\{$/i);
-    if (matchStateBlock) {
-      var stateName = matchStateBlock[1] || matchStateBlock[2];
-      var alias = matchStateBlock[3] || stateName;
-      var stereotype = matchStateBlock[4] || "";
-      
-      var parentAlias = stack.length > 0 ? stack[stack.length - 1].alias : null;
-      
+    function getOrCreateStateInfo(alias, parentAlias) {
+      if (alias === "[*]") return null;
       var existing = parsedStates.find(function(s) { return s.alias === alias; });
-      var stateObj;
-      if (existing) {
-        existing.isComposite = true;
-        existing.name = stateName;
-        existing.stereotype = stereotype;
-        existing.parentAlias = parentAlias;
-        stateObj = existing;
-      } else {
-        stateObj = {
-          type: "UMLState",
-          name: stateName,
-          alias: alias,
-          stereotype: stereotype,
-          parentAlias: parentAlias,
-          isComposite: true
-        };
-        parsedStates.push(stateObj);
-      }
-      stack.push(stateObj);
-      continue;
+      if (existing) return existing;
+      
+      var newState = {
+        type: "UMLState",
+        name: alias,
+        alias: alias,
+        stereotype: "",
+        parentAlias: parentAlias,
+        isComposite: false,
+        regionIndex: stack.length > 0 ? (stack[stack.length - 1].activeRegionIndex || 0) : 0
+      };
+      parsedStates.push(newState);
+      return newState;
     }
     
-    // Parse State inline definition: state "name" as alias <<stereotype>>
-    var matchState = line.match(/^state\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))(?:\s+as\s+(\w+))?(?:\s+<<([^>]+)>>)?$/i);
-    if (matchState) {
-      var stateName = matchState[1] || matchState[2];
-      var alias = matchState[3] || stateName;
-      var stereotype = matchState[4] || "";
+    // 1. First Pass: Parse lines to build State and Transition AST
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
       
-      var parentAlias = stack.length > 0 ? stack[stack.length - 1].alias : null;
-      
-      var existing = parsedStates.find(function(s) { return s.alias === alias; });
-      if (existing) {
-        existing.name = stateName;
-        existing.stereotype = stereotype;
-        existing.parentAlias = parentAlias;
-      } else {
-        parsedStates.push({
-          type: "UMLState",
-          name: stateName,
-          alias: alias,
-          stereotype: stereotype,
-          parentAlias: parentAlias,
-          isComposite: false
-        });
-      }
-      continue;
-    }
-    
-    // Parse State Value details: state alias : Key=Value (ignore or keep as name/stereotype)
-    var matchStateValue = line.match(/^state\s+(\w+)\s*:\s*(.+)$/i);
-    if (matchStateValue) {
-      var alias = matchStateValue[1];
-      var value = matchStateValue[2].trim();
-      var existing = parsedStates.find(function(s) { return s.alias === alias; });
-      if (existing) {
-        existing.name = existing.name + " (" + value + ")";
-      } else {
-        parsedStates.push({
-          type: "UMLState",
-          name: alias + " (" + value + ")",
-          alias: alias,
-          stereotype: "",
-          parentAlias: stack.length > 0 ? stack[stack.length - 1].alias : null,
-          isComposite: false
-        });
-      }
-      continue;
-    }
-    
-    // Parse Transitions: state1 --> state2 : event <<stereotype>>
-    var arrowRegex = /\s*(-->|->)\s*/;
-    var parts = line.split(arrowRegex);
-    if (parts.length >= 3) {
-      var leftStr = parts[0].trim();
-      var rightWithLabel = parts.slice(2).join("");
-      var rightStr = rightWithLabel;
-      var label = "";
-      var colonIndex = rightWithLabel.indexOf(":");
-      if (colonIndex !== -1) {
-        rightStr = rightWithLabel.substring(0, colonIndex).trim();
-        label = rightWithLabel.substring(colonIndex + 1).trim();
+      if (!line || line.indexOf("'") === 0 || line.indexOf("@startuml") === 0 || line.indexOf("@enduml") === 0 || line.indexOf("title ") === 0) {
+        continue;
       }
       
-      var from = leftStr;
-      var to = rightStr;
+      if (line === "}") {
+        if (stack.length > 0) stack.pop();
+        continue;
+      }
       
-      var parentAlias = stack.length > 0 ? stack[stack.length - 1].alias : null;
-      
-      getOrCreateStateInfo(from, parentAlias);
-      getOrCreateStateInfo(to, parentAlias);
-      
-      parsedTransitions.push({
-        from: from,
-        to: to,
-        label: label,
-        parentAlias: parentAlias
-      });
-    }
-  }
-  
-  // 2. Initialize Models in StarUML
-  var parentModel = diagram._parent || app.project.getProject();
-  var stateMachineModel = null;
-  var rootRegion = null;
-
-  if (parentModel.getClassName() === "UMLRegion") {
-    // If we're already inside a Region (normal case for Statechart Diagram in StarUML)
-    rootRegion = parentModel;
-    stateMachineModel = rootRegion._parent;
-  } else {
-    // Find or create UMLStateMachine context
-    stateMachineModel = parentModel;
-    if (parentModel.getClassName() !== "UMLStateMachine") {
-      try {
-        var existingSM = null;
-        if (parentModel.ownedElements && typeof parentModel.ownedElements.find === "function") {
-            existingSM = parentModel.ownedElements.find(function (el) {
-                return el.getClassName() === "UMLStateMachine";
-            });
+      // Parse orthogonal region (--)
+      var matchRegion = line.match(/^\s*--\s*$/);
+      if (matchRegion) {
+        if (stack.length > 0) {
+          var composite = stack[stack.length - 1];
+          var existing = parsedStates.find(function(s) { return s.alias === composite.alias; });
+          if (existing) {
+            existing.regionsCounter = (existing.regionsCounter || 1) + 1;
+            composite.activeRegionIndex = existing.regionsCounter - 1;
+          }
         }
-        if (existingSM) {
-          stateMachineModel = existingSM;
+        continue;
+      }
+      
+      var matchStateBlock = line.match(/^state\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))(?:\s+as\s+(\w+))?(?:\s+<<([^>]+)>>)?\s*\{$/i);
+      if (matchStateBlock) {
+        var stateName = matchStateBlock[1] || matchStateBlock[2];
+        var alias = matchStateBlock[3] || stateName;
+        var stereotype = matchStateBlock[4] || "";
+        var parentAlias = stack.length > 0 ? stack[stack.length - 1].alias : null;
+        var regionIndex = stack.length > 0 ? (stack[stack.length - 1].activeRegionIndex || 0) : 0;
+        
+        var existing = parsedStates.find(function(s) { return s.alias === alias; });
+        var stateObj;
+        if (existing) {
+          existing.isComposite = true;
+          existing.name = stateName;
+          existing.stereotype = stereotype;
+          existing.parentAlias = parentAlias;
+          existing.regionIndex = regionIndex;
+          stateObj = existing;
         } else {
-          stateMachineModel = app.factory.createModel({
-            id: "UMLStateMachine",
-            parent: parentModel,
-            modelInitializer: function (model) {
-              model.name = "StateMachineContext";
-            }
+          stateObj = {
+            type: "UMLState", name: stateName, alias: alias, stereotype: stereotype,
+            parentAlias: parentAlias, isComposite: true, regionIndex: regionIndex,
+            regionsCounter: 1
+          };
+          parsedStates.push(stateObj);
+        }
+        stack.push({ alias: stateObj.alias, activeRegionIndex: 0 });
+        continue;
+      }
+      
+      var matchState = line.match(/^state\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))(?:\s+as\s+(\w+))?(?:\s+<<([^>]+)>>)?$/i);
+      if (matchState) {
+        var stateName = matchState[1] || matchState[2];
+        var alias = matchState[3] || stateName;
+        var stereotype = matchState[4] || "";
+        var parentAlias = stack.length > 0 ? stack[stack.length - 1].alias : null;
+        var regionIndex = stack.length > 0 ? (stack[stack.length - 1].activeRegionIndex || 0) : 0;
+        
+        var existing = parsedStates.find(function(s) { return s.alias === alias; });
+        if (existing) {
+          existing.name = stateName;
+          existing.stereotype = stereotype;
+          existing.parentAlias = parentAlias;
+          existing.regionIndex = regionIndex;
+        } else {
+          parsedStates.push({
+            type: "UMLState", name: stateName, alias: alias, stereotype: stereotype,
+            parentAlias: parentAlias, isComposite: false, regionIndex: regionIndex
           });
         }
-      } catch (smErr) {
-        console.error("[state-parser] Failed to find/create UMLStateMachine context:", smErr);
+        continue;
+      }
+      
+      var matchStateValue = line.match(/^state\s+(\w+)\s*:\s*(.+)$/i);
+      if (matchStateValue) {
+        var alias = matchStateValue[1];
+        var value = matchStateValue[2].trim();
+        var parentAlias = stack.length > 0 ? stack[stack.length - 1].alias : null;
+        var regionIndex = stack.length > 0 ? (stack[stack.length - 1].activeRegionIndex || 0) : 0;
+        var existing = parsedStates.find(function(s) { return s.alias === alias; });
+        if (existing) {
+          existing.name = existing.name + " (" + value + ")";
+        } else {
+          parsedStates.push({
+            type: "UMLState", name: alias + " (" + value + ")", alias: alias, stereotype: "",
+            parentAlias: parentAlias, isComposite: false, regionIndex: regionIndex
+          });
+        }
+        continue;
+      }
+      
+      var arrowRegex = /\s*(-->|->)\s*/;
+      var parts = line.split(arrowRegex);
+      if (parts.length >= 3) {
+        var leftStr = parts[0].trim();
+        var rightWithLabel = parts.slice(2).join("");
+        var rightStr = rightWithLabel;
+        var label = "";
+        var colonIndex = rightWithLabel.indexOf(":");
+        if (colonIndex !== -1) {
+          rightStr = rightWithLabel.substring(0, colonIndex).trim();
+          label = rightWithLabel.substring(colonIndex + 1).trim();
+        }
+        var parentAlias = stack.length > 0 ? stack[stack.length - 1].alias : null;
+        
+        getOrCreateStateInfo(leftStr, parentAlias);
+        getOrCreateStateInfo(rightStr, parentAlias);
+        
+        parsedTransitions.push({ from: leftStr, to: rightStr, label: label, parentAlias: parentAlias });
       }
     }
     
-    // Ensure StateMachine has a UMLRegion
-    try {
-      if (stateMachineModel && stateMachineModel.regions && typeof stateMachineModel.regions.find === "function") {
-        rootRegion = stateMachineModel.regions.find(function(r) { return r.getClassName() === "UMLRegion"; });
-      }
-      if (!rootRegion) {
-        rootRegion = app.factory.createModel({
-          id: "UMLRegion",
-          parent: stateMachineModel,
-          field: "regions",
-          modelInitializer: function (model) {
-            model.name = "Region1";
+    // 2. Initialize Models in StarUML
+    var parentModel = diagram._parent || app.project.getProject();
+    var stateMachineModel = null;
+    var rootRegion = null;
+
+    if (parentModel.getClassName() === "UMLRegion") {
+      rootRegion = parentModel;
+      stateMachineModel = rootRegion._parent;
+    } else if (parentModel.getClassName() === "UMLStateMachine") {
+      stateMachineModel = parentModel;
+    } else {
+      stateMachineModel = parentModel;
+      var len = parentModel.ownedElements ? parentModel.ownedElements.length : 0;
+      for (var i = 0; i < len; i++) {
+          if (parentModel.ownedElements[i].getClassName() === "UMLStateMachine") {
+              stateMachineModel = parentModel.ownedElements[i];
+              break;
           }
-        });
       }
+      if (stateMachineModel === parentModel) {
+          stateMachineModel = app.factory.createModel({
+              id: "UMLStateMachine", parent: parentModel,
+              modelInitializer: function (model) { model.name = "StateMachineContext"; }
+          });
+      }
+    }
+    
+    try {
+        var rlen = stateMachineModel.regions ? stateMachineModel.regions.length : 0;
+        if (rlen > 0) {
+            rootRegion = stateMachineModel.regions[0];
+        } else {
+            rootRegion = app.factory.createModel({
+                id: "UMLRegion", parent: stateMachineModel, field: "regions",
+                modelInitializer: function (model) { model.name = "Region1"; }
+            });
+        }
     } catch (regErr) {
       console.error("[state-parser] Failed to create root UMLRegion:", regErr);
     }
-  }
-  
-  // Map to hold parent regions for composite states
-  var regionsMap = {
-    root: rootRegion
-  };
-  
-  // Helper to ensure a composite state has a region
-  function getRegionForState(stateModel) {
-    try {
-      var reg = stateModel.regions.find(function(r) { return r.getClassName() === "UMLRegion"; });
-      if (!reg) {
-        reg = app.factory.createModel({
-          id: "UMLRegion",
-          parent: stateModel,
-          field: "regions",
-          modelInitializer: function(m) {
-            m.name = "Region_" + stateModel.name;
-          }
+    
+    // 3. Tree-based Layout Engine
+    var childrenMap = {};
+    var rootStates = [];
+    var elementsData = {};
+    
+    parsedStates.forEach(function(s) {
+      elementsData[s.alias] = s;
+      if (s.parentAlias) {
+        if (!childrenMap[s.parentAlias]) childrenMap[s.parentAlias] = [];
+        childrenMap[s.parentAlias].push(s);
+      } else {
+        rootStates.push(s);
+      }
+    });
+    
+    var PADDING = 20;
+    var HEADER_HEIGHT = 40;
+    var REGION_DIVIDER_HEIGHT = 10;
+    
+    // Phase 3.1: Calculate Sizes Bottom-Up
+    function calculateSize(stateAlias) {
+      var state = elementsData[stateAlias];
+      var children = childrenMap[stateAlias] || [];
+      if (children.length === 0) {
+        state.w = Math.max(120, state.name.length * 8 + 20);
+        state.h = 40;
+        return;
+      }
+      
+      var regionsData = [];
+      var numRegions = state.regionsCounter || 1;
+      for (var k = 0; k < numRegions; k++) regionsData[k] = [];
+      children.forEach(function(c) {
+        var rIdx = c.regionIndex || 0;
+        if (!regionsData[rIdx]) regionsData[rIdx] = [];
+        regionsData[rIdx].push(c);
+      });
+      
+      var maxRegW = 0;
+      var totalRegH = 0;
+      state.regionSizes = [];
+      
+      for (var r = 0; r < regionsData.length; r++) {
+        var rStates = regionsData[r] || [];
+        var rX = 0;
+        var maxRowH = 0;
+        
+        rStates.forEach(function(c) {
+          calculateSize(c.alias);
+          c.relX = rX + PADDING;
+          c.relY = PADDING;
+          rX += c.w + PADDING;
+          maxRowH = Math.max(maxRowH, c.h);
+        });
+        
+        var regW = rX + PADDING;
+        var regH = maxRowH + PADDING * 2;
+        maxRegW = Math.max(maxRegW, regW);
+        totalRegH += regH;
+        state.regionSizes.push({ w: regW, h: regH });
+      }
+      
+      state.w = Math.max(150, maxRegW);
+      state.h = HEADER_HEIGHT + totalRegH + (regionsData.length - 1) * REGION_DIVIDER_HEIGHT;
+    }
+    
+    // Phase 3.2: Calculate Absolute Positions Top-Down
+    function calculateAbsolute(stateAlias, absX, absY) {
+      var state = elementsData[stateAlias];
+      state.x = absX;
+      state.y = absY;
+      
+      var children = childrenMap[stateAlias] || [];
+      if (children.length === 0) return;
+      
+      var regionsData = [];
+      var numRegions = state.regionsCounter || 1;
+      for (var k = 0; k < numRegions; k++) regionsData[k] = [];
+      children.forEach(function(c) {
+        var rIdx = c.regionIndex || 0;
+        if (!regionsData[rIdx]) regionsData[rIdx] = [];
+        regionsData[rIdx].push(c);
+      });
+      
+      var currY = absY + HEADER_HEIGHT;
+      for (var r = 0; r < state.regionSizes.length; r++) {
+        var rStates = regionsData[r] || [];
+        var rSize = state.regionSizes[r];
+        
+        rSize.absX = absX;
+        rSize.absY = currY;
+        rSize.w = state.w; // force width to match composite state width
+        
+        rStates.forEach(function(c) {
+          calculateAbsolute(c.alias, absX + c.relX, currY + c.relY);
+        });
+        
+        currY += rSize.h + REGION_DIVIDER_HEIGHT;
+      }
+    }
+    
+    var rootX = 50;
+    var rootY = 50;
+    var rootMaxH = 0;
+    var rootCols = Math.ceil(Math.sqrt(rootStates.length + 2));
+    var rc = 0;
+    rootStates.forEach(function(s) {
+      calculateSize(s.alias);
+      calculateAbsolute(s.alias, rootX, rootY);
+      rootX += s.w + PADDING;
+      rootMaxH = Math.max(rootMaxH, s.h);
+      rc++;
+      if (rc >= rootCols) {
+        rc = 0;
+        rootX = 50;
+        rootY += rootMaxH + PADDING;
+        rootMaxH = 0;
+      }
+    });
+    
+    // 4. Render Hierarchy (Model and View)
+    function ensureRegions(stateModel, count) {
+      while (!stateModel.regions || stateModel.regions.length < count) {
+        app.factory.createModel({
+          id: "UMLRegion", parent: stateModel, field: "regions",
+          modelInitializer: function(m) { m.name = "Region"; }
         });
       }
-      return reg;
-    } catch (err) {
-      console.error("[state-parser] Failed to create region inside composite state:", stateModel.name, err);
-      return rootRegion;
     }
-  }
-  
-  // Create defined states (composite first, then simple)
-  // Sort composite states first so that children can look up parents
-  parsedStates.sort(function(a, b) {
-    if (a.isComposite && !b.isComposite) return -1;
-    if (!a.isComposite && b.isComposite) return 1;
-    return 0;
-  });
-  
 
-  
-  // Create all State views
-  var totalStates = parsedStates.length;
-  var colsCount = Math.ceil(Math.sqrt(totalStates + 2)); // grid spacing
-  
-  parsedStates.forEach(function (state, index) {
-    var parentRegion = rootRegion;
-    if (state.parentAlias) {
-      var parentStateView = elementsMap[state.parentAlias];
-      if (parentStateView && parentStateView.model) {
-        parentRegion = getRegionForState(parentStateView.model);
-      }
-    }
-    
-    // Grid positioning layout
-    var colIndex = index % colsCount;
-    var rowIndex = Math.floor(index / colsCount);
-    
-    var posX = colIndex * 240 + 80;
-    var posY = rowIndex * 160 + 100;
-    var width = state.isComposite ? 200 : 120;
-    var height = state.isComposite ? 120 : 50;
-    
-    try {
-      var view = app.factory.createModelAndView({
-        id: "UMLState",
-        parent: parentRegion,
-        field: "vertices",
-        diagram: diagram,
-        modelInitializer: function (model) {
-          model.name = sanitizeName(state.name);
-          if (state.stereotype) {
-            model.stereotype = state.stereotype;
+    function renderState(stateAlias, parentRegionModel, parentContainerView) {
+      var state = elementsData[stateAlias];
+      
+      var view = null;
+      try {
+        var viewArgs = {
+          id: "UMLState",
+          parent: parentRegionModel,
+          field: "vertices",
+          diagram: diagram,
+          modelInitializer: function(m) {
+            m.name = sanitizeName(state.name);
+            if (state.stereotype) m.stereotype = state.stereotype;
+          },
+          viewInitializer: function(v) {
+            v.left = state.x; v.top = state.y; v.width = state.w; v.height = state.h;
           }
-        },
-        viewInitializer: function (dgmView) {
-          dgmView.left = posX;
-          dgmView.top = posY;
-          dgmView.width = width;
-          dgmView.height = height;
+        };
+        if (parentContainerView && parentContainerView !== diagram) {
+          viewArgs.containerView = parentContainerView;
         }
-      });
-      if (view) {
-        elementsMap[state.alias] = view;
+        view = app.factory.createModelAndView(viewArgs);
+      } catch (e) {
+        console.error("Error creating state", state.name, e);
+        app.dialogs.showAlertDialog("Failed to create state '" + state.name + "': " + String(e));
+        return;
       }
-    } catch (stateErr) {
-      console.error("[state-parser] Failed to create state:", state.name, stateErr);
-    }
-  });
-  
-  // Create Pseudostates for initial/final transitions
-  var pseudostateCount = 0;
-  function createPseudostate(isInitial, parentAlias) {
-    var parentRegion = rootRegion;
-    if (parentAlias) {
-      var parentStateView = elementsMap[parentAlias];
-      if (parentStateView && parentStateView.model) {
-        parentRegion = getRegionForState(parentStateView.model);
-      }
-    }
-    
-    var typeId = isInitial ? "UMLPseudostate" : "UMLFinalState";
-    var posX = 60 + pseudostateCount * 80;
-    var posY = 40;
-    pseudostateCount++;
-    
-    try {
-      var view = app.factory.createModelAndView({
-        id: typeId,
-        parent: parentRegion,
-        field: "vertices",
-        diagram: diagram,
-        modelInitializer: function (model) {
-          if (isInitial) {
-            model.kind = "initial";
-          }
-        },
-        viewInitializer: function (dgmView) {
-          dgmView.left = posX;
-          dgmView.top = posY;
-          dgmView.width = 25;
-          dgmView.height = 25;
-        }
-      });
-      return view;
-    } catch (err) {
-      console.error("[state-parser] Failed to create pseudostate/final state:", err);
-      return null;
-    }
-  }
-  
-  // Create Transitions
-  parsedTransitions.forEach(function (trans) {
-    var tailView = null;
-    var headView = null;
-    
-    // Handle initial state transitions
-    if (trans.from === "[*]") {
-      tailView = createPseudostate(true, trans.parentAlias);
-    } else {
-      tailView = elementsMap[trans.from];
-    }
-    
-    // Handle final state transitions
-    if (trans.to === "[*]") {
-      headView = createPseudostate(false, trans.parentAlias);
-    } else {
-      headView = elementsMap[trans.to];
-    }
-    
-    if (!tailView || !headView) {
-      console.warn("[state-parser] Skipping transition: missing state views", trans.from, "->", trans.to);
-      return;
-    }
-    
-    var parentRegion = rootRegion;
-    if (trans.parentAlias) {
-      var parentStateView = elementsMap[trans.parentAlias];
-      if (parentStateView && parentStateView.model) {
-        parentRegion = getRegionForState(parentStateView.model);
-      }
-    }
-    
-    try {
-      app.factory.createModelAndView({
-        id: "UMLTransition",
-        parent: parentRegion,
-        field: "transitions",
-        diagram: diagram,
-        tailView: tailView,
-        headView: headView,
-        tailModel: tailView.model,
-        headModel: headView.model,
-        modelInitializer: function (model) {
-          if (trans.label) {
-            var stereo = "";
-            var cleanLabel = trans.label;
-            if (cleanLabel.indexOf("<<") !== -1) {
-              var matchStereo = cleanLabel.match(/<<([^>]+)>>/);
-              if (matchStereo) {
-                stereo = matchStereo[1].trim();
-                cleanLabel = cleanLabel.replace(/<<[^>]+>>/g, "").trim();
+      
+      if (!view) return;
+      
+      elementsMap[state.alias] = view;
+      var children = childrenMap[stateAlias] || [];
+      
+      if (children.length > 0) {
+        // Build composite inner views
+        ensureRegions(view.model, state.regionSizes.length);
+        var compView = view.decompositionCompartment;
+        if (compView) {
+          compView.visible = true;
+          
+          var regionsData = [];
+          var numRegions = state.regionsCounter || 1;
+          for (var k = 0; k < numRegions; k++) regionsData[k] = [];
+          children.forEach(function(c) {
+            var rIdx = c.regionIndex || 0;
+            if (!regionsData[rIdx]) regionsData[rIdx] = [];
+            regionsData[rIdx].push(c);
+          });
+          
+          for (var r = 0; r < state.regionSizes.length; r++) {
+            var regModel = view.model.regions[r];
+            var rSize = state.regionSizes[r];
+            var regView = null;
+            
+            if (typeof type !== "undefined" && type.UMLRegionView) {
+              regView = new type.UMLRegionView();
+              regView.model = regModel;
+              regView._parent = compView;
+              regView.left = rSize.absX;
+              regView.top = rSize.absY;
+              regView.width = rSize.w;
+              regView.height = rSize.h;
+              if (compView.subViews && typeof compView.subViews.add === "function") {
+                compView.subViews.add(regView);
               }
             }
-            model.name = cleanLabel;
-            if (stereo) {
-              model.stereotype = stereo;
-            }
+            
+            var rStates = regionsData[r] || [];
+            rStates.forEach(function(c) {
+              renderState(c.alias, regModel, regView || view);
+            });
           }
-        },
-        viewInitializer: function (view) {
-          view.lineStyle = 1; // Rectilinear
+        } else {
+          // Fallback if no compartment view
+          children.forEach(function(c) {
+            renderState(c.alias, rootRegion, diagram); // flatten fallback
+          });
         }
-      });
-    } catch (transErr) {
-      console.error("[state-parser] Failed to create UMLTransition:", trans.from, "->", trans.to, transErr);
+      }
     }
-  });
+    
+    // Render all roots
+    rootStates.forEach(function(s) {
+      renderState(s.alias, rootRegion, diagram);
+    });
+    
+    // 5. Create Pseudostates & Transitions
+    var pseudostateCount = 0;
+    function createPseudostate(isInitial, parentAlias) {
+      var typeId = isInitial ? "UMLPseudostate" : "UMLFinalState";
+      var parentRegionModel = rootRegion;
+      var parentContainerView = diagram;
+      
+      if (parentAlias && elementsMap[parentAlias]) {
+        var parentView = elementsMap[parentAlias];
+        if (parentView.model && parentView.model.regions && parentView.model.regions.length > 0) {
+          parentRegionModel = parentView.model.regions[parentView.model.regions.length - 1];
+        }
+        if (parentView.decompositionCompartment && parentView.decompositionCompartment.subViews && parentView.decompositionCompartment.subViews.length > 0) {
+          parentContainerView = parentView.decompositionCompartment.subViews.get(parentView.decompositionCompartment.subViews.length - 1);
+        } else {
+          parentContainerView = parentView;
+        }
+      }
+      
+      var posX = 60 + pseudostateCount * 80;
+      var posY = 40;
+      pseudostateCount++;
+      
+      try {
+        var pViewArgs = {
+          id: typeId,
+          parent: parentRegionModel,
+          field: "vertices",
+          diagram: diagram,
+          modelInitializer: function (model) {
+            if (isInitial) model.kind = "initial";
+          },
+          viewInitializer: function (dgmView) {
+            dgmView.left = posX; dgmView.top = posY; dgmView.width = 25; dgmView.height = 25;
+          }
+        };
+        if (parentContainerView && parentContainerView !== diagram) {
+          pViewArgs.containerView = parentContainerView;
+        }
+        var view = app.factory.createModelAndView(pViewArgs);
+        return view;
+      } catch (err) {
+        console.error("[state-parser] Failed to create pseudostate:", err);
+        return null;
+      }
+    }
+    
+    parsedTransitions.forEach(function (trans) {
+      var tailView = null;
+      var headView = null;
+      if (trans.from === "[*]") tailView = createPseudostate(true, trans.parentAlias);
+      else tailView = elementsMap[trans.from];
+      
+      if (trans.to === "[*]") headView = createPseudostate(false, trans.parentAlias);
+      else headView = elementsMap[trans.to];
+      
+      if (!tailView || !headView) return;
+      
+      var parentRegionModel = rootRegion;
+      if (trans.parentAlias && elementsMap[trans.parentAlias]) {
+         var pView = elementsMap[trans.parentAlias];
+         if (pView.model && pView.model.regions && pView.model.regions.length > 0) {
+            parentRegionModel = pView.model.regions[pView.model.regions.length - 1];
+         }
+      }
+      
+      try {
+        app.factory.createModelAndView({
+          id: "UMLTransition",
+          parent: parentRegionModel,
+          field: "transitions",
+          diagram: diagram,
+          tailView: tailView,
+          headView: headView,
+          tailModel: tailView.model,
+          headModel: headView.model,
+          modelInitializer: function (model) {
+            if (trans.label) {
+              var stereo = "";
+              var cleanLabel = trans.label;
+              if (cleanLabel.indexOf("<<") !== -1) {
+                var matchStereo = cleanLabel.match(/<<([^>]+)>>/);
+                if (matchStereo) {
+                  stereo = matchStereo[1].trim();
+                  cleanLabel = cleanLabel.replace(/<<[^>]+>>/g, "").trim();
+                }
+              }
+              model.name = cleanLabel;
+              if (stereo) model.stereotype = stereo;
+            }
+          },
+          viewInitializer: function (view) {
+            view.lineStyle = 1; // Rectilinear
+          }
+        });
+      } catch (transErr) {
+        console.error("[state-parser] Failed to create UMLTransition:", transErr);
+      }
+    });
+
+  } catch (globalErr) {
+    var errTxt = (globalErr && globalErr.message) ? (globalErr.message + "\n" + globalErr.stack) : String(globalErr);
+    app.dialogs.showAlertDialog("FATAL ERROR in state-parser:\n" + errTxt);
+    console.error(globalErr);
+  }
 }
 
 module.exports = {
