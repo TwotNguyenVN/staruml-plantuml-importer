@@ -170,46 +170,58 @@ function generateDiagram(diagram, text) {
   
   // 2. Initialize Models in StarUML
   var parentModel = diagram._parent || app.project.getProject();
-  
-  // Find or create UMLStateMachine context
-  var stateMachineModel = parentModel;
-  if (parentModel.getClassName() !== "UMLStateMachine") {
+  var stateMachineModel = null;
+  var rootRegion = null;
+
+  if (parentModel.getClassName() === "UMLRegion") {
+    // If we're already inside a Region (normal case for Statechart Diagram in StarUML)
+    rootRegion = parentModel;
+    stateMachineModel = rootRegion._parent;
+  } else {
+    // Find or create UMLStateMachine context
+    stateMachineModel = parentModel;
+    if (parentModel.getClassName() !== "UMLStateMachine") {
+      try {
+        var existingSM = null;
+        if (parentModel.ownedElements && typeof parentModel.ownedElements.find === "function") {
+            existingSM = parentModel.ownedElements.find(function (el) {
+                return el.getClassName() === "UMLStateMachine";
+            });
+        }
+        if (existingSM) {
+          stateMachineModel = existingSM;
+        } else {
+          stateMachineModel = app.factory.createModel({
+            id: "UMLStateMachine",
+            parent: parentModel,
+            modelInitializer: function (model) {
+              model.name = "StateMachineContext";
+            }
+          });
+        }
+      } catch (smErr) {
+        console.error("[state-parser] Failed to find/create UMLStateMachine context:", smErr);
+      }
+    }
+    
+    // Ensure StateMachine has a UMLRegion
     try {
-      var existingSM = parentModel.ownedElements.find(function (el) {
-        return el.getClassName() === "UMLStateMachine";
-      });
-      if (existingSM) {
-        stateMachineModel = existingSM;
-      } else {
-        stateMachineModel = app.factory.createModel({
-          id: "UMLStateMachine",
-          parent: parentModel,
+      if (stateMachineModel && stateMachineModel.regions && typeof stateMachineModel.regions.find === "function") {
+        rootRegion = stateMachineModel.regions.find(function(r) { return r.getClassName() === "UMLRegion"; });
+      }
+      if (!rootRegion) {
+        rootRegion = app.factory.createModel({
+          id: "UMLRegion",
+          parent: stateMachineModel,
+          field: "regions",
           modelInitializer: function (model) {
-            model.name = "StateMachineContext";
+            model.name = "Region1";
           }
         });
       }
-    } catch (smErr) {
-      console.error("[state-parser] Failed to find/create UMLStateMachine context:", smErr);
+    } catch (regErr) {
+      console.error("[state-parser] Failed to create root UMLRegion:", regErr);
     }
-  }
-  
-  // Ensure StateMachine has a UMLRegion
-  var rootRegion = null;
-  try {
-    rootRegion = stateMachineModel.regions.find(function(r) { return r.getClassName() === "UMLRegion"; });
-    if (!rootRegion) {
-      rootRegion = app.factory.createModel({
-        id: "UMLRegion",
-        parent: stateMachineModel,
-        field: "regions",
-        modelInitializer: function (model) {
-          model.name = "Region1";
-        }
-      });
-    }
-  } catch (regErr) {
-    console.error("[state-parser] Failed to create root UMLRegion:", regErr);
   }
   
   // Map to hold parent regions for composite states
