@@ -439,23 +439,30 @@ function generateDiagram(diagram, text) {
     }
     
     // Find StateMachineView to act as frame container for root elements
-    var frameView = diagram;
-    var debugLog = "diagram._type=" + diagram._type + "\n";
+    var frameView = null;
     if (diagram && diagram.ownedViews) {
-        debugLog += "diagram.ownedViews.length=" + diagram.ownedViews.length + "\n";
         for (var f = 0; f < diagram.ownedViews.length; f++) {
             var v = diagram.ownedViews[f];
-            debugLog += "view[" + f + "]._type=" + v._type + "\n";
             if (v && v.getClassName() === "UMLStateMachineView") {
                 frameView = v;
                 break;
             }
         }
-    } else {
-        debugLog += "diagram.ownedViews is empty or undefined\n";
+    var starUMLType = typeof type !== "undefined" ? type : (typeof global !== "undefined" && global.type ? global.type : null);
+    if (!frameView && starUMLType && starUMLType.UMLStateMachineView) {
+        try {
+            frameView = new starUMLType.UMLStateMachineView();
+            frameView._parent = diagram;
+            frameView.model = stateMachineModel;
+            frameView.initialize(null, 10, 10, 800, 600);
+            app.engine.addItem(diagram, "ownedViews", frameView);
+        } catch (err) {
+            console.error("Failed to create UMLStateMachineView manually:", err);
+            frameView = diagram; // fallback
+        }
+    } else if (!frameView) {
+        frameView = diagram; // fallback
     }
-    debugLog += "frameView._type=" + frameView._type + "\n";
-    try { require('fs').writeFileSync('/Users/twot/Documents/CODE/staruml-plantuml-importer/debug_diagram.txt', debugLog); } catch(e){}
     
     
     // Render all roots
