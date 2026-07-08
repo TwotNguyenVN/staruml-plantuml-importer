@@ -1,0 +1,43 @@
+@startuml
+title State Diagram - Composite State with Regions
+
+[*] --> TaoDonHang
+
+TaoDonHang --> DangXuLy : Khách xác nhận đơn
+
+state DangXuLy {
+  
+  state "Region 1: Thanh toán" as Payment {
+    [*] --> ChoThanhToan
+    ChoThanhToan --> DaThanhToan : Thanh toán thành công
+    ChoThanhToan --> ThanhToanThatBai : Thanh toán lỗi
+    ThanhToanThatBai --> ChoThanhToan : Thử lại
+    DaThanhToan --> [*]
+  }
+
+  --
+
+  state "Region 2: Kho hàng" as Inventory {
+    [*] --> KiemTraTonKho
+    KiemTraTonKho --> DaGiuHang : Còn hàng
+    KiemTraTonKho --> HetHang : Hết hàng
+    DaGiuHang --> [*]
+  }
+
+  --
+
+  state "Region 3: Giao hàng" as Delivery {
+    [*] --> ChuanBiGiao
+    ChuanBiGiao --> DangGiao : Bàn giao shipper
+    DangGiao --> DaGiao : Giao thành công
+    DaGiao --> [*]
+  }
+}
+
+DangXuLy --> HoanTat : Thanh toán + giữ hàng + giao thành công
+DangXuLy --> HuyDon : Thanh toán thất bại hoặc hết hàng
+
+HoanTat --> [*]
+HuyDon --> [*]
+
+@enduml
