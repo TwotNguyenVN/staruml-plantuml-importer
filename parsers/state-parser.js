@@ -355,7 +355,24 @@ function generateDiagram(diagram, text) {
            if (parentContainerView.subViews && parentContainerView.subViews.add) parentContainerView.subViews.add(view);
         } else {
            view._parent = diagram;
-           if (diagram.ownedViews) diagram.ownedViews.push(view);
+           if (diagram.ownedViews && typeof diagram.ownedViews.add === "function") {
+               diagram.ownedViews.add(view);
+           } else if (diagram.ownedViews) {
+               diagram.ownedViews.push(view);
+           }
+        }
+        
+        // Bơm Model xuống tất cả các Khối phụ để hiển thị Chữ và Fix lỗi Tàng hình (0x0)
+        if (view && view.model) {
+            if (view.nameCompartment) view.nameCompartment.model = view.model;
+            if (view.internalActivityCompartment) view.internalActivityCompartment.model = view.model;
+            if (view.internalTransitionCompartment) view.internalTransitionCompartment.model = view.model;
+            if (view.decompositionCompartment) view.decompositionCompartment.model = view.model;
+        }
+        
+        // Gọi Engine để tính toán toạ độ và Size cho các thành phần con nếu có sẵn
+        if (typeof view.initialize === "function") {
+            try { view.initialize(null, state.x, state.y, state.x + state.w, state.y + state.h); } catch(e){}
         }
   
       } catch (e) {
@@ -464,7 +481,24 @@ function generateDiagram(diagram, text) {
            if (parentContainerView.subViews && parentContainerView.subViews.add) parentContainerView.subViews.add(view);
         } else {
            view._parent = diagram;
-           if (diagram.ownedViews) diagram.ownedViews.push(view);
+           if (diagram.ownedViews && typeof diagram.ownedViews.add === "function") {
+               diagram.ownedViews.add(view);
+           } else if (diagram.ownedViews) {
+               diagram.ownedViews.push(view);
+           }
+        }
+        
+        // Bơm Model xuống tất cả các Khối phụ để hiển thị Chữ và Fix lỗi Tàng hình (0x0)
+        if (view && view.model) {
+            if (view.nameCompartment) view.nameCompartment.model = view.model;
+            if (view.internalActivityCompartment) view.internalActivityCompartment.model = view.model;
+            if (view.internalTransitionCompartment) view.internalTransitionCompartment.model = view.model;
+            if (view.decompositionCompartment) view.decompositionCompartment.model = view.model;
+        }
+        
+        // Gọi Engine để tính toán toạ độ và Size cho các thành phần con nếu có sẵn
+        if (typeof view.initialize === "function") {
+            try { view.initialize(null, state.x, state.y, state.x + state.w, state.y + state.h); } catch(e){}
         }
         return view;
   
