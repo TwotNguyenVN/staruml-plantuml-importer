@@ -202,6 +202,12 @@ function generateDiagram(diagram, text) {
       console.error("[state-parser] Failed to create root UMLRegion:", regErr);
     }
     
+    if (diagram && typeof diagram.setContainer === 'function') {
+        diagram._parent = stateMachineModel;
+    } else if (diagram) {
+        diagram._parent = stateMachineModel;
+    }
+    
     // 3. Tree-based Layout Engine
     var childrenMap = {};
     var rootStates = [];
