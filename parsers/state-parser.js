@@ -337,16 +337,6 @@ function generateDiagram(diagram, text) {
           modelInitializer: function(m) {
             m.name = sanitizeName(state.name);
             if (state.stereotype) m.stereotype = state.stereotype;
-            
-            if (children.length > 0) {
-              var count = state.regionSizes ? state.regionSizes.length : 1;
-              for (var i = 0; i < count; i++) {
-                app.factory.createModel({
-                  id: "UMLRegion", parent: m, field: "regions",
-                  modelInitializer: function(reg) { reg.name = "Region"; }
-                });
-              }
-            }
           },
           viewInitializer: function(v) {
             v.left = state.x;
@@ -359,6 +349,18 @@ function generateDiagram(diagram, text) {
           }
         });
         
+        if (view && view.model && children.length > 0) {
+            var count = state.regionSizes ? state.regionSizes.length : 1;
+            for (var i = 0; i < count; i++) {
+                try {
+                    app.factory.createModel({
+                        id: "UMLRegion", parent: view.model, field: "regions",
+                        modelInitializer: function(reg) { reg.name = "Region"; }
+                    });
+                } catch(e) { console.error("Failed to create UMLRegion", e); }
+            }
+        }
+        
         // Bơm Model xuống tất cả các Khối phụ để hiển thị Chữ và Fix lỗi Tàng hình (0x0)
         if (view && view.model) {
             if (view.nameCompartment) view.nameCompartment.model = view.model;
@@ -369,6 +371,7 @@ function generateDiagram(diagram, text) {
         
       } catch (e) {
         console.error("Error creating state", state.name, e);
+        if (app.dialogs) app.dialogs.showAlertDialog("Failed to create state '" + state.name + "': " + String(e));
         return;
       }
       
