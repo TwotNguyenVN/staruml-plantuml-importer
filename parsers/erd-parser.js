@@ -134,7 +134,7 @@ function generateDiagram(diagram, text) {
   
   if (parentModel.getClassName() !== "ERDDataModel") {
     try {
-      var existingDM = parentModel.ownedElements.find(function (el) {
+      var existingDM = (parentModel.ownedElements || []).find(function (el) {
         return el.getClassName() === "ERDDataModel";
       });
       if (existingDM) {
