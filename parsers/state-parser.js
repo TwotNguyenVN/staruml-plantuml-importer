@@ -339,15 +339,6 @@ function generateDiagram(diagram, text) {
     
     function renderState(stateAlias, parentRegionModel, parentContainerView) {
       var state = elementsData[stateAlias];
-      // For top-level states (no parentAlias), prefer attaching directly to the StateMachine
-      // instead of a Region if the engine does not allow placing them under the current region.
-      if (!state.parentAlias &&
-          parentRegionModel &&
-          typeof parentRegionModel.getClassName === "function" &&
-          parentRegionModel.getClassName() === "UMLRegion" &&
-          stateMachineModel) {
-        parentRegionModel = stateMachineModel;
-      }
       
       var view = null;
       try {
@@ -362,6 +353,7 @@ function generateDiagram(diagram, text) {
           parent: parentRegionModel,
           field: "vertices",
           diagram: diagram,
+          containerView: parentContainerView,
           modelInitializer: function(m) {
             m.name = sanitizeName(state.name);
             if (state.stereotype) m.stereotype = state.stereotype;
@@ -563,6 +555,7 @@ function generateDiagram(diagram, text) {
           parent: parentRegionModel,
           field: "vertices",
           diagram: diagram,
+          containerView: parentContainerView,
           modelInitializer: function(m) {
             m.name = isInitial ? "Initial" : "Final";
           },
@@ -571,14 +564,6 @@ function generateDiagram(diagram, text) {
             v.top = posY;
             v.width = 25;
             v.height = 25;
-            if (parentContainerView && parentContainerView !== diagram) {
-              var cvModel = parentContainerView.model;
-              if (cvModel &&
-                  typeof cvModel.getClassName === "function" &&
-                  cvModel.getClassName() === "UMLRegion") {
-                v.containerView = parentContainerView;
-              }
-            }
           }
         });
         
