@@ -10,6 +10,7 @@ function sanitizeName(name) {
 function generateDiagram(diagram, text) {
   try {
     global.hasShownStateError = false;
+    var debugLog = "";
     
     // Strict diagram type checking to prevent StarUML internal crash
     if (diagram && diagram.getClassName() !== "UMLStatechartDiagram") {
@@ -337,6 +338,15 @@ function generateDiagram(diagram, text) {
     
     function renderState(stateAlias, parentRegionModel, parentContainerView) {
       var state = elementsData[stateAlias];
+      // For top-level states (no parentAlias), prefer attaching directly to the StateMachine
+      // instead of a Region if the engine does not allow placing them under the current region.
+      if (!state.parentAlias &&
+          parentRegionModel &&
+          typeof parentRegionModel.getClassName === "function" &&
+          parentRegionModel.getClassName() === "UMLRegion" &&
+          stateMachineModel) {
+        parentRegionModel = stateMachineModel;
+      }
       
       var view = null;
       try {
@@ -347,7 +357,6 @@ function generateDiagram(diagram, text) {
           parent: parentRegionModel,
           field: "vertices",
           diagram: diagram,
-          containerView: parentContainerView,
           modelInitializer: function(m) {
             m.name = sanitizeName(state.name);
             if (state.stereotype) m.stereotype = state.stereotype;
@@ -357,9 +366,6 @@ function generateDiagram(diagram, text) {
             v.top = state.y;
             v.width = state.w;
             v.height = state.h;
-            if (parentContainerView && parentContainerView !== diagram) {
-               v.containerView = parentContainerView;
-            }
           }
         });
         
@@ -500,8 +506,13 @@ function generateDiagram(diagram, text) {
         if (parentView.model && parentView.model.regions && parentView.model.regions.length > 0) {
           parentRegionModel = parentView.model.regions[parentView.model.regions.length - 1];
         }
-        if (parentView.decompositionCompartment && parentView.decompositionCompartment.subViews && parentView.decompositionCompartment.subViews.length > 0) {
-          parentContainerView = parentView.decompositionCompartment.subViews.get(parentView.decompositionCompartment.subViews.length - 1);
+        var subViews = parentView.decompositionCompartment && parentView.decompositionCompartment.subViews;
+        if (subViews && subViews.length > 0) {
+          var lastSub =
+            typeof subViews.get === "function"
+              ? subViews.get(subViews.length - 1)
+              : subViews[subViews.length - 1];
+          parentContainerView = lastSub || parentView;
         } else {
           parentContainerView = parentView;
         }
@@ -530,7 +541,6 @@ function generateDiagram(diagram, text) {
           parent: parentRegionModel,
           field: "vertices",
           diagram: diagram,
-          containerView: parentContainerView,
           modelInitializer: function(m) {
             m.name = isInitial ? "Initial" : "Final";
           },
@@ -539,9 +549,6 @@ function generateDiagram(diagram, text) {
             v.top = posY;
             v.width = 25;
             v.height = 25;
-            if (parentContainerView && parentContainerView !== diagram) {
-               v.containerView = parentContainerView;
-            }
           }
         });
         
@@ -569,8 +576,13 @@ function generateDiagram(diagram, text) {
          if (pView.model && pView.model.regions && pView.model.regions.length > 0) {
             parentRegionModel = pView.model.regions[pView.model.regions.length - 1];
          }
-         if (pView.decompositionCompartment && pView.decompositionCompartment.subViews && pView.decompositionCompartment.subViews.length > 0) {
-            parentContainerView = pView.decompositionCompartment.subViews.get(pView.decompositionCompartment.subViews.length - 1);
+         var subViews = pView.decompositionCompartment && pView.decompositionCompartment.subViews;
+         if (subViews && subViews.length > 0) {
+            var lastSub =
+              typeof subViews.get === "function"
+                ? subViews.get(subViews.length - 1)
+                : subViews[subViews.length - 1];
+            parentContainerView = lastSub || pView;
          } else {
             parentContainerView = pView;
          }
@@ -582,7 +594,6 @@ function generateDiagram(diagram, text) {
           parent: parentRegionModel,
           field: "transitions",
           diagram: diagram,
-          containerView: parentContainerView,
           tailView: tailView,
           headView: headView,
           tailModel: tailView.model,
