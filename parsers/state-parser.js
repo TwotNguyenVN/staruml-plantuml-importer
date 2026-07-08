@@ -350,16 +350,14 @@ function generateDiagram(diagram, text) {
         view.model = stateModel;
         view.left = state.x; view.top = state.y; view.width = state.w; view.height = state.h;
         
+        view._parent = diagram;
         if (parentContainerView && parentContainerView !== diagram) {
-           view._parent = parentContainerView;
-           if (parentContainerView.subViews && parentContainerView.subViews.add) parentContainerView.subViews.add(view);
-        } else {
-           view._parent = diagram;
-           if (diagram.ownedViews && typeof diagram.ownedViews.add === "function") {
-               diagram.ownedViews.add(view);
-           } else if (diagram.ownedViews) {
-               diagram.ownedViews.push(view);
-           }
+           view.containerView = parentContainerView;
+        }
+        if (diagram.ownedViews && typeof diagram.ownedViews.add === "function") {
+           diagram.ownedViews.add(view);
+        } else if (diagram.ownedViews) {
+           diagram.ownedViews.push(view);
         }
         
         // Bơm Model xuống tất cả các Khối phụ để hiển thị Chữ và Fix lỗi Tàng hình (0x0)
@@ -476,16 +474,14 @@ function generateDiagram(diagram, text) {
         view.model = psModel;
         view.left = posX; view.top = posY; view.width = 25; view.height = 25;
         
+        view._parent = diagram;
         if (parentContainerView && parentContainerView !== diagram) {
-           view._parent = parentContainerView;
-           if (parentContainerView.subViews && parentContainerView.subViews.add) parentContainerView.subViews.add(view);
-        } else {
-           view._parent = diagram;
-           if (diagram.ownedViews && typeof diagram.ownedViews.add === "function") {
-               diagram.ownedViews.add(view);
-           } else if (diagram.ownedViews) {
-               diagram.ownedViews.push(view);
-           }
+           view.containerView = parentContainerView;
+        }
+        if (diagram.ownedViews && typeof diagram.ownedViews.add === "function") {
+           diagram.ownedViews.add(view);
+        } else if (diagram.ownedViews) {
+           diagram.ownedViews.push(view);
         }
         
         // Bơm Model xuống tất cả các Khối phụ để hiển thị Chữ và Fix lỗi Tàng hình (0x0)
