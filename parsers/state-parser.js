@@ -445,6 +445,23 @@ function generateDiagram(diagram, text) {
             var v = diagram.ownedViews[f];
             if (v && v.getClassName() === "UMLStateMachineView") {
                 frameView = v;
+                debugLog += "Found UMLStateMachineView!\n";
+                if (v.subViews) {
+                    var subLen = v.subViews.length;
+                    debugLog += "subViews.length=" + subLen + "\n";
+                    for (var k = 0; k < subLen; k++) {
+                        var sv = typeof v.subViews.get === "function" ? v.subViews.get(k) : v.subViews[k];
+                        debugLog += "sv[" + k + "].getClassName()=" + (sv && sv.getClassName ? sv.getClassName() : "undefined") + "\n";
+                        if (sv && sv.subViews) {
+                            var innerLen = sv.subViews.length;
+                            debugLog += "  inner.subViews.length=" + innerLen + "\n";
+                            for (var j = 0; j < innerLen; j++) {
+                                var iv = typeof sv.subViews.get === "function" ? sv.subViews.get(j) : sv.subViews[j];
+                                debugLog += "  iv[" + j + "].getClassName()=" + (iv && iv.getClassName ? iv.getClassName() : "undefined") + "\n";
+                            }
+                        }
+                    }
+                }
                 break;
             }
         }
