@@ -461,6 +461,10 @@ function generateDiagram(diagram, text) {
       
       var posX = 60 + pseudostateCount * 80;
       var posY = 40;
+      if (parentContainerView && parentContainerView !== diagram) {
+         posX = parentContainerView.left + 20 + pseudostateCount * 40;
+         posY = parentContainerView.top + 40;
+      }
       pseudostateCount++;
       
       try {
@@ -524,16 +528,13 @@ function generateDiagram(diagram, text) {
       }
       
       try {
-        app.factory.createModelAndView({
+        var tModel = app.factory.createModel({
           id: "UMLTransition",
           parent: parentRegionModel,
           field: "transitions",
-          diagram: diagram,
-          tailView: tailView,
-          headView: headView,
-          tailModel: tailView.model,
-          headModel: headView.model,
           modelInitializer: function (model) {
+            model.source = tailView.model;
+            model.target = headView.model;
             if (trans.label) {
               var stereo = "";
               var cleanLabel = trans.label;
@@ -547,11 +548,30 @@ function generateDiagram(diagram, text) {
               model.name = cleanLabel;
               if (stereo) model.stereotype = stereo;
             }
-          },
-          viewInitializer: function (view) {
-            view.lineStyle = 1; // Rectilinear
           }
         });
+        if (typeof type !== "undefined" && type.UMLTransitionView) {
+            var tView = new type.UMLTransitionView();
+            tView.model = tModel;
+            tView.tail = tailView;
+            tView.head = headView;
+            tView.lineStyle = 1; // Rectilinear
+            
+            if (tView.nameLabel) tView.nameLabel.model = tModel;
+            if (tView.stereotypeLabel) tView.stereotypeLabel.model = tModel;
+            if (tView.propertyLabel) tView.propertyLabel.model = tModel;
+
+            tView._parent = diagram;
+            
+            if (typeof tView.initialize === "function") {
+                try { tView.initialize(null, tailView.left + (tailView.width||20)/2, tailView.top + (tailView.height||20)/2, headView.left + (headView.width||20)/2, headView.top + (headView.height||20)/2); } catch(e){}
+            }
+            if (diagram.ownedViews && typeof diagram.ownedViews.add === "function") {
+                diagram.ownedViews.add(tView);
+            } else if (diagram.ownedViews) {
+                diagram.ownedViews.push(tView);
+            }
+        }
       } catch (transErr) {
         console.error("[state-parser] Failed to create UMLTransition:", transErr);
       }
