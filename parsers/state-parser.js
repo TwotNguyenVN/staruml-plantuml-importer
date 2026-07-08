@@ -442,7 +442,7 @@ function generateDiagram(diagram, text) {
     
     // 5. Create Pseudostates & Transitions
     var pseudostateCount = 0;
-    function createPseudostate(isInitial, parentAlias) {
+    function createPseudostate(isInitial, parentAlias, referenceView) {
       var typeId = isInitial ? "UMLPseudostate" : "UMLFinalState";
       var parentRegionModel = rootRegion;
       var parentContainerView = diagram;
@@ -464,6 +464,15 @@ function generateDiagram(diagram, text) {
       if (parentContainerView && parentContainerView !== diagram) {
          posX = parentContainerView.left + 20 + pseudostateCount * 40;
          posY = parentContainerView.top + 40;
+      }
+      if (referenceView) {
+         if (isInitial) {
+             posX = referenceView.left + Math.max(0, ((referenceView.width || 60) / 2) - 12);
+             posY = referenceView.top - 40;
+         } else {
+             posX = referenceView.left + (referenceView.width || 60) + 40;
+             posY = referenceView.top + Math.max(0, ((referenceView.height || 40) / 2) - 12);
+         }
       }
       pseudostateCount++;
       
@@ -498,7 +507,7 @@ function generateDiagram(diagram, text) {
         
         // Gọi Engine để tính toán toạ độ và Size cho các thành phần con nếu có sẵn
         if (typeof view.initialize === "function") {
-            try { view.initialize(null, state.x, state.y, state.x + state.w, state.y + state.h); } catch(e){}
+            try { view.initialize(null, posX, posY, posX + 25, posY + 25); } catch(e){}
         }
         return view;
   
@@ -509,13 +518,11 @@ function generateDiagram(diagram, text) {
     }
     
     parsedTransitions.forEach(function (trans) {
-      var tailView = null;
-      var headView = null;
-      if (trans.from === "[*]") tailView = createPseudostate(true, trans.parentAlias);
-      else tailView = elementsMap[trans.from];
+      var tailView = trans.from === "[*]" ? null : elementsMap[trans.from];
+      var headView = trans.to === "[*]" ? null : elementsMap[trans.to];
       
-      if (trans.to === "[*]") headView = createPseudostate(false, trans.parentAlias);
-      else headView = elementsMap[trans.to];
+      if (trans.from === "[*]") tailView = createPseudostate(true, trans.parentAlias, headView);
+      if (trans.to === "[*]") headView = createPseudostate(false, trans.parentAlias, tailView);
       
       if (!tailView || !headView) return;
       
@@ -557,9 +564,20 @@ function generateDiagram(diagram, text) {
             tView.head = headView;
             tView.lineStyle = 1; // Rectilinear
             
-            if (tView.nameLabel) tView.nameLabel.model = tModel;
-            if (tView.stereotypeLabel) tView.stereotypeLabel.model = tModel;
-            if (tView.propertyLabel) tView.propertyLabel.model = tModel;
+            if (tView.nameLabel) {
+                tView.nameLabel.model = tModel;
+                tView.nameLabel.visible = true;
+                tView.nameLabel.alpha = Math.PI / 2;
+                tView.nameLabel.distance = 15;
+            }
+            if (tView.stereotypeLabel) {
+                tView.stereotypeLabel.model = tModel;
+                tView.stereotypeLabel.visible = true;
+            }
+            if (tView.propertyLabel) {
+                tView.propertyLabel.model = tModel;
+                tView.propertyLabel.visible = true;
+            }
 
             tView._parent = diagram;
             
