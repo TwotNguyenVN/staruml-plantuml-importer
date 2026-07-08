@@ -347,6 +347,7 @@ function generateDiagram(diagram, text) {
           parent: parentRegionModel,
           field: "vertices",
           diagram: diagram,
+          containerView: parentContainerView,
           modelInitializer: function(m) {
             m.name = sanitizeName(state.name);
             if (state.stereotype) m.stereotype = state.stereotype;
@@ -431,15 +432,26 @@ function generateDiagram(diagram, text) {
         } else {
           // Fallback if no compartment view
           children.forEach(function(c) {
-            renderState(c.alias, rootRegion, diagram); // flatten fallback
+            renderState(c.alias, rootRegion, parentContainerView); // flatten fallback
           });
         }
       }
     }
     
+    // Find StateMachineView to act as frame container for root elements
+    var frameView = diagram;
+    if (diagram && diagram.ownedViews) {
+        for (var f = 0; f < diagram.ownedViews.length; f++) {
+            if (diagram.ownedViews[f] && diagram.ownedViews[f].getClassName() === "UMLStateMachineView") {
+                frameView = diagram.ownedViews[f];
+                break;
+            }
+        }
+    }
+    
     // Render all roots
     rootStates.forEach(function(s) {
-      renderState(s.alias, rootRegion, diagram);
+      renderState(s.alias, rootRegion, frameView);
     });
     
     // 5. Create Pseudostates & Transitions
@@ -447,7 +459,7 @@ function generateDiagram(diagram, text) {
     function createPseudostate(isInitial, parentAlias, referenceView) {
       var typeId = isInitial ? "UMLPseudostate" : "UMLFinalState";
       var parentRegionModel = rootRegion;
-      var parentContainerView = diagram;
+      var parentContainerView = frameView;
       
       if (parentAlias && elementsMap[parentAlias]) {
         var parentView = elementsMap[parentAlias];
@@ -484,6 +496,7 @@ function generateDiagram(diagram, text) {
           parent: parentRegionModel,
           field: "vertices",
           diagram: diagram,
+          containerView: parentContainerView,
           modelInitializer: function(m) {
             m.name = isInitial ? "Initial" : "Final";
           },
@@ -516,10 +529,16 @@ function generateDiagram(diagram, text) {
       if (!tailView || !headView) return;
       
       var parentRegionModel = rootRegion;
+      var parentContainerView = frameView;
       if (trans.parentAlias && elementsMap[trans.parentAlias]) {
          var pView = elementsMap[trans.parentAlias];
          if (pView.model && pView.model.regions && pView.model.regions.length > 0) {
             parentRegionModel = pView.model.regions[pView.model.regions.length - 1];
+         }
+         if (pView.decompositionCompartment && pView.decompositionCompartment.subViews && pView.decompositionCompartment.subViews.length > 0) {
+            parentContainerView = pView.decompositionCompartment.subViews.get(pView.decompositionCompartment.subViews.length - 1);
+         } else {
+            parentContainerView = pView;
          }
       }
       
@@ -529,6 +548,7 @@ function generateDiagram(diagram, text) {
           parent: parentRegionModel,
           field: "transitions",
           diagram: diagram,
+          containerView: parentContainerView,
           tailView: tailView,
           headView: headView,
           tailModel: tailView.model,
