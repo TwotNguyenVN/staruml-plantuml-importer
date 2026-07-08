@@ -471,9 +471,7 @@ function generateDiagram(diagram, text) {
     if (diagram && diagram.ownedViews) {
         for (var f = 0; f < diagram.ownedViews.length; f++) {
             var v = diagram.ownedViews[f];
-            var className = v && v.getClassName ? v.getClassName() : "unknown";
-            debugLog += "view[" + f + "].getClassName()=" + className + "\n";
-            if (className === "UMLStateMachineView") {
+            if (v && v.getClassName() === "UMLStateMachineView") {
                 frameView = v;
                 debugLog += "Found UMLStateMachineView!\n";
                 if (v.subViews) {
