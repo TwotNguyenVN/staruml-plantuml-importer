@@ -448,6 +448,7 @@ function generateDiagram(diagram, text) {
                 break;
             }
         }
+    }
     var starUMLType = typeof type !== "undefined" ? type : (typeof global !== "undefined" && global.type ? global.type : null);
     if (!frameView && starUMLType && starUMLType.UMLStateMachineView) {
         try {
