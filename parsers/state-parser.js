@@ -202,10 +202,17 @@ function generateDiagram(diagram, text) {
       console.error("[state-parser] Failed to create root UMLRegion:", regErr);
     }
     
-    if (diagram && typeof diagram.setContainer === 'function') {
-        diagram._parent = stateMachineModel;
-    } else if (diagram) {
-        diagram._parent = stateMachineModel;
+    if (diagram && diagram._parent !== stateMachineModel) {
+        try {
+            if (app.engine && app.engine.relocate) {
+                app.engine.relocate(diagram, stateMachineModel, "ownedElements");
+            } else {
+                diagram._parent = stateMachineModel;
+            }
+        } catch (err) {
+            console.error("[state-parser] Failed to relocate diagram:", err);
+            diagram._parent = stateMachineModel;
+        }
     }
     
     // 3. Tree-based Layout Engine
