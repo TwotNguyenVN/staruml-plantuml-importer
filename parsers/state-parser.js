@@ -322,43 +322,42 @@ function generateDiagram(diagram, text) {
       }
     });
     
-    // 4. Render Hierarchy (Model and View)
-    function ensureRegions(stateModel, count) {
-      while (!stateModel.regions || stateModel.regions.length < count) {
-        app.factory.createModel({
-          id: "UMLRegion", parent: stateModel, field: "regions",
-          modelInitializer: function(m) { m.name = "Region"; }
-        });
-      }
-    }
-
     function renderState(stateAlias, parentRegionModel, parentContainerView) {
       var state = elementsData[stateAlias];
       
       var view = null;
       try {
+        var children = childrenMap[stateAlias] || [];
         
-        var stateModel = app.factory.createModel({
-          id: "UMLState", parent: parentRegionModel, field: "vertices",
+        view = app.factory.createModelAndView({
+          id: "UMLState",
+          parent: parentRegionModel,
+          field: "vertices",
+          diagram: diagram,
           modelInitializer: function(m) {
             m.name = sanitizeName(state.name);
             if (state.stereotype) m.stereotype = state.stereotype;
+            
+            if (children.length > 0) {
+              var count = state.regionSizes ? state.regionSizes.length : 1;
+              for (var i = 0; i < count; i++) {
+                app.factory.createModel({
+                  id: "UMLRegion", parent: m, field: "regions",
+                  modelInitializer: function(reg) { reg.name = "Region"; }
+                });
+              }
+            }
+          },
+          viewInitializer: function(v) {
+            v.left = state.x;
+            v.top = state.y;
+            v.width = state.w;
+            v.height = state.h;
+            if (parentContainerView && parentContainerView !== diagram) {
+               v.containerView = parentContainerView;
+            }
           }
         });
-        
-        view = typeof type !== "undefined" ? new type.UMLStateView() : { model: null };
-        view.model = stateModel;
-        view.left = state.x; view.top = state.y; view.width = state.w; view.height = state.h;
-        
-        view._parent = diagram;
-        if (parentContainerView && parentContainerView !== diagram) {
-           view.containerView = parentContainerView;
-        }
-        if (diagram.ownedViews && typeof diagram.ownedViews.add === "function") {
-           diagram.ownedViews.add(view);
-        } else if (diagram.ownedViews) {
-           diagram.ownedViews.push(view);
-        }
         
         // Bơm Model xuống tất cả các Khối phụ để hiển thị Chữ và Fix lỗi Tàng hình (0x0)
         if (view && view.model) {
@@ -368,14 +367,8 @@ function generateDiagram(diagram, text) {
             if (view.decompositionCompartment) view.decompositionCompartment.model = view.model;
         }
         
-        // Gọi Engine để tính toán toạ độ và Size cho các thành phần con nếu có sẵn
-        if (typeof view.initialize === "function") {
-            try { view.initialize(null, state.x, state.y, state.x + state.w, state.y + state.h); } catch(e){}
-        }
-  
       } catch (e) {
         console.error("Error creating state", state.name, e);
-        app.dialogs.showAlertDialog("Failed to create state '" + state.name + "': " + String(e));
         return;
       }
       
@@ -385,8 +378,6 @@ function generateDiagram(diagram, text) {
       var children = childrenMap[stateAlias] || [];
       
       if (children.length > 0) {
-        // Build composite inner views
-        ensureRegions(view.model, state.regionSizes.length);
         var compView = view.decompositionCompartment;
         if (compView) {
           compView.visible = true;
@@ -400,25 +391,20 @@ function generateDiagram(diagram, text) {
             regionsData[rIdx].push(c);
           });
           
-          for (var r = 0; r < state.regionSizes.length; r++) {
-            var regModel = (view.model.regions && view.model.regions.length > r) ? view.model.regions[r] : null;
-            if (!regModel) {
-               try { regModel = app.factory.createModel({ id: "UMLRegion", parent: view.model, field: "regions" }); } catch(e){}
-            }
-            var rSize = state.regionSizes[r];
-            var regView = null;
+          var regionCount = state.regionSizes ? state.regionSizes.length : 1;
+          for (var r = 0; r < regionCount; r++) {
+            var regModel = (view.model.regions && view.model.regions.length > r) ? view.model.regions[r] : view.model;
+            var rSize = (state.regionSizes && state.regionSizes.length > r) ? state.regionSizes[r] : {absX: state.x, absY: state.y+30, w: state.w, h: state.h-30};
             
-            if (typeof type !== "undefined" && type.UMLRegionView) {
-              regView = new type.UMLRegionView();
-              regView.model = regModel;
-              regView._parent = compView;
-              regView.left = rSize.absX;
-              regView.top = rSize.absY;
-              regView.width = rSize.w;
-              regView.height = rSize.h;
-              if (compView.subViews && typeof compView.subViews.add === "function") {
-                compView.subViews.add(regView);
-              }
+            var regView = null;
+            if (compView.subViews && compView.subViews.length > r) {
+               regView = compView.subViews[r];
+               if (regView) {
+                  regView.left = rSize.absX;
+                  regView.top = rSize.absY;
+                  regView.width = rSize.w;
+                  regView.height = rSize.h;
+               }
             }
             
             var rStates = regionsData[r] || [];
@@ -477,38 +463,25 @@ function generateDiagram(diagram, text) {
       pseudostateCount++;
       
       try {
-        
-        var psModel = app.factory.createModel({
-          id: typeId, parent: parentRegionModel, field: "vertices",
-          modelInitializer: function(m) { if (isInitial) m.kind = "initial"; }
+        var view = app.factory.createModelAndView({
+          id: typeId,
+          parent: parentRegionModel,
+          field: "vertices",
+          diagram: diagram,
+          modelInitializer: function(m) {
+            m.name = isInitial ? "Initial" : "Final";
+          },
+          viewInitializer: function(v) {
+            v.left = posX;
+            v.top = posY;
+            v.width = 25;
+            v.height = 25;
+            if (parentContainerView && parentContainerView !== diagram) {
+               v.containerView = parentContainerView;
+            }
+          }
         });
         
-        var view = typeof type !== "undefined" ? (typeId === "UMLPseudostate" ? new type.UMLPseudostateView() : new type.UMLFinalStateView()) : { model: null };
-        view.model = psModel;
-        view.left = posX; view.top = posY; view.width = 25; view.height = 25;
-        
-        view._parent = diagram;
-        if (parentContainerView && parentContainerView !== diagram) {
-           view.containerView = parentContainerView;
-        }
-        if (diagram.ownedViews && typeof diagram.ownedViews.add === "function") {
-           diagram.ownedViews.add(view);
-        } else if (diagram.ownedViews) {
-           diagram.ownedViews.push(view);
-        }
-        
-        // Bơm Model xuống tất cả các Khối phụ để hiển thị Chữ và Fix lỗi Tàng hình (0x0)
-        if (view && view.model) {
-            if (view.nameCompartment) view.nameCompartment.model = view.model;
-            if (view.internalActivityCompartment) view.internalActivityCompartment.model = view.model;
-            if (view.internalTransitionCompartment) view.internalTransitionCompartment.model = view.model;
-            if (view.decompositionCompartment) view.decompositionCompartment.model = view.model;
-        }
-        
-        // Gọi Engine để tính toán toạ độ và Size cho các thành phần con nếu có sẵn
-        if (typeof view.initialize === "function") {
-            try { view.initialize(null, posX, posY, posX + 25, posY + 25); } catch(e){}
-        }
         return view;
   
       } catch (err) {
@@ -535,10 +508,15 @@ function generateDiagram(diagram, text) {
       }
       
       try {
-        var tModel = app.factory.createModel({
+        var tView = app.factory.createModelAndView({
           id: "UMLTransition",
           parent: parentRegionModel,
           field: "transitions",
+          diagram: diagram,
+          tailView: tailView,
+          headView: headView,
+          tailModel: tailView.model,
+          headModel: headView.model,
           modelInitializer: function (model) {
             model.source = tailView.model;
             model.target = headView.model;
@@ -555,41 +533,18 @@ function generateDiagram(diagram, text) {
               model.name = cleanLabel;
               if (stereo) model.stereotype = stereo;
             }
+          },
+          viewInitializer: function (v) {
+            v.lineStyle = 1; // Rectilinear
+            if (v.nameLabel) {
+                v.nameLabel.visible = true;
+                v.nameLabel.alpha = Math.PI / 2;
+                v.nameLabel.distance = 15;
+            }
+            if (v.stereotypeLabel) v.stereotypeLabel.visible = true;
+            if (v.propertyLabel) v.propertyLabel.visible = true;
           }
         });
-        if (typeof type !== "undefined" && type.UMLTransitionView) {
-            var tView = new type.UMLTransitionView();
-            tView.model = tModel;
-            tView.tail = tailView;
-            tView.head = headView;
-            tView.lineStyle = 1; // Rectilinear
-            
-            if (tView.nameLabel) {
-                tView.nameLabel.model = tModel;
-                tView.nameLabel.visible = true;
-                tView.nameLabel.alpha = Math.PI / 2;
-                tView.nameLabel.distance = 15;
-            }
-            if (tView.stereotypeLabel) {
-                tView.stereotypeLabel.model = tModel;
-                tView.stereotypeLabel.visible = true;
-            }
-            if (tView.propertyLabel) {
-                tView.propertyLabel.model = tModel;
-                tView.propertyLabel.visible = true;
-            }
-
-            tView._parent = diagram;
-            
-            if (typeof tView.initialize === "function") {
-                try { tView.initialize(null, tailView.left + (tailView.width||20)/2, tailView.top + (tailView.height||20)/2, headView.left + (headView.width||20)/2, headView.top + (headView.height||20)/2); } catch(e){}
-            }
-            if (diagram.ownedViews && typeof diagram.ownedViews.add === "function") {
-                diagram.ownedViews.add(tView);
-            } else if (diagram.ownedViews) {
-                diagram.ownedViews.push(tView);
-            }
-        }
       } catch (transErr) {
         console.error("[state-parser] Failed to create UMLTransition:", transErr);
       }
