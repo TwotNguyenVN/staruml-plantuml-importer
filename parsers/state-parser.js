@@ -11,6 +11,7 @@ function generateDiagram(diagram, text) {
   try {
     global.hasShownStateError = false;
     var debugLog = "";
+    var __dbgRunId = "pre-fix";
     
     // Strict diagram type checking to prevent StarUML internal crash
     if (diagram && diagram.getClassName() !== "UMLStatechartDiagram") {
@@ -351,6 +352,10 @@ function generateDiagram(diagram, text) {
       var view = null;
       try {
         var children = childrenMap[stateAlias] || [];
+
+        // #region agent log
+        fetch('http://127.0.0.1:7830/ingest/cc01ebbd-f8e8-479d-b5eb-0816cf3d0d6f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4c834f'},body:JSON.stringify({sessionId:'4c834f',runId:__dbgRunId,hypothesisId:'H1',location:'parsers/state-parser.js:renderState:beforeCreate',message:'About to create UMLState',data:{stateAlias:stateAlias,stateName:state && state.name,parentAlias:state && state.parentAlias,isComposite:state && state.isComposite,regionIndex:state && state.regionIndex,parentRegionClass:(parentRegionModel && typeof parentRegionModel.getClassName==='function')?parentRegionModel.getClassName():typeof parentRegionModel,parentContainerViewClass:(parentContainerView && typeof parentContainerView.getClassName==='function')?parentContainerView.getClassName():typeof parentContainerView,parentContainerModelClass:(parentContainerView && parentContainerView.model && typeof parentContainerView.model.getClassName==='function')?parentContainerView.model.getClassName():typeof (parentContainerView && parentContainerView.model),diagramClass:(diagram && typeof diagram.getClassName==='function')?diagram.getClassName():typeof diagram},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         
         view = app.factory.createModelAndView({
           id: "UMLState",
@@ -366,6 +371,20 @@ function generateDiagram(diagram, text) {
             v.top = state.y;
             v.width = state.w;
             v.height = state.h;
+            // StarUML sometimes requires explicit containerView for nested
+            // vertices (states inside composite regions). Root states usually
+            // work without it.
+            if (state.parentAlias && parentContainerView && parentContainerView !== diagram) {
+              // Only attach containerView if it appears to correspond to the
+              // actual UMLRegion model; otherwise it can trigger
+              // "State cannot be placed here."
+              var cvModel = parentContainerView.model;
+              if (cvModel &&
+                  typeof cvModel.getClassName === "function" &&
+                  cvModel.getClassName() === "UMLRegion") {
+                v.containerView = parentContainerView;
+              }
+            }
           }
         });
         
@@ -390,6 +409,9 @@ function generateDiagram(diagram, text) {
         }
         
       } catch (e) {
+        // #region agent log
+        fetch('http://127.0.0.1:7830/ingest/cc01ebbd-f8e8-479d-b5eb-0816cf3d0d6f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4c834f'},body:JSON.stringify({sessionId:'4c834f',runId:__dbgRunId,hypothesisId:'H2',location:'parsers/state-parser.js:renderState:catch',message:'Failed to create UMLState',data:{stateAlias:stateAlias,stateName:state && state.name,parentAlias:state && state.parentAlias,regionIndex:state && state.regionIndex,parentRegionClass:(parentRegionModel && typeof parentRegionModel.getClassName==='function')?parentRegionModel.getClassName():typeof parentRegionModel,parentContainerViewClass:(parentContainerView && typeof parentContainerView.getClassName==='function')?parentContainerView.getClassName():typeof parentContainerView,parentContainerModelClass:(parentContainerView && parentContainerView.model && typeof parentContainerView.model.getClassName==='function')?parentContainerView.model.getClassName():typeof (parentContainerView && parentContainerView.model),errorName:e && e.name,errorMessage:e && e.message},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         console.error("Error creating state", state.name, e);
         if (app.dialogs) app.dialogs.showAlertDialog("Failed to create state '" + state.name + "': " + String(e));
         return;
@@ -449,7 +471,9 @@ function generateDiagram(diagram, text) {
     if (diagram && diagram.ownedViews) {
         for (var f = 0; f < diagram.ownedViews.length; f++) {
             var v = diagram.ownedViews[f];
-            if (v && v.getClassName() === "UMLStateMachineView") {
+            var className = v && v.getClassName ? v.getClassName() : "unknown";
+            debugLog += "view[" + f + "].getClassName()=" + className + "\n";
+            if (className === "UMLStateMachineView") {
                 frameView = v;
                 debugLog += "Found UMLStateMachineView!\n";
                 if (v.subViews) {
@@ -549,6 +573,14 @@ function generateDiagram(diagram, text) {
             v.top = posY;
             v.width = 25;
             v.height = 25;
+            if (parentContainerView && parentContainerView !== diagram) {
+              var cvModel = parentContainerView.model;
+              if (cvModel &&
+                  typeof cvModel.getClassName === "function" &&
+                  cvModel.getClassName() === "UMLRegion") {
+                v.containerView = parentContainerView;
+              }
+            }
           }
         });
         
