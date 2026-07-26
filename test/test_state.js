@@ -48,6 +48,10 @@ HuyDon --> [*]
 
 // Mock StarUML API
 const app = {
+  dialogs: {
+    showAlertDialog: (msg) => console.error("ALERT:", msg),
+    showInfoDialog: (msg) => console.log("INFO:", msg)
+  },
   project: {
     getProject: () => ({ getClassName: () => "Project", ownedElements: [] })
   },
@@ -92,7 +96,9 @@ const mockRegion = {
 };
 
 const diagram = {
-  _parent: mockRegion
+  getClassName: () => "UMLStatechartDiagram",
+  _parent: mockRegion,
+  ownedViews: []
 };
 
 try {
