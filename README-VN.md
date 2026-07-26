@@ -8,7 +8,7 @@
 
 🌍 **Ngôn ngữ:** [English](README.md) | [Tiếng Việt](README-VN.md)
 
-Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các loại biểu đồ **Use Case, Class, Sequence, Activity, State và ER Diagrams** từ cú pháp **PlantUML**, từ đó tự động sinh chúng thành các phần tử UML gốc bên trong StarUML.
+Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các loại biểu đồ **Use Case, Class, Sequence, Activity và ER Diagrams** từ cú pháp **PlantUML**, từ đó tự động sinh chúng thành các phần tử UML gốc bên trong StarUML.
 
 ## 📊 Sơ đồ hỗ trợ & Kế hoạch phát triển
 
@@ -18,7 +18,7 @@ Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các
 | **Class Diagram** (Biểu đồ lớp)           | ✅ Đã hỗ trợ  | Bố cục dạng lưới, đầy đủ thuộc tính/phương thức & quan hệ      |
 | **Sequence Diagram** (Biểu đồ tuần tự)    | ✅ Đã hỗ trợ  | Sắp xếp theo trình tự thời gian, loại thông điệp, lifelines    |
 | **Activity Diagram** (Biểu đồ hoạt động)  | ✅ Đã hỗ trợ  | Phân chia swimlanes (làn bơi), các luồng hành động và rẽ nhánh |
-| **State Diagram** (Biểu đồ trạng thái)    | ✅ Đã hỗ trợ  | Hỗ trợ composite state, phân vùng region con, các pseudostate  |
+| **State Diagram** (Biểu đồ trạng thái)    | 🚧 Đang hoàn thiện | Composite state / orthogonal region vẫn có thể bị StarUML từ chối đặt phần tử, chưa ổn định |
 | **ER Diagram** (Biểu đồ ERD)              | ✅ Đã hỗ trợ  | Thực thể, kiểu dữ liệu cột (PK/FK/Nullable), quan hệ chân chim |
 | **Mindmap** (Sơ đồ tư duy)                | ✅ Đã hỗ trợ  | Bố cục hướng tâm, phân cấp sâu, hỗ trợ hướng trái/phải         |
 | **Requirement Diagram** (Biểu đồ yêu cầu) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai                          |
@@ -26,7 +26,7 @@ Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các
 ## ✨ Các tính năng nổi bật
 
 - **Xem trước trực tuyến (Live Server Preview):** Hộp thoại chia đôi màn hình cho phép dán code bên trái và **Preview** để xem trước ảnh render sơ đồ từ máy chủ PlantUML bên phải trước khi import.
-- Phân tích cú pháp PlantUML cho biểu đồ Use Case, Class, Sequence, Activity, State và ERD.
+- Phân tích cú pháp PlantUML cho biểu đồ Use Case, Class, Sequence, Activity và ERD (State Diagram đã có logic phân tích nhưng chưa ổn định — xem bảng trạng thái phía trên).
 - Thuật toán bố cục tự động cực kỳ thông minh:
   - **Thuật toán Phân tầng Enhanced Sugiyama** cho sơ đồ Class giúp dóng hàng thẳng tắp và hạn chế tối đa việc đan chéo dây.
   - **Thuật toán Độ rộng động (Dynamic Width Occupancy Grid)** cho sơ đồ Activity giúp tự động nới rộng làn bơi và ngăn các khối đâm vào nhau.
@@ -195,7 +195,7 @@ stop
 @enduml
 ```
 
-### Biểu đồ State (Trạng thái)
+### Biểu đồ State (Trạng thái) (🚧 Đang hoàn thiện — chưa ổn định)
 
 ```plantuml
 @startuml

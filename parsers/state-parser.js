@@ -11,8 +11,7 @@ function generateDiagram(diagram, text) {
   try {
     global.hasShownStateError = false;
     var debugLog = "";
-    var __dbgRunId = "pre-fix";
-    
+
     // Strict diagram type checking to prevent StarUML internal crash
     if (diagram && diagram.getClassName() !== "UMLStatechartDiagram") {
       app.dialogs.showAlertDialog("Please create and open a 'Statechart Diagram' first before importing PlantUML State Code. Current diagram is: " + diagram.getClassName());
@@ -353,10 +352,6 @@ function generateDiagram(diagram, text) {
       try {
         var children = childrenMap[stateAlias] || [];
 
-        // #region agent log
-        fetch('http://127.0.0.1:7830/ingest/cc01ebbd-f8e8-479d-b5eb-0816cf3d0d6f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4c834f'},body:JSON.stringify({sessionId:'4c834f',runId:__dbgRunId,hypothesisId:'H1',location:'parsers/state-parser.js:renderState:beforeCreate',message:'About to create UMLState',data:{stateAlias:stateAlias,stateName:state && state.name,parentAlias:state && state.parentAlias,isComposite:state && state.isComposite,regionIndex:state && state.regionIndex,parentRegionClass:(parentRegionModel && typeof parentRegionModel.getClassName==='function')?parentRegionModel.getClassName():typeof parentRegionModel,parentContainerViewClass:(parentContainerView && typeof parentContainerView.getClassName==='function')?parentContainerView.getClassName():typeof parentContainerView,parentContainerModelClass:(parentContainerView && parentContainerView.model && typeof parentContainerView.model.getClassName==='function')?parentContainerView.model.getClassName():typeof (parentContainerView && parentContainerView.model),diagramClass:(diagram && typeof diagram.getClassName==='function')?diagram.getClassName():typeof diagram},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-        
         view = app.factory.createModelAndView({
           id: "UMLState",
           parent: parentRegionModel,
@@ -409,9 +404,6 @@ function generateDiagram(diagram, text) {
         }
         
       } catch (e) {
-        // #region agent log
-        fetch('http://127.0.0.1:7830/ingest/cc01ebbd-f8e8-479d-b5eb-0816cf3d0d6f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4c834f'},body:JSON.stringify({sessionId:'4c834f',runId:__dbgRunId,hypothesisId:'H2',location:'parsers/state-parser.js:renderState:catch',message:'Failed to create UMLState',data:{stateAlias:stateAlias,stateName:state && state.name,parentAlias:state && state.parentAlias,regionIndex:state && state.regionIndex,parentRegionClass:(parentRegionModel && typeof parentRegionModel.getClassName==='function')?parentRegionModel.getClassName():typeof parentRegionModel,parentContainerViewClass:(parentContainerView && typeof parentContainerView.getClassName==='function')?parentContainerView.getClassName():typeof parentContainerView,parentContainerModelClass:(parentContainerView && parentContainerView.model && typeof parentContainerView.model.getClassName==='function')?parentContainerView.model.getClassName():typeof (parentContainerView && parentContainerView.model),errorName:e && e.name,errorMessage:e && e.message},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         console.error("Error creating state", state.name, e);
         if (app.dialogs) app.dialogs.showAlertDialog("Failed to create state '" + state.name + "': " + String(e));
         return;
