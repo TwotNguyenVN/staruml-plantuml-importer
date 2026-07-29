@@ -18,7 +18,7 @@ A StarUML extension that imports **Use Case, Class, Sequence, Activity, and ER D
 | **Class Diagram** | ✅ Supported | Grid layout, full attributes/methods & associations |
 | **Sequence Diagram** | ✅ Supported | Chronological layout, message types, actor lifelines |
 | **Activity Diagram** | ✅ Supported | Partition swimlanes, action flows, and decisions |
-| **State Diagram** | 🚧 In Progress | Composite states / orthogonal regions can still fail StarUML's placement validation; not stable yet |
+| **State Diagram** | ✅ Supported | Full support for composite states, orthogonal regions, nested states & transitions |
 | **ER Diagram** | ✅ Supported | Entities, columns (PK/FK/Nullable), crow's foot cardinalities |
 | **Mindmap Diagram** | ✅ Supported | Radial layout, deep hierarchies, left/right direction support |
 | **Requirement Diagram** | ⏳ Planned | Planned for future update |
@@ -26,7 +26,7 @@ A StarUML extension that imports **Use Case, Class, Sequence, Activity, and ER D
 ## ✨ Features
 
 - **Live Server Preview:** Interactive side-by-side modal displaying diagram preview rendered directly from the PlantUML server.
-- Parse PlantUML Use Case, Class, Sequence, Activity, and ER Diagram syntax (State Diagram parsing exists but is still unstable — see status table above).
+- Parse PlantUML Use Case, Class, Sequence, Activity, State, ERD, and Mindmap Diagram syntax.
 - Smart layout algorithms: 
   - **Enhanced Sugiyama Hierarchical Layout** for Class Diagrams to minimize edge crossings.
   - **Dynamic Width Occupancy Grid Layout** for Activity Diagrams to automatically adjust swimlanes and prevent overlapping.

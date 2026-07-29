@@ -5,8 +5,9 @@ echo   PlantUML Importer - Installer
 echo ============================================
 echo.
 
-set "TARGET=%APPDATA%\StarUML\extensions\user\staruml-plantuml-importer"
-set "OLD_TARGET=%APPDATA%\StarUML\extensions\user\staruml-usecase-importer"
+set "TARGET=%APPDATA%\StarUML\extensions\user\twot.staruml-plantuml-importer"
+set "OLD_TARGET=%APPDATA%\StarUML\extensions\user\staruml-plantuml-importer"
+set "OLD_TARGET2=%APPDATA%\StarUML\extensions\user\staruml-usecase-importer"
 
 :: Notify if StarUML is running
 tasklist /FI "IMAGENAME eq StarUML.exe" 2>nul | find /I "StarUML.exe" >nul
@@ -18,6 +19,10 @@ if not errorlevel 1 (
 if exist "%OLD_TARGET%" (
     echo [*] Removing old extension...
     rmdir /S /Q "%OLD_TARGET%"
+)
+if exist "%OLD_TARGET2%" (
+    echo [*] Removing old extension...
+    rmdir /S /Q "%OLD_TARGET2%"
 )
 
 :: Create target directories
@@ -44,6 +49,7 @@ copy /Y "%~dp0parsers\sequence-parser.js" "%TARGET%\parsers\sequence-parser.js" 
 copy /Y "%~dp0parsers\activity-parser.js" "%TARGET%\parsers\activity-parser.js" >nul
 copy /Y "%~dp0parsers\state-parser.js" "%TARGET%\parsers\state-parser.js" >nul
 copy /Y "%~dp0parsers\erd-parser.js" "%TARGET%\parsers\erd-parser.js" >nul
+copy /Y "%~dp0parsers\mindmap-parser.js" "%TARGET%\parsers\mindmap-parser.js" >nul
 
 echo [OK] Installation complete!
 echo.
