@@ -423,38 +423,47 @@ const stateParser = require('../parsers/state-parser.js');
 let stateDeleteCalled = false;
 let stateDeletedModels = [];
 
+global.type = global.type || {};
+[
+  "UMLStateMachine", "UMLRegion", "UMLState", "UMLPseudostate", "UMLFinalState", "UMLTransition",
+  "UMLStateMachineView", "UMLStateView", "UMLPseudostateView", "UMLFinalStateView", "UMLTransitionView",
+  "UMLStatechartDiagram", "UMLRegionView"
+].forEach(name => {
+  if (!global.type[name]) {
+    global.type[name] = function() {
+      this.getClassName = () => name;
+      this._parent = null;
+    };
+  }
+});
+
 global.app = {
   project: {
     getProject: () => ({ getClassName: () => "Project", ownedElements: [] })
   },
   engine: {
-    relocate: () => {
-      throw new Error("Simulated relocation failure");
-    },
     deleteElements: (models, views) => {
       stateDeleteCalled = true;
       stateDeletedModels = models;
     }
   },
-  factory: {
-    createModel: (opts) => {
-      return {
-        getClassName: () => opts.id,
-        name: opts.id + "_Mock",
-        _parent: opts.parent,
-        regions: [],
-        ownedElements: []
-      };
+  repository: {
+    getOperationBuilder: () => {
+       return {
+           begin: () => {},
+           end: () => {},
+           getOperation: () => [],
+           discard: () => {},
+           insert: () => {},
+           fieldInsert: () => {},
+           fieldRemove: () => { throw new Error("Simulated relocation failure"); }
+       };
     },
-    createModelAndView: (opts) => {
-      return {
-        model: {
-          getClassName: () => opts.id.replace("View", ""),
-          regions: [],
-          _parent: opts.parent
-        }
-      };
-    }
+    doOperation: () => {}
+  },
+  factory: {
+    createModel: () => {},
+    createModelAndView: () => {}
   }
 };
 
