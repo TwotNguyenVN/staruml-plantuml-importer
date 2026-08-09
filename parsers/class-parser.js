@@ -50,8 +50,11 @@ function parseParameters(paramsStr) {
   return params;
 }
 
+const parserHelper = require("../utils/parser-helper.js");
+
 function generateDiagram(diagram, text) {
-  var lines = text.split("\n");
+  return parserHelper.runInTransaction("UMLClassDiagram", function(warnings, errors) {
+    var lines = text.split("\n");
   var elementsMap = {};
   var elements = [];
   var relations = [];
@@ -473,6 +476,7 @@ function generateDiagram(diagram, text) {
               });
             } catch (errAttr) {
               console.error("[class-parser] Failed to create attribute:", attrData.name, errAttr);
+              throw errAttr;
             }
           });
           
@@ -504,10 +508,12 @@ function generateDiagram(diagram, text) {
                   });
                 } catch (errParam) {
                   console.error("[class-parser] Failed to create parameter:", paramData.name, errParam);
+                  throw errParam;
                 }
               });
             } catch (errOp) {
               console.error("[class-parser] Failed to create operation:", opData.name, errOp);
+              throw errOp;
             }
           });
           
@@ -524,11 +530,13 @@ function generateDiagram(diagram, text) {
               });
             } catch (errLit) {
               console.error("[class-parser] Failed to create literal:", litName, errLit);
+              throw errLit;
             }
           });
         }
       } catch (e) {
         console.error("[class-parser] Failed to create element:", el.name, e);
+        throw e;
       }
     });
   });
@@ -587,7 +595,9 @@ function generateDiagram(diagram, text) {
         "[class-parser] Failed to create relation:",
         rel.type, rel.from, "->", rel.to, e
       );
+      throw e;
     }
+  });
   });
 }
 

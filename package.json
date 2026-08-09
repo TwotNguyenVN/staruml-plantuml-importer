@@ -2,7 +2,7 @@
   "name": "twot.staruml-plantuml-importer",
   "version": "2.2.0",
   "title": "PlantUML Importer",
-  "description": "Import and auto-layout multiple diagram types (Use Case, Class, Sequence) from PlantUML code",
+  "description": "Import and auto-layout Use Case, Class, Sequence, Activity, State (unstable), ERD, and Mindmap diagrams from PlantUML code into StarUML",
   "homepage": "https://github.com/TwotNguyenVN/staruml-plantuml-importer",
   "issues": "https://github.com/TwotNguyenVN/staruml-plantuml-importer/issues",
   "author": {
@@ -19,5 +19,8 @@
   },
   "engines": {
     "staruml": ">=6.0.0"
+  },
+  "scripts": {
+    "test": "node test/run_all_tests.js"
   }
 }

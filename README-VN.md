@@ -37,6 +37,18 @@ Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các
 - Hỗ trợ đầy đủ định nghĩa cột ERD (Khóa chính PK, Khóa ngoại FK, Nullable) và các chân quan hệ chân chim chuẩn xác.
 - Tương thích tốt với **StarUML v7+**.
 
+## 🔒 Bảo mật & Cấu hình máy chủ xem trước (Preview Server)
+
+Mặc định, tính năng Xem trước trực tuyến (Live Server Preview) sẽ gửi mã PlantUML của bạn (dưới dạng nén/mã hóa (compressed/encoded)) đến máy chủ dựng ảnh công khai của PlantUML (`https://www.plantuml.com/plantuml`) để tải ảnh sơ đồ xem trước.
+
+Nếu bạn đang làm việc với dữ liệu nhạy cảm hoặc cấu trúc phần mềm nội bộ của doanh nghiệp, bạn có thể tự cấu hình máy chủ PlantUML riêng (self-hosted) hoặc tắt hoàn toàn tính năng xem trước này:
+
+1. Mở **StarUML**.
+2. Truy cập menu **StarUML > Preferences > PlantUML Importer** (hoặc nhấn tổ hợp phím mở Cài đặt).
+3. Tùy chỉnh cấu hình:
+   - **PlantUML Server URL**: Nhập địa chỉ máy chủ PlantUML nội bộ của bạn (ví dụ: `http://localhost:8080` hoặc `https://plantuml.yourcompany.com`). Tiện ích sẽ tự động chuẩn hóa URL (bỏ các ký tự gạch chéo dư thừa hoặc các đuôi không hợp lệ như `/png`) và ưu tiên kết nối HTTPS an toàn.
+   - **Enable Preview**: Bỏ chọn ô này để tắt hoàn toàn kết nối đến máy chủ xem trước. Khi tắt, tiện ích sẽ không gửi bất kỳ mã nguồn sơ đồ nào qua mạng và màn hình xem trước sẽ hiển thị thông báo đã tắt.
+
 ## 📦 Cài đặt & Quản lý
 
 Tiện ích này đi kèm với một script quản lý hợp nhất đa nền tảng (`manage.js`), tự động nhận diện hệ điều hành và xử lý cài đặt, cập nhật, cũng như gỡ cài đặt trên Windows, macOS và Linux.
@@ -226,6 +238,20 @@ entity Order {
 User ||--o{ Order
 @enduml
 ```
+
+## 📋 Bảng Kiểm Tích Hợp StarUML & Ánh Xạ File Fixture Đại Diện
+
+Bảng dưới đây đóng vai trò là danh sách kiểm tra (checklist) tích hợp StarUML. Nó kết hợp mỗi loại sơ đồ với tệp parser tương ứng và các tệp fixture đại diện trong thư mục `test/` dùng để chạy kiểm thử logic phân tích cú pháp:
+
+| Loại Sơ Đồ | Loại Phần Tử StarUML | Module Parser | File Fixture Đại Diện | Trạng Thái Ổn Định |
+| :--- | :--- | :--- | :--- | :--- |
+| **Sơ đồ Use Case** | `UMLUseCaseDiagram` | `parsers/usecase-parser.js` | [usecaseC1.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/usecaseC1.puml) | Ổn định |
+| **Sơ đồ Class** | `UMLClassDiagram` | `parsers/class-parser.js` | [classdiagram.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/classdiagram.puml) | Ổn định |
+| **Sơ đồ Sequence** | `UMLSequenceDiagram` | `parsers/sequence-parser.js` | [sequence-diagram2.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/sequence-diagram2.puml) | Ổn định |
+| **Sơ đồ Activity** | `UMLActivityDiagram` | `parsers/activity-parser.js` | [Activity.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/Activity.puml) | Ổn định |
+| **Sơ đồ State** | `UMLStatechartDiagram` | `parsers/state-parser.js` | [Statechart_Diagram.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/Statechart_Diagram.puml) | **🚧 Đang Phát Triển / Chưa Ổn Định** |
+| **Sơ đồ ERD** | `ERDDiagram` | `parsers/erd-parser.js` | [ERD.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/ERD.puml) | Ổn định |
+| **Sơ đồ Mindmap** | `MindmapDiagram` (MMDiagram) | `parsers/mindmap-parser.js` | [mindmap.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/mindmap.puml) | Ổn định |
 
 ## 🗑️ Gỡ cài đặt hoàn toàn StarUML (Windows & macOS)
 

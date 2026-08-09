@@ -7,8 +7,10 @@ function sanitizeName(name) {
   return name.trim();
 }
 
+const parserHelper = require("../utils/parser-helper.js");
+
 function generateDiagram(diagram, text) {
-  try {
+  return parserHelper.runInTransaction("UMLStatechartDiagram", function(warnings, errors) {
     global.hasShownStateError = false;
     var debugLog = "";
 
@@ -201,6 +203,7 @@ function generateDiagram(diagram, text) {
         }
     } catch (regErr) {
       console.error("[state-parser] Failed to create root UMLRegion:", regErr);
+      throw regErr;
     }
     
     if (diagram && diagram._parent !== stateMachineModel) {
@@ -212,7 +215,7 @@ function generateDiagram(diagram, text) {
             }
         } catch (err) {
             console.error("[state-parser] Failed to relocate diagram:", err);
-            diagram._parent = stateMachineModel;
+            throw err;
         }
     }
     
@@ -391,7 +394,7 @@ function generateDiagram(diagram, text) {
                         id: "UMLRegion", parent: view.model, field: "regions",
                         modelInitializer: function(reg) { reg.name = "Region"; }
                     });
-                } catch(e) { console.error("Failed to create UMLRegion", e); }
+                } catch(e) { throw e; }
             }
         }
         
@@ -405,8 +408,7 @@ function generateDiagram(diagram, text) {
         
       } catch (e) {
         console.error("Error creating state", state.name, e);
-        if (app.dialogs) app.dialogs.showAlertDialog("Failed to create state '" + state.name + "': " + String(e));
-        return;
+        throw e;
       }
       
       if (!view) return;
@@ -495,7 +497,7 @@ function generateDiagram(diagram, text) {
             frameView.initialize(null, 10, 10, 800, 600);
             app.engine.addItem(diagram, "ownedViews", frameView);
         } catch (err) {
-            console.error("Failed to create UMLStateMachineView manually:", err);
+            console.warn("Failed to create UMLStateMachineView manually:", err);
             frameView = diagram; // fallback
         }
     } else if (!frameView) {
@@ -578,7 +580,7 @@ function generateDiagram(diagram, text) {
   
       } catch (err) {
         console.error("[state-parser] Failed to create pseudostate:", err);
-        return null;
+        throw err;
       }
     }
     
@@ -650,14 +652,11 @@ function generateDiagram(diagram, text) {
         });
       } catch (transErr) {
         console.error("[state-parser] Failed to create UMLTransition:", transErr);
+        throw transErr;
       }
     });
 
-  } catch (globalErr) {
-    var errTxt = (globalErr && globalErr.message) ? (globalErr.message + "\n" + globalErr.stack) : String(globalErr);
-    app.dialogs.showAlertDialog("FATAL ERROR in state-parser:\n" + errTxt);
-    console.error(globalErr);
-  }
+  });
 }
 
 module.exports = {

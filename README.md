@@ -37,6 +37,18 @@ A StarUML extension that imports **Use Case, Class, Sequence, Activity, and ER D
 - Support for ERD columns (Primary Keys, Foreign Keys, Nullability) and crow's foot notation.
 - Compatible with **StarUML v7+**
 
+## 🔒 Privacy & Preview Server Configuration
+
+By default, the Live Server Preview sends your PlantUML code (in compressed/encoded form) to the public PlantUML rendering server (`https://www.plantuml.com/plantuml`) to fetch a visual preview image of the diagram.
+
+If you are working with sensitive data or proprietary software architecture, you can configure your own private, self-hosted PlantUML server or disable the preview entirely:
+
+1. Open **StarUML**.
+2. Go to **StarUML > Preferences > PlantUML Importer**.
+3. Customize the settings:
+   - **PlantUML Server URL**: Set to your self-hosted PlantUML instance (e.g., `http://localhost:8080` or `https://plantuml.yourcompany.com`). The extension automatically normalizes the URL (e.g., strips redundant trailing slashes/paths like `/png`) and prioritizes HTTPS for remote domains.
+   - **Enable Preview**: Uncheck this box to disable the preview server completely. When disabled, the extension will not send any diagram code to the network, and the preview screen will display a disabled message.
+
 ## 📦 Installation & Management
 
 This extension comes with a unified, cross-platform management script (`manage.js`) that handles installation, updates, and uninstallation across Windows, macOS, and Linux.
@@ -224,6 +236,20 @@ entity Order {
 User ||--o{ Order
 @enduml
 ```
+
+## 📋 StarUML Integration Checklist & Representative Fixtures
+
+This table acts as our integration checklist. It maps each diagram type to its respective parser file and the representative test fixtures in the `test/` folder that verify its parsing logic and correctness:
+
+| Diagram Type | StarUML Element Type | Parser Module | Test Fixture File | Stability Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Use Case Diagram** | `UMLUseCaseDiagram` | `parsers/usecase-parser.js` | [usecaseC1.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/usecaseC1.puml) | Stable |
+| **Class Diagram** | `UMLClassDiagram` | `parsers/class-parser.js` | [classdiagram.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/classdiagram.puml) | Stable |
+| **Sequence Diagram** | `UMLSequenceDiagram` | `parsers/sequence-parser.js` | [sequence-diagram2.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/sequence-diagram2.puml) | Stable |
+| **Activity Diagram** | `UMLActivityDiagram` | `parsers/activity-parser.js` | [Activity.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/Activity.puml) | Stable |
+| **State Diagram** | `UMLStatechartDiagram` | `parsers/state-parser.js` | [Statechart_Diagram.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/Statechart_Diagram.puml) | **🚧 In Progress / Unstable** |
+| **ER Diagram** | `ERDDiagram` | `parsers/erd-parser.js` | [ERD.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/ERD.puml) | Stable |
+| **Mindmap Diagram** | `MindmapDiagram` (MMDiagram) | `parsers/mindmap-parser.js` | [mindmap.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/mindmap.puml) | Stable |
 
 ## 🗑️ Clean Uninstallation of StarUML (Windows & macOS)
 

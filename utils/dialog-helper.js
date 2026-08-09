@@ -62,8 +62,8 @@ function showImportDialog(title, sampleCode) {
 
   // 1. HTML Dialog Template
   var template = [
-    '<div class="dialog plantuml-preview-dialog" style="width: 80vw; height: 80vh; min-width: 700px; min-height: 450px; max-width: 95vw; max-height: 95vh; display: flex; flex-direction: column; background: #282828; color: #e0e0e0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3c3c3c; overflow: hidden; position: relative;">',
-    '  <div class="modal-header" style="padding: 16px 20px 12px 20px; border-bottom: 1px solid #3c3c3c; background: #282828; display: flex; justify-content: space-between; align-items: center;">',
+    '<div class="plantuml-preview-dialog template dialog modal" data-title="' + title + '" style="width: 80vw; height: 80vh; min-width: 700px; min-height: 450px; max-width: 95vw; max-height: 95vh; display: flex; flex-direction: column; background: #282828; color: #e0e0e0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3c3c3c; overflow: hidden; position: relative;">',
+    '  <div class="dialog-header" style="padding: 16px 20px 12px 20px; border-bottom: 1px solid #3c3c3c; background: #282828; display: flex; justify-content: space-between; align-items: center;">',
     '    <div style="flex: 1;"></div>',
     '    <span class="dialog-title" style="font-size: 15px; font-weight: 600; color: #ffffff; font-family: sans-serif; flex: 1; text-align: center;">' + title + '</span>',
     '    <div style="flex: 1; text-align: right; font-size: 13px; font-family: sans-serif;">',
@@ -74,7 +74,7 @@ function showImportDialog(title, sampleCode) {
     '      <a href="#" onclick="require(\'electron\').shell.openExternal(\'https://github.com/TwotNguyenVN\'); return false;" style="color: #007acc; text-decoration: none; cursor: pointer;">Twot Nguyen</a>',
     '    </div>',
     '  </div>',
-    '  <div class="modal-body" style="display: flex; padding: 20px; flex: 1; background: #202020; min-height: 0;">',
+    '  <div class="dialog-body" style="display: flex; padding: 20px; flex: 1; background: #202020; min-height: 0;">',
     '    <div class="panel-left" style="flex: 0 0 calc(33.33% - 8px); display: flex; flex-direction: column; min-width: 150px;">',
     '      <div style="display: flex; align-items: center; min-height: 32px; margin-bottom: 8px;">',
     '        <label style="font-weight: 600; color: #a0a0a0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-family: sans-serif;">PlantUML Code</label>',
@@ -88,9 +88,9 @@ function showImportDialog(title, sampleCode) {
     '      <div style="display: flex; justify-content: space-between; align-items: center; min-height: 32px; margin-bottom: 8px;">',
     '        <label style="font-weight: 600; margin: 0; color: #a0a0a0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-family: sans-serif;">Server Preview</label>',
     '        <div class="preview-controls" style="display: flex; gap: 4px; background: #181818; padding: 2px; border-radius: 4px; border: 1px solid #323232;">',
-    '          <button class="btn btn-zoom-out" style="padding: 3px 10px; background: transparent; border: none; color: #999; cursor: pointer; font-weight: bold; border-radius: 3px; font-family: sans-serif;" title="Zoom Out">-</button>',
-    '          <button class="btn btn-zoom-reset" style="padding: 3px 10px; background: #2d2d2d; border: none; color: #fff; cursor: pointer; font-size: 11px; border-radius: 3px; font-weight: 500; font-family: sans-serif;" title="Reset Zoom">Fit</button>',
-    '          <button class="btn btn-zoom-in" style="padding: 3px 10px; background: transparent; border: none; color: #999; cursor: pointer; font-weight: bold; border-radius: 3px; font-family: sans-serif;" title="Zoom In">+</button>',
+    '          <button class="k-button btn btn-zoom-out" style="padding: 3px 10px; background: transparent; border: none; color: #999; cursor: pointer; font-weight: bold; border-radius: 3px; font-family: sans-serif;" title="Zoom Out">-</button>',
+    '          <button class="k-button btn btn-zoom-reset" style="padding: 3px 10px; background: #2d2d2d; border: none; color: #fff; cursor: pointer; font-size: 11px; border-radius: 3px; font-weight: 500; font-family: sans-serif;" title="Reset Zoom">Fit</button>',
+    '          <button class="k-button btn btn-zoom-in" style="padding: 3px 10px; background: transparent; border: none; color: #999; cursor: pointer; font-weight: bold; border-radius: 3px; font-family: sans-serif;" title="Zoom In">+</button>',
     '        </div>',
     '      </div>',
     '      <div class="preview-container" style="flex: 1; background: #141414; border: 1px solid #2d2d2d; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 0; cursor: grab; position: relative; border-radius: 6px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);">',
@@ -99,10 +99,10 @@ function showImportDialog(title, sampleCode) {
     '      </div>',
     '    </div>',
     '  </div>',
-    '  <div class="modal-footer" style="padding: 12px 20px; display: flex; justify-content: flex-end; align-items: center; gap: 8px; border-top: 1px solid #3c3c3c; background: #282828;">',
-    '    <button class="btn btn-clear-code" style="padding: 6px 14px; background: #2d2d2d; color: #ccc; border: 1px solid #3c3c3c; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; font-family: sans-serif; transition: background 0.2s;">Clear Code</button>',
-    '    <button class="btn btn-default" data-button-id="cancel" style="padding: 6px 16px; background: #2d2d2d; color: #ccc; border: 1px solid #3c3c3c; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 13px; font-family: sans-serif; transition: background 0.2s;">Cancel</button>',
-    '    <button class="btn btn-primary" data-button-id="ok" style="padding: 6px 20px; background: #007acc; color: #fff; border: 1px solid #0062a3; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: background 0.2s;">Import</button>',
+    '  <div class="dialog-footer" style="padding: 12px 20px; display: flex; justify-content: flex-end; align-items: center; gap: 8px; border-top: 1px solid #3c3c3c; background: #282828;">',
+    '    <button class="k-button outline btn-clear-code" style="padding: 6px 14px; background: #2d2d2d; color: #ccc; border: 1px solid #3c3c3c; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; font-family: sans-serif; transition: background 0.2s;">Clear Code</button>',
+    '    <button class="k-button dialog-button btn btn-default" data-button-id="cancel" style="padding: 6px 16px; background: #2d2d2d; color: #ccc; border: 1px solid #3c3c3c; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 13px; font-family: sans-serif; transition: background 0.2s;">Cancel</button>',
+    '    <button class="k-button dialog-button primary btn btn-primary" data-button-id="ok" style="padding: 6px 20px; background: #007acc; color: #fff; border: 1px solid #0062a3; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: background 0.2s;">Import</button>',
     '  </div>',
     '</div>'
   ].join("\n");
@@ -256,7 +256,7 @@ function showImportDialog(title, sampleCode) {
       var $splitter = $dlg.find('.panel-splitter');
       var $splitterLine = $splitter.find('div');
       var $panelLeft = $dlg.find('.panel-left');
-      var $modalBody = $dlg.find('.modal-body');
+      var $modalBody = $dlg.find('.dialog-body');
 
       $splitter.on('mouseenter', function() { $splitterLine.css('background', '#007acc'); });
       $splitter.on('mouseleave', function() { if (!isSplitting) $splitterLine.css('background', '#2d2d2d'); });
@@ -313,6 +313,21 @@ function showImportDialog(title, sampleCode) {
         });
       }
 
+       var previewHelper = require("./preview-helper.js");
+
+       function isPreviewEnabled() {
+         return previewHelper.isPreviewEnabled();
+       }
+
+       function getNormalizedServerUrl() {
+         var val = (typeof app !== "undefined" && app.preferences) ? app.preferences.get("plantuml-importer.server") : "";
+         return previewHelper.getNormalizedServerUrl(val);
+       }
+
+       function isValidUrl(urlString) {
+         return previewHelper.isValidUrl(urlString);
+       }
+
       var debounceTimeout = null;
       function updatePreview() {
         var code = $textarea.val().trim();
@@ -335,12 +350,26 @@ function showImportDialog(title, sampleCode) {
           return;
         }
 
+        if (!isPreviewEnabled()) {
+          $previewPlaceholder.text("Preview is disabled in preferences.").show();
+          $previewImg.hide();
+          return;
+        }
+
+        var serverUrlPref = (typeof app !== "undefined" && app.preferences) ? app.preferences.get("plantuml-importer.server") : "";
+        var serverUrlNormalized = getNormalizedServerUrl();
+        if (!isValidUrl(serverUrlNormalized)) {
+          $previewPlaceholder.text("Invalid PlantUML Server URL configured.").show();
+          $previewImg.hide();
+          return;
+        }
+
         $previewPlaceholder.text("Loading diagram from server...").show();
         $previewImg.hide();
 
         try {
           var encoded = encodePlantUML(code);
-          var imageUrl = "http://www.plantuml.com/plantuml/png/" + encoded;
+          var imageUrl = previewHelper.buildPreviewUrl(serverUrlPref, encoded);
 
           // Register handlers BEFORE setting src to avoid synchronous load race conditions
           $previewImg.off("load").on("load", function () {

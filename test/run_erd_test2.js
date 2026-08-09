@@ -1,7 +1,10 @@
+require('./fail_on_console_error.js');
 const fs = require('fs');
-const parser = require('./parsers/erd-parser.js');
+const path = require('path');
+const assert = require('assert');
+const parser = require('../parsers/erd-parser.js');
 
-const text = fs.readFileSync('./test/ERD2.puml', 'utf8');
+const text = fs.readFileSync(path.join(__dirname, 'ERD2.puml'), 'utf8');
 
 var lines = text.split("\n");
 var entities = [];
@@ -30,4 +33,7 @@ for (var i = 0; i < lines.length; i++) {
     continue;
   }
 }
-console.log(entities.map(e => `${e.name}: ${e.columns.length} cols`).join('\n'));
+
+assert.ok(entities.length > 0, "Should have parsed at least one entity");
+assert.ok(entities.every(e => e.columns.length > 0), "All parsed entities should have columns");
+console.log("Success: run_erd_test2 completed, parsed " + entities.length + " entities.");
