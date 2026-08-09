@@ -1,5 +1,7 @@
+require('./fail_on_console_error.js');
 const fs = require("fs");
 const path = require("path");
+const assert = require("assert");
 
 var created = [];
 
@@ -27,22 +29,16 @@ var usecaseParser = require("../parsers/usecase-parser");
 var files = ["usecaseC0.puml", "usecaseC1.puml", "usecaseC2.puml", "usecaseC123.2.puml"];
 
 files.forEach(function (filename) {
-  console.log("\n========================================");
-  console.log("Testing file:", filename);
-  console.log("========================================");
   var code = fs.readFileSync(path.join(__dirname, filename), "utf8");
   created = [];
 
   var diagram = { _parent: { getClassName: () => "UMLUseCaseDiagram", ownedElements: [] } };
 
-  try {
-    usecaseParser.generateDiagram(diagram, code);
-  } catch (e) {
-    console.error("FAILED with exception:", e);
-    return;
-  }
-
-  console.log("Views created:", created.length);
+  const result = usecaseParser.generateDiagram(diagram, code);
+  assert.strictEqual(result.success, true, "Import should succeed for " + filename);
+  assert.strictEqual(result.diagramType, "UMLUseCaseDiagram", "Should return UMLUseCaseDiagram");
+  assert.deepStrictEqual(result.errors, [], "Errors should be empty for " + filename);
+  assert.ok(result.createdCount > 0, "Created count should be greater than 0");
 
   // Overlap check restricted to UMLUseCase and UMLActor siblings (ignore subject/note/relation boxes)
   var boxes = created.filter(function (c) {
@@ -58,11 +54,9 @@ files.forEach(function (filename) {
       var overlapY = a.top < by2 && b.top < ay2;
       if (overlapX && overlapY) {
         overlaps++;
-        console.log("  OVERLAP:", a.id, JSON.stringify(a.name), "<->", b.id, JSON.stringify(b.name));
       }
     }
   }
-  console.log("Sibling overlaps (UseCase/Actor only):", overlaps);
 
   // NaN / undefined coordinate check
   var badCoords = created.filter(function (c) {
@@ -71,8 +65,8 @@ files.forEach(function (filename) {
       (typeof c.left !== "number" || isNaN(c.left) || typeof c.top !== "number" || isNaN(c.top));
   });
   if (badCoords.length > 0) {
-    console.log("BAD COORDS on non-relation elements:", badCoords);
-  } else {
-    console.log("No NaN/undefined coordinates on vertex-like elements.");
+    assert.fail("Found NaN or undefined coordinates on non-relation elements");
   }
 });
+
+console.log("Success: run_usecase_test completed successfully.");

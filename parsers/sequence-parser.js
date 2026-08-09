@@ -18,8 +18,11 @@ function getMessageSort(arrow) {
   }
 }
 
+const parserHelper = require("../utils/parser-helper.js");
+
 function generateDiagram(diagram, text) {
-  var lines = text.split("\n");
+  return parserHelper.runInTransaction("UMLSequenceDiagram", function(warnings, errors) {
+    var lines = text.split("\n");
   var elementsMap = {};
   var parsedLifelines = [];
   var events = [];
@@ -222,8 +225,7 @@ function generateDiagram(diagram, text) {
   var builder = app.repository.getOperationBuilder();
   builder.begin("Import Sequence Diagram");
 
-  try {
-    // Create Lifelines
+  // Create Lifelines
     parsedLifelines.forEach(function (life, index) {
       var posX = index * spacingX + 100;
       var posY = 50;
@@ -462,79 +464,71 @@ function generateDiagram(diagram, text) {
 
     // Draw Notes using app.factory
     notesToDraw.forEach(function(noteData) {
-        try {
-            var noteView = app.factory.createModelAndView({
-                id: "UMLNote",
-                parent: interaction, // model parent
-                diagram: diagram,
-                modelInitializer: function(m) { m.text = noteData.text; },
-                viewInitializer: function(v) {
-                    v.left = noteData.left;
-                    v.top = noteData.top;
-                    v.width = noteData.width;
-                    v.height = noteData.height;
-                }
-            });
-            if (noteView && noteData.targetView) {
-                app.factory.createModelAndView({
-                    id: "UMLNoteLink",
-                    parent: interaction,
-                    diagram: diagram,
-                    tailView: noteView,
-                    headView: noteData.targetView
-                });
+        var noteView = app.factory.createModelAndView({
+            id: "UMLNote",
+            parent: interaction, // model parent
+            diagram: diagram,
+            modelInitializer: function(m) { m.text = noteData.text; },
+            viewInitializer: function(v) {
+                v.left = noteData.left;
+                v.top = noteData.top;
+                v.width = noteData.width;
+                v.height = noteData.height;
             }
-        } catch(e) { console.error("Error drawing note", e); }
+        });
+        if (noteView && noteData.targetView) {
+            app.factory.createModelAndView({
+                id: "UMLNoteLink",
+                parent: interaction,
+                diagram: diagram,
+                tailView: noteView,
+                headView: noteData.targetView
+            });
+        }
     });
 
     // Draw Fragments using app.factory
     fragmentsToDraw.forEach(function(fState) {
-        try {
-            var fragView = app.factory.createModelAndView({
-                id: "UMLCombinedFragment",
-                parent: interaction,
-                diagram: diagram,
-                modelInitializer: function(m) {
-                    m.name = "";
-                    m.interactionOperator = fState.fragType;
-                },
-                viewInitializer: function(v) {
-                    v.left = fState.minX;
-                    v.top = fState.top;
-                    v.width = fState.maxX - fState.minX;
-                    v.height = fState.bottom - fState.top;
-                }
-            });
+        var fragView = app.factory.createModelAndView({
+            id: "UMLCombinedFragment",
+            parent: interaction,
+            diagram: diagram,
+            modelInitializer: function(m) {
+                m.name = "";
+                m.interactionOperator = fState.fragType;
+            },
+            viewInitializer: function(v) {
+                v.left = fState.minX;
+                v.top = fState.top;
+                v.width = fState.maxX - fState.minX;
+                v.height = fState.bottom - fState.top;
+            }
+        });
 
-            if (fragView && fragView.model) {
-                // Remove auto-generated default operand
-                if (fragView.model.operands && fragView.model.operands.length > 0) {
-                    // It's safer to just overwrite the first one's name instead of deleting
-                    var defaultOp = fragView.model.operands[0];
-                    if (fState.operands.length > 0) {
-                        defaultOp.name = fState.operands[0].name;
-                        // For subsequent operands, create them
-                        for (var i = 1; i < fState.operands.length; i++) {
-                            app.factory.createModelAndView({
-                                id: "UMLInteractionOperand",
-                                parent: fragView.model,
-                                diagram: diagram,
-                                modelInitializer: function(m) {
-                                    m.name = fState.operands[i].name;
-                                }
-                            });
-                        }
+        if (fragView && fragView.model) {
+            // Remove auto-generated default operand
+            if (fragView.model.operands && fragView.model.operands.length > 0) {
+                // It's safer to just overwrite the first one's name instead of deleting
+                var defaultOp = fragView.model.operands[0];
+                if (fState.operands.length > 0) {
+                    defaultOp.name = fState.operands[0].name;
+                    // For subsequent operands, create them
+                    for (var i = 1; i < fState.operands.length; i++) {
+                        app.factory.createModelAndView({
+                            id: "UMLInteractionOperand",
+                            parent: fragView.model,
+                            diagram: diagram,
+                            modelInitializer: function(m) {
+                                m.name = fState.operands[i].name;
+                            }
+                        });
                     }
                 }
             }
-        } catch(e) { console.error("Error drawing fragment", e); }
+        }
     });
 
-  } catch (e) {
-    builder.discard();
-    console.error("[sequence-parser] Failed to import sequence diagram:", e);
-    throw e;
-  }
+  });
 }
 
 module.exports = {

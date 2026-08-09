@@ -12,8 +12,13 @@ function sanitizeName(name) {
     .trim();
 }
 
+const parserHelper = require("../utils/parser-helper.js");
+
 function generateDiagram(diagram, text) {
-  var lines = text.split("\n");
+  var rightActorStartX = 800;
+
+  return parserHelper.runInTransaction("UMLUseCaseDiagram", function(warnings, errors) {
+    var lines = text.split("\n");
   var elementsMap = {};
 
   var parsedActors = [];
@@ -345,7 +350,7 @@ function generateDiagram(diagram, text) {
           }
         });
         if (view) elementsMap[uc.alias] = view;
-      } catch (e) {}
+      } catch (e) { throw e; }
     });
 
     actors.forEach(function (actor) {
@@ -366,7 +371,7 @@ function generateDiagram(diagram, text) {
           }
         });
         if (view) elementsMap[actor.alias] = view;
-      } catch (e) {}
+      } catch (e) { throw e; }
     });
   }
 
@@ -422,7 +427,7 @@ function generateDiagram(diagram, text) {
     });
 
     var currentX = 300;
-    var rightActorStartX = currentX + COL_WIDTH * 2;
+    rightActorStartX = currentX + COL_WIDTH * 2;
     var pkgTargetY = {};
     parsedPackages.forEach(function(pkg) {
       var ucs = parsedUseCases.filter(function(u){ return u.parent === pkg.alias; });
@@ -474,7 +479,7 @@ function generateDiagram(diagram, text) {
           }
         });
         elementsMap[pkg.alias] = subjectView;
-      } catch (e) {}
+      } catch (e) { throw e; }
 
       rightActorStartX = Math.max(rightActorStartX, currentX + pkgWidth + 150);
     });
@@ -945,7 +950,7 @@ function generateDiagram(diagram, text) {
           }
         });
         if (subjectView) elementsMap[pkg.alias] = subjectView;
-      } catch (e) {}
+      } catch (e) { throw e; }
     });
 
     createViews(parsedUseCases, parsedActors);
@@ -989,7 +994,7 @@ function generateDiagram(diagram, text) {
         noteX = 50;
         noteY += 100;
       }
-    } catch (e) {}
+    } catch (e) { throw e; }
   });
 
   // Relations
@@ -1013,7 +1018,7 @@ function generateDiagram(diagram, text) {
           view.lineStyle = 1; // Rectilinear
         }
       });
-    } catch (e) {}
+    } catch (e) { throw e; }
   });
 
   // Note Links
@@ -1032,7 +1037,8 @@ function generateDiagram(diagram, text) {
           view.lineStyle = 1; // Rectilinear
         }
       });
-    } catch (e) {}
+    } catch (e) { throw e; }
+  });
   });
 }
 

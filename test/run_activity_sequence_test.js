@@ -1,8 +1,10 @@
+require('./fail_on_console_error.js');
 const fs = require('fs');
 const path = require('path');
+const assert = require('assert');
 const parser = require('../parsers/activity-parser.js');
 
-const text = fs.readFileSync(path.join(__dirname, 'sequence.puml'), 'utf8');
+const text = fs.readFileSync(path.join(__dirname, 'Activity.puml'), 'utf8');
 
 const views = [];
 const connections = [];
@@ -51,31 +53,23 @@ const mockDiagram = {
   _parent: { getClassName: () => 'UMLActivity', ownedElements: [] }
 };
 
-let outputText = "";
-function log(msg) {
-  outputText += msg + "\n";
-}
-
 try {
-  parser.generateDiagram(mockDiagram, text);
+  const result = parser.generateDiagram(mockDiagram, text);
   
-  log("=== PARTITIONS ===");
-  views.filter(v => v.type === 'UMLActivityPartition').forEach(v => {
-    log(`Partition: ${v.name} (Left: ${v.left}, Width: ${v.width})`);
-  });
+  // Assertions on result
+  assert.strictEqual(result.success, true, "Import should succeed");
+  assert.strictEqual(result.diagramType, "UMLActivityDiagram", "Expected UMLActivityDiagram");
+  assert.deepStrictEqual(result.errors, [], "Errors should be empty");
   
-  log("\n=== NODES ===");
-  views.filter(v => v.type !== 'UMLActivityPartition').forEach(v => {
-    log(`Node: ${v.name} [${v.type}] (Left: ${v.left}, Top: ${v.top}, Width: ${v.width})`);
-  });
+  const partitions = views.filter(v => v.type === 'UMLActivityPartition');
+  const nodes = views.filter(v => v.type !== 'UMLActivityPartition');
   
-  log("\n=== CONNECTIONS ===");
-  connections.forEach(c => {
-    log(`Connection: ${c.from} -> ${c.to} [Guard: ${c.guard}] [LineStyle: ${c.lineStyle === 1 ? 'Rectilinear' : 'Oblique'}]`);
-  });
+  assert.ok(partitions.length > 0, "Should have created activity partitions");
+  assert.ok(nodes.length > 0, "Should have created action nodes");
+  assert.ok(connections.length > 0, "Should have created connections");
   
-  fs.writeFileSync(path.join(__dirname, 'test_output.txt'), outputText, 'utf8');
-  console.log("Output written to test/test_output.txt successfully.");
+  console.log("Success: run_activity_sequence_test completed successfully.");
 } catch (e) {
   console.error("Test failed with exception:", e);
+  process.exit(1);
 }
