@@ -1,0 +1,8 @@
+@startmindmap
+* Root Topic
+** Branch A
+*** Sub-topic A1
+*** Sub-topic A2
+** Branch B
+*** Sub-topic B1
+@enduml

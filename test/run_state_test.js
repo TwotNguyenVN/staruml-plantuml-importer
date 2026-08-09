@@ -1,3 +1,6 @@
+require('./fail_on_console_error.js');
+const path = require('path');
+const assert = require('assert');
 const stateParser = require('../parsers/state-parser');
 
 const pumlText = `
@@ -46,6 +49,7 @@ HuyDon --> [*]
 @enduml
 `;
 
+let createdCount = 0;
 // Mock StarUML API
 const app = {
   dialogs: {
@@ -57,6 +61,7 @@ const app = {
   },
   factory: {
     createModel: (options) => {
+      createdCount++;
       let model = {
         getClassName: () => options.id,
         name: options.id + "_Mock",
@@ -68,6 +73,7 @@ const app = {
       return model;
     },
     createModelAndView: (options) => {
+      createdCount++;
       let view = {
         model: {
           getClassName: () => options.id.replace("View", ""),
@@ -78,8 +84,6 @@ const app = {
       if (options.modelInitializer) options.modelInitializer(view.model);
       if (options.viewInitializer) {
         options.viewInitializer(view);
-        // Log view bounds to check for NaN
-        console.log(`Created View for ${options.id}, left: ${view.left}, top: ${view.top}, width: ${view.width}, height: ${view.height}`);
       }
       return view;
     }
@@ -102,9 +106,13 @@ const diagram = {
 };
 
 try {
-  console.log("Starting parse...");
-  stateParser.generateDiagram(diagram, pumlText);
-  console.log("Parse completed successfully for UMLRegion parent!");
+  const result = stateParser.generateDiagram(diagram, pumlText);
+  assert.strictEqual(result.success, true, "Import should succeed");
+  assert.strictEqual(result.diagramType, "UMLStatechartDiagram", "Expected UMLStatechartDiagram");
+  assert.deepStrictEqual(result.errors, [], "Errors should be empty");
+  assert.ok(result.createdCount > 0, "Created count should be greater than 0");
+  console.log("Success: run_state_test completed successfully.");
 } catch (e) {
   console.error("Parse failed:", e);
+  process.exit(1);
 }

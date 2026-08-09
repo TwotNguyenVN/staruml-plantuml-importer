@@ -23,6 +23,32 @@ function init() {
     handleImportAuto,
     "PlantUML Importer..."
   );
+
+  if (app.preferences && typeof app.preferences.register === "function") {
+    try {
+      var preferences = {
+        id: "plantuml-importer",
+        name: "PlantUML Importer",
+        schema: {
+          "plantuml-importer.server": {
+            text: "PlantUML Server URL",
+            description: "The PlantUML server URL used to render previews. (Default: https://www.plantuml.com/plantuml)",
+            type: "string",
+            default: "https://www.plantuml.com/plantuml"
+          },
+          "plantuml-importer.preview": {
+            text: "Enable Preview",
+            description: "Check to enable rendering previews from the server.",
+            type: "check",
+            default: true
+          }
+        }
+      };
+      app.preferences.register(preferences);
+    } catch (prefErr) {
+      console.error("[plantuml-importer] Failed to register preferences:", prefErr);
+    }
+  }
 }
 
 function detectDiagramType(code) {
@@ -98,26 +124,39 @@ function handleImportAuto() {
               return;
             }
 
+            var result = null;
             if (diagramClass === "UMLUseCaseDiagram") {
-              usecaseParser.generateDiagram(diagram, code);
+              result = usecaseParser.generateDiagram(diagram, code);
             } else if (diagramClass === "UMLClassDiagram") {
-              classParser.generateDiagram(diagram, code);
+              result = classParser.generateDiagram(diagram, code);
             } else if (diagramClass === "UMLSequenceDiagram") {
-              sequenceParser.generateDiagram(diagram, code);
+              result = sequenceParser.generateDiagram(diagram, code);
             } else if (diagramClass === "UMLActivityDiagram") {
-              activityParser.generateDiagram(diagram, code);
+              result = activityParser.generateDiagram(diagram, code);
             } else if (diagramClass === "UMLStatechartDiagram") {
-              stateParser.generateDiagram(diagram, code);
+              result = stateParser.generateDiagram(diagram, code);
             } else if (diagramClass === "ERDDiagram") {
-              erdParser.generateDiagram(diagram, code);
+              result = erdParser.generateDiagram(diagram, code);
             } else if (diagramClass.indexOf("MMDiagram") !== -1 || diagramClass.indexOf("Mindmap") !== -1) {
-              mindmapParser.generateDiagram(diagram, code);
+              result = mindmapParser.generateDiagram(diagram, code);
             } else {
               app.dialogs.showAlertDialog("Unsupported diagram type for importing PlantUML.");
               return;
             }
 
-            app.dialogs.showInfoDialog("Diagram imported successfully!");
+            if (result && result.success) {
+              var msg = "Diagram imported successfully!";
+              if (result.createdCount !== undefined) {
+                msg += " (Created " + result.createdCount + " elements)";
+              }
+              app.dialogs.showInfoDialog(msg);
+            } else {
+              var errMsg = "Import failed.";
+              if (result && result.errors && result.errors.length > 0) {
+                errMsg += "\nDetails:\n" + result.errors.join("\n");
+              }
+              app.dialogs.showAlertDialog(errMsg);
+            }
           } catch (e) {
             app.dialogs.showAlertDialog(
               "Error generating diagram:\n" + String(e && e.message ? e.message : e)
@@ -127,6 +166,7 @@ function handleImportAuto() {
       })
       .catch(function (err) {
         console.error("[plantuml-importer] Dialog error:", err);
+        app.dialogs.showAlertDialog("Failed to open Import dialog:\n" + (err && err.message ? err.message : String(err)));
       })
       .finally(function () {
         isDialogOpen = false;
@@ -138,3 +178,5 @@ function handleImportAuto() {
 }
 
 exports.init = init;
+exports.detectDiagramType = detectDiagramType;
+exports.handleImportAuto = handleImportAuto;

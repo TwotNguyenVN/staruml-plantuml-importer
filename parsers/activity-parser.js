@@ -7,8 +7,13 @@ function sanitizeName(name) {
   return name.trim();
 }
 
+const parserHelper = require("../utils/parser-helper.js");
+
 function generateDiagram(diagram, text) {
-  var lines = text.split("\n");
+  var generateDiagram = { lastNodeGlobal: null, pendingGuardGlobal: "" };
+
+  return parserHelper.runInTransaction("UMLActivityDiagram", function(warnings, errors) {
+    var lines = text.split("\n");
   var elementsMap = {};
   
   var parsedLanes = [];
@@ -667,6 +672,7 @@ function generateDiagram(diagram, text) {
       }
     } catch (actErr) {
       console.error("[activity-parser] Failed to find/create UMLActivity context:", actErr);
+      throw actErr;
     }
   }
   
@@ -808,6 +814,7 @@ function generateDiagram(diagram, text) {
       }
     } catch (laneErr) {
       console.error("[activity-parser] Failed to create swimlane:", laneName, laneErr);
+      throw laneErr;
     }
   });
   
@@ -855,6 +862,7 @@ function generateDiagram(diagram, text) {
       }
     } catch (nodeErr) {
       console.error("[activity-parser] Failed to create node:", node.name, nodeErr);
+      throw nodeErr;
     }
   });
   
@@ -888,7 +896,10 @@ function generateDiagram(diagram, text) {
       });
     } catch (connErr) {
       console.error("[activity-parser] Failed to create ControlFlow:", conn.from, "->", conn.to, connErr);
+      throw connErr;
     }
+  });
+
   });
 }
 
