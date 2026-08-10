@@ -1,0 +1,38 @@
+@startuml
+requirement "User can log in" as R1 {
+  id: 1
+  text: The system shall allow a registered user to log in with email and password.
+  risk: low
+  verifymethod: test
+}
+
+requirement "User can reset password" as R2 {
+  id: 2
+  text: The system shall allow a user to reset a forgotten password via email.
+  risk: medium
+}
+
+requirement "Login must be fast" as R3 {
+  id: 3
+  text: Login response time shall be under 500ms under normal load.
+  risk: low
+}
+
+requirement "Audit login attempts" as R4 {
+  id: 4
+  text: The system shall record every successful and failed login attempt.
+  risk: high
+}
+
+element "Auth Service" as E1
+element "Email Gateway" as E2
+
+R1 -satisfies-> E1
+R2 -satisfies-> E2
+R3 -derives-> R1
+R4 -verifies-> R1
+R2 -refines-> R1
+R4 -traces-> R3
+R1 -copies-> R2
+R1 -contains-> E1
+@enduml
