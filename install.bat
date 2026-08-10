@@ -43,6 +43,8 @@ copy /Y "%~dp0package.json" "%TARGET%\package.json" >nul
 copy /Y "%~dp0menus\menu.json" "%TARGET%\menus\menu.json" >nul
 copy /Y "%~dp0keymaps\keymap.json" "%TARGET%\keymaps\keymap.json" >nul
 copy /Y "%~dp0utils\dialog-helper.js" "%TARGET%\utils\dialog-helper.js" >nul
+copy /Y "%~dp0utils\parser-helper.js" "%TARGET%\utils\parser-helper.js" >nul
+copy /Y "%~dp0utils\preview-helper.js" "%TARGET%\utils\preview-helper.js" >nul
 copy /Y "%~dp0parsers\usecase-parser.js" "%TARGET%\parsers\usecase-parser.js" >nul
 copy /Y "%~dp0parsers\class-parser.js" "%TARGET%\parsers\class-parser.js" >nul
 copy /Y "%~dp0parsers\sequence-parser.js" "%TARGET%\parsers\sequence-parser.js" >nul
