@@ -21,7 +21,7 @@ Tiện ích mở rộng dành cho StarUML hỗ trợ phân tích và nhập các
 | **State Diagram** (Biểu đồ trạng thái)    | 🚧 Đang hoàn thiện | Composite state / orthogonal region vẫn có thể bị StarUML từ chối đặt phần tử, chưa ổn định |
 | **ER Diagram** (Biểu đồ ERD)              | ✅ Đã hỗ trợ  | Thực thể, kiểu dữ liệu cột (PK/FK/Nullable), quan hệ chân chim |
 | **Mindmap** (Sơ đồ tư duy)                | ✅ Đã hỗ trợ  | Bố cục hướng tâm, phân cấp sâu, hỗ trợ hướng trái/phải         |
-| **Requirement Diagram** (Biểu đồ yêu cầu) | ⏳ Sắp hỗ trợ | Lên kế hoạch cập nhật trong tương lai                          |
+| **Requirement Diagram** (Biểu đồ yêu cầu) | ✅ Đã hỗ trợ | SysMLRequirements, phần tử, tất cả loại quan hệ |
 
 ## ✨ Các tính năng nổi bật
 
@@ -239,6 +239,24 @@ User ||--o{ Order
 @enduml
 ```
 
+### Biểu đồ Requirement (Yêu cầu)
+
+```plantuml
+@startuml
+requirement "User can log in" as R1 {
+  id: 1
+  text: The system shall allow a registered user to log in.
+  risk: low
+  verifymethod: test
+}
+requirement "User can reset password" as R2
+element "Auth Service" as E1
+
+R1 -satisfies-> E1
+R2 -refines-> R1
+@enduml
+```
+
 ## 📋 Bảng Kiểm Tích Hợp StarUML & Ánh Xạ File Fixture Đại Diện
 
 Bảng dưới đây đóng vai trò là danh sách kiểm tra (checklist) tích hợp StarUML. Nó kết hợp mỗi loại sơ đồ với tệp parser tương ứng và các tệp fixture đại diện trong thư mục `test/` dùng để chạy kiểm thử logic phân tích cú pháp:
@@ -252,6 +270,7 @@ Bảng dưới đây đóng vai trò là danh sách kiểm tra (checklist) tích
 | **Sơ đồ State** | `UMLStatechartDiagram` | `parsers/state-parser.js` | [Statechart_Diagram.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/Statechart_Diagram.puml) | **🚧 Đang Phát Triển / Chưa Ổn Định** |
 | **Sơ đồ ERD** | `ERDDiagram` | `parsers/erd-parser.js` | [ERD.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/ERD.puml) | Ổn định |
 | **Sơ đồ Mindmap** | `MindmapDiagram` (MMDiagram) | `parsers/mindmap-parser.js` | [mindmap.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/mindmap.puml) | Ổn định |
+| **Sơ đồ Requirement** | `SysMLRequirementDiagram` | `parsers/requirement-parser.js` | [requirement_sample.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/requirement_sample.puml) | Ổn định |
 
 ## 🗑️ Gỡ cài đặt hoàn toàn StarUML (Windows & macOS)
 

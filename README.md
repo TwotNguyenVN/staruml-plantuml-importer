@@ -21,7 +21,7 @@ A StarUML extension that imports **Use Case, Class, Sequence, Activity, and ER D
 | **State Diagram** | 🚧 In Progress | Composite states / orthogonal regions can still fail StarUML's placement validation; not stable yet |
 | **ER Diagram** | ✅ Supported | Entities, columns (PK/FK/Nullable), crow's foot cardinalities |
 | **Mindmap Diagram** | ✅ Supported | Radial layout, deep hierarchies, left/right direction support |
-| **Requirement Diagram** | ⏳ Planned | Planned for future update |
+| **Requirement Diagram** | ✅ Supported | SysMLRequirements, elements, all relation types |
 
 ## ✨ Features
 
@@ -237,6 +237,24 @@ User ||--o{ Order
 @enduml
 ```
 
+### Requirement Diagram
+
+```plantuml
+@startuml
+requirement "User can log in" as R1 {
+  id: 1
+  text: The system shall allow a registered user to log in.
+  risk: low
+  verifymethod: test
+}
+requirement "User can reset password" as R2
+element "Auth Service" as E1
+
+R1 -satisfies-> E1
+R2 -refines-> R1
+@enduml
+```
+
 ## 📋 StarUML Integration Checklist & Representative Fixtures
 
 This table acts as our integration checklist. It maps each diagram type to its respective parser file and the representative test fixtures in the `test/` folder that verify its parsing logic and correctness:
@@ -250,6 +268,7 @@ This table acts as our integration checklist. It maps each diagram type to its r
 | **State Diagram** | `UMLStatechartDiagram` | `parsers/state-parser.js` | [Statechart_Diagram.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/Statechart_Diagram.puml) | **🚧 In Progress / Unstable** |
 | **ER Diagram** | `ERDDiagram` | `parsers/erd-parser.js` | [ERD.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/ERD.puml) | Stable |
 | **Mindmap Diagram** | `MindmapDiagram` (MMDiagram) | `parsers/mindmap-parser.js` | [mindmap.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/mindmap.puml) | Stable |
+| **Requirement Diagram** | `SysMLRequirementDiagram` | `parsers/requirement-parser.js` | [requirement_sample.puml](file:///Users/twot/Documents/CODE/staruml-plantuml-importer/test/requirement_sample.puml) | Stable |
 
 ## 🗑️ Clean Uninstallation of StarUML (Windows & macOS)
 

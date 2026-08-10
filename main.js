@@ -12,6 +12,7 @@ const activityParser = require("./parsers/activity-parser");
 const stateParser = require("./parsers/state-parser");
 const erdParser = require("./parsers/erd-parser");
 const mindmapParser = require("./parsers/mindmap-parser");
+const requirementParser = require("./parsers/requirement-parser");
 
 function init() {
   if (typeof app === "undefined" || !app.commands) {
@@ -73,6 +74,8 @@ function detectDiagramType(code) {
   if (hasERDRelations || (/^\s*entity\s+/im.test(code) && !hasSequenceArrows)) return "ERDDiagram";
   if (/^\s*(@startmindmap|[*+-]{1,}\s+)/im.test(code)) return "MMDiagram"; // Assuming MMDiagram or generic
   
+  if (/^\s*requirement\s+/im.test(code) || /^\s*element\s+/im.test(code) || /-(satisfies|derives|verifies|refines|copies|traces|contains)->/im.test(code)) return "SysMLRequirementDiagram";
+  
   if (hasSequenceArrows) return "UMLSequenceDiagram";
 
   return null;
@@ -117,8 +120,8 @@ function handleImportAuto() {
 
             if (detectedClass && detectedClass !== diagramClass) {
               app.dialogs.showAlertDialog(
-                "Warning: The code looks like a " + detectedClass.replace("UML", "").replace("Diagram", "") +
-                " Diagram, but you are currently in a " + diagramClass.replace("UML", "").replace("Diagram", "") + " Diagram.\n" +
+                "Warning: The code looks like a " + detectedClass.replace("UML", "").replace("Diagram", "").replace("SysMLRequirement", "Requirement") +
+                " Diagram, but you are currently in a " + diagramClass.replace("UML", "").replace("Diagram", "").replace("SysMLRequirement", "Requirement") + " Diagram.\n" +
                 "Please open the correct diagram type before importing."
               );
               return;
@@ -139,6 +142,8 @@ function handleImportAuto() {
               result = erdParser.generateDiagram(diagram, code);
             } else if (diagramClass.indexOf("MMDiagram") !== -1 || diagramClass.indexOf("Mindmap") !== -1) {
               result = mindmapParser.generateDiagram(diagram, code);
+            } else if (diagramClass === "SysMLRequirementDiagram") {
+              result = requirementParser.generateDiagram(diagram, code);
             } else {
               app.dialogs.showAlertDialog("Unsupported diagram type for importing PlantUML.");
               return;

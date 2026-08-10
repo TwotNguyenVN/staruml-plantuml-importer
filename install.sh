@@ -57,6 +57,7 @@ cp "$SCRIPT_DIR/parsers/activity-parser.js" "$TARGET/parsers/activity-parser.js"
 cp "$SCRIPT_DIR/parsers/state-parser.js" "$TARGET/parsers/state-parser.js"
 cp "$SCRIPT_DIR/parsers/erd-parser.js" "$TARGET/parsers/erd-parser.js"
 cp "$SCRIPT_DIR/parsers/mindmap-parser.js" "$TARGET/parsers/mindmap-parser.js"
+cp "$SCRIPT_DIR/parsers/requirement-parser.js" "$TARGET/parsers/requirement-parser.js"
 
 echo "[OK] Installation complete!"
 echo ""

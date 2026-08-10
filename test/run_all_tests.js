@@ -13,7 +13,9 @@ const testFiles = [
   'run_sequence_parser_test.js',
   'run_state_test.js',
   'run_usecase_test.js',
-  'run_regression_tests.js'
+  'run_regression_tests.js',
+  'run_requirement_parser_unit_test.js',
+  'run_requirement_test.js'
 ];
 
 testFiles.forEach((file) => {

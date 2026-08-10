@@ -50,6 +50,7 @@ copy /Y "%~dp0parsers\activity-parser.js" "%TARGET%\parsers\activity-parser.js" 
 copy /Y "%~dp0parsers\state-parser.js" "%TARGET%\parsers\state-parser.js" >nul
 copy /Y "%~dp0parsers\erd-parser.js" "%TARGET%\parsers\erd-parser.js" >nul
 copy /Y "%~dp0parsers\mindmap-parser.js" "%TARGET%\parsers\mindmap-parser.js" >nul
+copy /Y "%~dp0parsers\requirement-parser.js" "%TARGET%\parsers\requirement-parser.js" >nul
 
 echo [OK] Installation complete!
 echo.
