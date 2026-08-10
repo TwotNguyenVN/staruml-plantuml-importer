@@ -23,7 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { execSync, execFileSync } = require('child_process');
+const { execSync } = require('child_process');
 const readline = require('readline');
 
 // Màu sắc Console ANSI
@@ -191,60 +191,48 @@ function install() {
     console.log(`  4. Dán code PlantUML và chọn OK\n`);
 }
 
-const DEPS = {
-    execFileSync: execFileSync,
-    install: function() { return install(); }
-};
-
-function isDirty(deps) {
-    deps = deps || DEPS;
-    try {
-        const output = deps.execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim();
-        return output.length > 0;
-    } catch (e) {
-        return true;
+function checkDirty(run) {
+    const out = run('git', ['status', '--porcelain']) || '';
+    const cleaned = typeof out === 'string' ? out.trim() : String(out).trim();
+    if (cleaned.length > 0) {
+        throw new Error('Worktree is dirty. Aborting update to avoid data loss.');
     }
 }
 
 function update(deps) {
-    deps = deps || DEPS;
-    console.log(`\n${COLORS.magenta}${COLORS.bright}========== CẬP NHẬT TIỆN ÍCH (UPDATE) ==========${COLORS.reset}\n`);
-    console.log(`${COLORS.bright}[*] Đang tải mã nguồn mới nhất từ GitHub...${COLORS.reset}`);
+    const run = (deps && typeof deps.execFileSync === 'function')
+        ? deps.execFileSync
+        : (cmd, args) => execSync([cmd].concat(args || []).join(' '), { stdio: 'inherit', encoding: 'utf8' });
+    const doInstall = (deps && typeof deps.install === 'function') ? deps.install : install;
 
-    // Check dirty state including untracked files
-    if (isDirty(deps)) {
-        console.error(`\n${COLORS.bgRed}${COLORS.bright} LỖI CẬP NHẬT / UPDATE ERROR ${COLORS.reset}`);
-        console.error(`${COLORS.red}Thư mục làm việc không sạch sẽ (dirty hoặc chứa file chưa theo dõi). Vui lòng commit, stash hoặc dọn dẹp các thay đổi trước khi update để tránh mất mát dữ liệu.${COLORS.reset}\n`);
-        throw new Error("Worktree is dirty. Update aborted.");
-    }
+    console.log(`\n${COLORS.magenta}${COLORS.bright}========== CẬP NHẬT TIỆN ÍCH (UPDATE) ==========${COLORS.reset}\n`);
+    console.log(`${COLORS.bright}[*] Đang kiểm tra trạng thái làm việc...${COLORS.reset}`);
 
     try {
-        deps.execFileSync('git', ['fetch'], { stdio: 'inherit' });
+        checkDirty(run);
+        console.log(`${COLORS.green}✔ Worktree sạch. Đang tải mã nguồn mới nhất...${COLORS.reset}`);
+        run('git', ['fetch']);
 
-        let currentBranch = 'main';
+        const branch = String(run('git', ['rev-parse', '--abbrev-ref', 'HEAD'])).trim();
+        let upstream = null;
         try {
-            currentBranch = deps.execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' }).trim();
-        } catch (_) {}
-
-        let hasUpstream = false;
-        try {
-            deps.execFileSync('git', ['rev-parse', '--symbolic-full-name', '@{u}'], { stdio: 'ignore' });
-            hasUpstream = true;
-        } catch (_) {
-            hasUpstream = false;
+            upstream = String(run('git', ['rev-parse', '--symbolic-full-name', '@{u}'])).trim();
+        } catch (e) {
+            upstream = null;
         }
 
-        if (hasUpstream) {
-            deps.execFileSync('git', ['merge', '--ff-only'], { stdio: 'inherit' });
+        if (upstream) {
+            run('git', ['merge', '--ff-only']);
         } else {
-            deps.execFileSync('git', ['merge', '--ff-only', 'origin/' + currentBranch], { stdio: 'inherit' });
+            run('git', ['merge', '--ff-only', 'origin/' + branch]);
         }
 
         console.log(`\n${COLORS.green}✔ Đã cập nhật mã nguồn thành công.${COLORS.reset}`);
-        deps.install();
+        doInstall();
     } catch (error) {
         console.error(`\n${COLORS.bgRed}${COLORS.bright} LỖI CẬP NHẬT / UPDATE ERROR ${COLORS.reset}`);
         console.error(`${COLORS.red}${error.message}${COLORS.reset}\n`);
+        // Do not leave the repo in a half-updated state: re-throw so callers can detect failure.
         throw error;
     }
 }
@@ -406,51 +394,47 @@ function main() {
     
     const action = args[0].toLowerCase().trim();
     
-    try {
-        switch (action) {
-            case 'install':
-                install();
-                break;
-            case 'update':
-                update();
-                break;
-            case 'clear':
-                clear();
-                break;
-            case 'clear-all':
-                clearAll();
-                break;
-            case 'help':
-            case '--help':
-            case '-h':
-                console.log(`\n${COLORS.bright}CÁCH SỬ DỤNG STARUML IMPORTER CLI:${COLORS.reset}`);
-                console.log(`  node manage.js            - Mở menu tương tác`);
-                console.log(`  node manage.js install    - Cài đặt tiện ích`);
-                console.log(`  node manage.js update     - Kéo code mới và cài đặt`);
-                console.log(`  node manage.js clear      - Xóa tiện ích khỏi StarUML`);
-                console.log(`  node manage.js clear-all  - Xóa sạch StarUML khỏi máy\n`);
-                break;
-            default:
-                console.log(`${COLORS.red}Lệnh không hợp lệ: "${action}". Chạy "node manage.js --help" để xem hướng dẫn.${COLORS.reset}\n`);
-                process.exit(1);
-        }
-    } catch (err) {
-        console.error(`${COLORS.red}[FATAL] CLI Action failed: ${err.message}${COLORS.reset}`);
-        process.exit(1);
+    switch (action) {
+        case 'install':
+            install();
+            break;
+        case 'update':
+            update();
+            break;
+        case 'clear':
+            clear();
+            break;
+        case 'clear-all':
+            clearAll();
+            break;
+        case 'help':
+        case '--help':
+        case '-h':
+            console.log(`\n${COLORS.bright}CÁCH SỬ DỤNG STARUML IMPORTER CLI:${COLORS.reset}`);
+            console.log(`  node manage.js            - Mở menu tương tác`);
+            console.log(`  node manage.js install    - Cài đặt tiện ích`);
+            console.log(`  node manage.js update     - Kéo code mới và cài đặt (ff-only merge, an toàn)`);
+            console.log(`  node manage.js clear      - Xóa tiện ích khỏi StarUML`);
+            console.log(`  node manage.js clear-all  - Xóa sạch StarUML khỏi máy\n`);
+            break;
+        default:
+            console.log(`${COLORS.red}Lệnh không hợp lệ: "${action}". Chạy "node manage.js --help" để xem hướng dẫn.${COLORS.reset}\n`);
+            process.exit(1);
     }
 }
 
-if (require.main === module) {
-    main();
-}
-
+// Export for unit testing (does NOT execute main on require)
 module.exports = {
     install,
     update,
+    checkDirty,
     clear,
     clearAll,
-    checkDirty: (deps) => {
-        return isDirty(deps);
-    },
-    DEPS: DEPS
+    main,
+    showInteractiveMenu
 };
+
+// Only run the CLI when executed directly (not when required by a test)
+if (require.main === module) {
+    main();
+}
