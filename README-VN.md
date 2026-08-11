@@ -24,13 +24,12 @@
 - [Bảng kiểm tích hợp StarUML](#-bảng-kiểm-tích-hợp-staruml)
 - [Bảo mật & Máy chủ xem trước](#-bảo-mật--cấu-hình-máy-chủ-xem-trước-preview-server)
 - [Chạy kiểm thử](#-chạy-kiểm-thử)
-- [Gỡ cài đặt hoàn toàn StarUML](#-gỡ-cài-đặt-hoàn-toàn-staruml-windows--macos)
 - [Giấy phép](#-giấy-phép)
 
 ## ✨ Tính năng nổi bật
 
-- **Xem trước trực tuyến (Live Server Preview)** — hộp thoại chia đôi màn hình, dựng ảnh xem trước từ mã
-  PlantUML của bạn ngay khi đang gõ.
+- **Xem trước qua máy chủ theo lựa chọn** — hộp thoại chia đôi có thể dựng ảnh từ mã PlantUML qua máy chủ
+  đã cấu hình khi bạn gõ. Tính năng xem trước mặc định bị tắt.
 - **Tự động nhận diện loại sơ đồ** — dán bất kỳ đoạn PlantUML được hỗ trợ, công cụ sẽ tự nhận diện kiểu
   sơ đồ (Use Case, Class, Sequence, Activity, State, ER, Mindmap, Requirement).
 - **Phần tử StarUML gốc** — mọi sơ đồ được xây dựng từ các kiểu model/view thực của StarUML (ví dụ
@@ -86,6 +85,11 @@ node manage.js update    # kéo code mới nhất từ GitHub và cài lại
 node manage.js clear     # chỉ xóa tiện ích khỏi StarUML
 ```
 
+Lệnh `update` yêu cầu worktree sạch và nhánh hiện tại đã cấu hình upstream. Lệnh sẽ xác minh remote
+upstream là URL HTTPS hoặc SSH dự kiến của kho này, fetch remote đó, hiển thị revision đích, và chỉ chấp
+nhận merge fast-forward trước khi cài lại. Quá trình cập nhật mã nguồn này không xác minh bản phát hành có
+chữ ký; hãy tự kiểm tra revision đích khi cần bảo đảm bằng chữ ký phát hành.
+
 #### 3. Script hệ thống (Không cần Node.js)
 
 **Windows** — nhấp đúp `install.bat`, hoặc chạy trong Command Prompt:
@@ -100,6 +104,18 @@ node manage.js clear     # chỉ xóa tiện ích khỏi StarUML
 chmod +x install.sh
 ./install.sh
 ```
+
+Để chỉ gỡ PlantUML Importer mà không xóa StarUML hoặc cấu hình của ứng dụng:
+
+- **Windows:** nhấp đúp `clear.bat`, hoặc chạy `.\clear.bat` trong Command Prompt.
+- **macOS / Linux:** chạy `chmod +x clear.sh && ./clear.sh`.
+
+Cả hai script đều yêu cầu xác nhận và chỉ xóa thư mục tiện ích `twot.staruml-plantuml-importer`. Trên
+Windows, `choice` chỉ chấp nhận nhập rõ ràng `Y` hoặc `N`; phím Enter không chọn giá trị mặc định và `N`
+sẽ hủy thao tác.
+Trước khi xóa đệ quy, các công cụ quản lý phân giải đúng thư mục gốc extension người dùng của StarUML,
+xác minh đường dẫn chuẩn nằm bên trong thư mục đó, và từ chối đích hoặc mục con là symbolic link, junction,
+reparse point hay liên kết tương tự.
 
 > **💡 Lưu ý:** Sau khi cài đặt hoặc cập nhật, vui lòng khởi động lại (hoặc nhấn `Ctrl/Cmd + R` để reload) StarUML.
 
@@ -120,7 +136,8 @@ chmod +x install.sh
 
    *(💡 Mẹo: nhấn phím tắt lần nữa để đóng nhanh hộp thoại. Trường nhập được tự động focus để bạn dán code
    ngay lập tức.)*
-4. Dán mã PlantUML; bản xem trước hiển thị bên phải.
+4. Dán mã PlantUML. Nếu bạn chủ động bật xem trước, ảnh do máy chủ dựng sẽ hiện bên phải; nếu không, tiện
+   ích không tạo yêu cầu mạng để xem trước.
 5. Nhấn **Import**. Bộ nhập tự nhận diện loại sơ đồ và đối chiếu với sơ đồ đang mở; nếu không khớp, bạn sẽ
    được cảnh báo trước khi tạo bất kỳ phần tử nào.
 6. Nhấn **OK**, xem và tinh chỉnh sơ đồ.
@@ -291,48 +308,43 @@ minh tính đúng đắn của logic phân tích cú pháp.
 
 ## 🔒 Bảo mật & Cấu hình máy chủ xem trước (Preview Server)
 
-Mặc định, tính năng Xem trước trực tuyến gửi mã PlantUML của bạn (dạng nén/mã hóa) đến máy chủ dựng ảnh
-công khai của PlantUML (`https://www.plantuml.com/plantuml`).
-
-Nếu bạn làm việc với kiến trúc nhạy cảm hoặc nội bộ doanh nghiệp, bạn có thể trỏ tiện ích về máy chủ
-PlantUML tự host (self-hosted) hoặc tắt hoàn toàn xem trước:
+Xem trước mặc định bị tắt. Việc nhập sơ đồ vẫn cục bộ trừ khi bạn chủ động bật xem trước. Khi được bật,
+tiện ích đặt mã PlantUML ở dạng mã hóa có thể đảo ngược (không phải mã hóa bảo mật) trong URL HTTP GET gửi
+đến máy chủ dựng ảnh đã cấu hình. Máy chủ đích, proxy, trình duyệt/runtime và log mạng có thể lưu URL đó và
+khôi phục mã nguồn. Không xem trước sơ đồ nhạy cảm qua máy chủ hoặc đường mạng mà bạn không tin cậy.
 
 1. Mở **StarUML**.
 2. Vào **StarUML → Preferences → PlantUML Importer**.
 3. Tùy chỉnh:
-   - **PlantUML Server URL**: máy chủ nội bộ của bạn (vd `http://localhost:8080` hoặc
+   - **PlantUML Server URL**: đích xem trước theo lựa chọn, chẳng hạn máy chủ nội bộ (vd
+     `http://localhost:8080` hoặc
      `https://plantuml.yourcompany.com`). Tiện ích tự động chuẩn hóa URL (bỏ dấu gạch chéo/thành phần dư
      thừa như `/png`) và ưu tiên HTTPS cho tên miền từ xa.
-   - **Enable Preview**: bỏ chọn để tắt hoàn toàn kết nối máy chủ xem trước. Khi tắt, không mã nào được gửi
-     qua mạng và khung xem trước hiển thị thông báo đã tắt.
+   - **Enable Preview**: chỉ đánh dấu sau khi xem xét đích và rủi ro lưu log. Khi bỏ chọn, không mã sơ đồ
+     nào được gửi qua mạng và khung xem trước hiển thị thông báo đã tắt.
+
+Đầu vào bị từ chối trước khi nhập nếu vượt quá 200.000 ký tự, 10.000 dòng, 2.000 khai báo, 5.000 quan hệ
+hoặc 50 cấp lồng nhau. URL xem trước cũng bị giới hạn ở 16.384 ký tự. Đầu vào không hợp lệ hoặc quá lớn sẽ
+không được nhập. Nếu tạo model thất bại sau khi đã bắt đầu thay đổi, bộ nhập sẽ cố rollback lần nhập đó và
+báo lỗi rollback thay vì âm thầm để lại kết quả dở dang.
 
 ## 🧪 Chạy kiểm thử
 
-Bộ kiểm thử chạy hoàn toàn trên Node.js (không cần StarUML) nhờ một API StarUML được mock:
+Bộ kiểm thử và kiểm tra kho chạy trên Node.js mà không cần StarUML:
 
 ```bash
-npm test
-# tương đương với:
-node test/run_all_tests.js
+npm ci
+npm run check
+npm run coverage
 ```
 
-Mỗi parser có một fixture riêng trong `test/` và một script kiểm thử tương ứng (vd
-`test/run_requirement_test.js` cho parser Requirement). Mọi script phải thoát với mã `0`.
-
-## 🗑️ Gỡ cài đặt hoàn toàn StarUML (Windows & macOS)
-
-> **⚠️ CẢNH BÁO:** Lệnh sau **KHÔNG PHẢI** chỉ gỡ tiện ích. Nó sẽ **GỠ CÀI ĐẶT HOÀN TOÀN** StarUML và
-> xóa sạch mọi cấu hình, cache, tiện ích mở rộng và log. Chỉ dùng khi muốn cài lại từ đầu.
-> (Script sẽ yêu cầu gõ `y/N` xác nhận trước khi thực hiện.)
-
-```bash
-node manage.js clear-all
-```
-
-**Script hệ thống (không cần Node.js):**
-
-- **Windows:** nhấp đúp `clear.bat`, hoặc chạy `.\clear.bat` trong Command Prompt.
-- **macOS / Linux:** `chmod +x clear.sh && ./clear.sh`
+`npm run check` chạy ESLint chỉ kiểm tra tính đúng đắn, kiểm tra cú pháp/chính sách nguồn có tính xác định,
+và toàn bộ test. `npm run coverage` áp dụng ngưỡng cố định 40% dòng/hàm và 30% nhánh. CI chạy cả hai lệnh,
+`git diff --check`, audit đầy đủ dependency (bao gồm công cụ phát triển được cài/chạy), và audit production
+mức high trên Node.js 20 và 22. Mỗi parser có fixture trong `test/`; bản chuẩn bị phát hành còn phải vượt qua
+[bảng kiểm smoke StarUML v7](docs/STARUML_V7_SMOKE_TEST.md). Bảng kiểm StarUML v7 trực tiếp chưa được chạy
+trong môi trường phát triển này, nên khả năng tương thích trực tiếp vẫn chưa được xác minh cho đến khi
+maintainer ghi nhận một lần chạy hoàn tất.
 
 ## 📄 Giấy phép
 

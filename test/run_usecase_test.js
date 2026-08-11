@@ -57,6 +57,7 @@ files.forEach(function (filename) {
       }
     }
   }
+  assert.strictEqual(overlaps, 0, "Use Case/Actor boxes overlap in " + filename);
 
   // NaN / undefined coordinate check
   var badCoords = created.filter(function (c) {

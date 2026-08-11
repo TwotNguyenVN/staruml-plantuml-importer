@@ -46,12 +46,23 @@ function encodePlantUML(text) {
   return r;
 }
 
+function openExternalSafely(url, shell) {
+  try {
+    return Promise.resolve(shell.openExternal(url)).catch(function () {});
+  } catch (error) {
+    return Promise.resolve();
+  }
+}
+
 var activeDialog = null;
+var activeDialogCleanup = null;
 
 function closeImportDialog() {
   if (activeDialog) {
+    if (activeDialogCleanup) activeDialogCleanup();
     try { activeDialog.close("cancel"); } catch (e) {}
     activeDialog = null;
+    activeDialogCleanup = null;
   }
 }
 
@@ -62,16 +73,16 @@ function showImportDialog(title, sampleCode) {
 
   // 1. HTML Dialog Template
   var template = [
-    '<div class="plantuml-preview-dialog template dialog modal" data-title="' + title + '" style="width: 80vw; height: 80vh; min-width: 700px; min-height: 450px; max-width: 95vw; max-height: 95vh; display: flex; flex-direction: column; background: #282828; color: #e0e0e0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3c3c3c; overflow: hidden; position: relative;">',
+    '<div class="plantuml-preview-dialog template dialog modal" data-title="" style="width: 80vw; height: 80vh; min-width: 700px; min-height: 450px; max-width: 95vw; max-height: 95vh; display: flex; flex-direction: column; background: #282828; color: #e0e0e0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3c3c3c; overflow: hidden; position: relative;">',
     '  <div class="dialog-header" style="padding: 16px 20px 12px 20px; border-bottom: 1px solid #3c3c3c; background: #282828; display: flex; justify-content: space-between; align-items: center;">',
     '    <div style="flex: 1;"></div>',
-    '    <span class="dialog-title" style="font-size: 15px; font-weight: 600; color: #ffffff; font-family: sans-serif; flex: 1; text-align: center;">' + title + '</span>',
+    '    <span class="dialog-title" style="font-size: 15px; font-weight: 600; color: #ffffff; font-family: sans-serif; flex: 1; text-align: center;"></span>',
     '    <div style="flex: 1; text-align: right; font-size: 13px; font-family: sans-serif;">',
-    '      <a href="#" onclick="require(\'electron\').shell.openExternal(\'https://github.com/TwotNguyenVN/staruml-plantuml-importer\'); return false;" style="color: #007acc; text-decoration: none; cursor: pointer;">More info</a>',
+    '      <a href="#" class="link-more-info" style="color: #007acc; text-decoration: none; cursor: pointer;">More info</a>',
     '      <span style="color: #555; margin: 0 6px;">|</span>',
-    '      <a href="#" onclick="require(\'electron\').shell.openExternal(\'https://github.com/TwotNguyenVN/staruml-plantuml-importer/issues\'); return false;" style="color: #007acc; text-decoration: none; cursor: pointer;">Issues</a>',
+    '      <a href="#" class="link-issues" style="color: #007acc; text-decoration: none; cursor: pointer;">Issues</a>',
     '      <span style="color: #555; margin: 0 6px;">|</span>',
-    '      <a href="#" onclick="require(\'electron\').shell.openExternal(\'https://github.com/TwotNguyenVN\'); return false;" style="color: #007acc; text-decoration: none; cursor: pointer;">Twot Nguyen</a>',
+    '      <a href="#" class="link-author" style="color: #007acc; text-decoration: none; cursor: pointer;">Twot Nguyen</a>',
     '    </div>',
     '  </div>',
     '  <div class="dialog-body" style="display: flex; padding: 20px; flex: 1; background: #202020; min-height: 0;">',
@@ -79,7 +90,7 @@ function showImportDialog(title, sampleCode) {
     '      <div style="display: flex; align-items: center; min-height: 32px; margin-bottom: 8px;">',
     '        <label style="font-weight: 600; color: #a0a0a0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-family: sans-serif;">PlantUML Code</label>',
     '      </div>',
-    '      <textarea class="plantuml-code-input" style="flex: 1; font-family: \'Consolas\', \'Monaco\', \'Courier New\', monospace; font-size: 13px; resize: none; padding: 12px; line-height: 1.5; background: #181818; color: #d4d4d4; border: 1px solid #3a3a3a; border-radius: 6px; outline: none; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); transition: border-color 0.2s;" placeholder="Type PlantUML code here...">' + sampleCode + '</textarea>',
+    '      <textarea class="plantuml-code-input" style="flex: 1; font-family: \'Consolas\', \'Monaco\', \'Courier New\', monospace; font-size: 13px; resize: none; padding: 12px; line-height: 1.5; background: #181818; color: #d4d4d4; border: 1px solid #3a3a3a; border-radius: 6px; outline: none; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); transition: border-color 0.2s;" placeholder="Type PlantUML code here..."></textarea>',
     '    </div>',
     '    <div class="panel-splitter" style="width: 16px; cursor: col-resize; display: flex; justify-content: center; align-items: center; z-index: 10;">',
     '      <div style="width: 2px; height: 100%; background: #2d2d2d; transition: background 0.2s;"></div>',
@@ -113,6 +124,8 @@ function showImportDialog(title, sampleCode) {
       var dialog = app.dialogs.showModalDialogUsingTemplate(template, true);
       activeDialog = dialog;
       var $dlg = dialog.getElement();
+      $dlg.attr("data-title", title);
+      $dlg.find(".dialog-title").text(title);
 
       // Custom Resizing Logic (All 4 edges and corners)
       var handles = ['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw'];
@@ -159,14 +172,14 @@ function showImportDialog(title, sampleCode) {
 
         var wrapperRect = $wrapper[0].getBoundingClientRect();
         var dlgRect = $dlg[0].getBoundingClientRect();
-        
+
         wrapperStartRect = {
           top: wrapperRect.top,
           left: wrapperRect.left,
           width: wrapperRect.width,
           height: wrapperRect.height
         };
-        
+
         diffW = wrapperRect.width - dlgRect.width;
         diffH = wrapperRect.height - dlgRect.height;
 
@@ -183,7 +196,7 @@ function showImportDialog(title, sampleCode) {
           'max-height': 'none',
           'transition': 'none'
         });
-        
+
         $dlg.css({
           'box-sizing': 'border-box',
           'width': dlgRect.width + 'px',
@@ -278,7 +291,7 @@ function showImportDialog(title, sampleCode) {
           var newWidth = e.clientX - bodyRect.left - 20;
           var maxWidth = bodyRect.width - 40 - 150 - 16;
           newWidth = Math.max(150, Math.min(newWidth, maxWidth));
-          
+
           $panelLeft.css({
             'flex': '0 0 ' + newWidth + 'px'
           });
@@ -294,6 +307,7 @@ function showImportDialog(title, sampleCode) {
       });
 
       var $textarea = $dlg.find(".plantuml-code-input");
+      $textarea.val(sampleCode);
       var $previewContainer = $dlg.find(".preview-container");
       var $previewPlaceholder = $dlg.find(".preview-placeholder");
       var $previewImg = $dlg.find(".preview-img");
@@ -319,63 +333,48 @@ function showImportDialog(title, sampleCode) {
          return previewHelper.isPreviewEnabled();
        }
 
-       function getNormalizedServerUrl() {
-         var val = (typeof app !== "undefined" && app.preferences) ? app.preferences.get("plantuml-importer.server") : "";
-         return previewHelper.getNormalizedServerUrl(val);
-       }
-
-       function isValidUrl(urlString) {
-         return previewHelper.isValidUrl(urlString);
-       }
-
       var debounceTimeout = null;
+      var focusTimeout = null;
+      var isClosed = false;
       function updatePreview() {
-        var code = $textarea.val().trim();
-        if (!code) {
+        if (isClosed) return;
+        var code = $textarea.val() || "";
+        if (!code.trim()) {
           $previewPlaceholder.text("No code to preview.").show();
           $previewImg.hide();
           return;
         }
 
-        // Show local welcome image for the default code
-        if (code === "@startuml\n\n' Paste your PlantUML code here\n\n@enduml".trim()) {
-          $previewPlaceholder.hide();
-          var path = require("path");
-          var imgPath = path.join(__dirname, "..", "PlantUML_Importer.png").replace(/\\/g, '/');
-          $previewImg.off("load").off("error").attr("src", "file:///" + imgPath).show();
-          currentScale = 1.0;
-          translateX = 0;
-          translateY = 0;
-          applyTransform(false);
-          return;
-        }
-
-        if (!isPreviewEnabled()) {
-          $previewPlaceholder.text("Preview is disabled in preferences.").show();
-          $previewImg.hide();
-          return;
-        }
-
-        var serverUrlPref = (typeof app !== "undefined" && app.preferences) ? app.preferences.get("plantuml-importer.server") : "";
-        var serverUrlNormalized = getNormalizedServerUrl();
-        if (!isValidUrl(serverUrlNormalized)) {
-          $previewPlaceholder.text("Invalid PlantUML Server URL configured.").show();
-          $previewImg.hide();
-          return;
-        }
-
-        $previewPlaceholder.text("Loading diagram from server...").show();
-        $previewImg.hide();
-
         try {
-          var encoded = encodePlantUML(code);
-          var imageUrl = previewHelper.buildPreviewUrl(serverUrlPref, encoded);
+          var previewEnabled = isPreviewEnabled();
+          var previewOptions = {
+            enabled: previewEnabled,
+            encode: encodePlantUML
+          };
+          if (previewEnabled) {
+            previewOptions.configuredUrl = (typeof app !== "undefined" && app.preferences)
+              ? app.preferences.get("plantuml-importer.server")
+              : "";
+          }
+          var preview = previewHelper.preparePreview(code, {
+            enabled: previewOptions.enabled,
+            configuredUrl: previewOptions.configuredUrl,
+            encode: previewOptions.encode
+          });
+          if (preview.status !== "ready") {
+            $previewPlaceholder.text(preview.message).show();
+            $previewImg.hide();
+            return;
+          }
+
+          $previewPlaceholder.text(preview.message).show();
+          $previewImg.hide();
 
           // Register handlers BEFORE setting src to avoid synchronous load race conditions
           $previewImg.off("load").on("load", function () {
             $previewPlaceholder.hide();
             $previewImg.show();
-            
+
             // Reset transforms on load
             currentScale = 1.0;
             translateX = 0;
@@ -386,10 +385,10 @@ function showImportDialog(title, sampleCode) {
             $previewPlaceholder.text("Failed to load image from PlantUML server.").show();
             $previewImg.hide();
           });
-          
-          $previewImg.attr("src", imageUrl);
-        } catch (err) {
-          $previewPlaceholder.text("Encoding error: " + err.message).show();
+
+          $previewImg.attr("src", preview.url);
+        } catch (_) {
+          $previewPlaceholder.text("Preview could not be generated.").show();
           $previewImg.hide();
         }
       }
@@ -406,9 +405,10 @@ function showImportDialog(title, sampleCode) {
 
       // Initial update when dialog opens
       updatePreview();
-      
+
       // Auto-focus the textarea and position cursor
-      setTimeout(function() {
+      focusTimeout = setTimeout(function() {
+        if (isClosed) return;
         $textarea.focus();
         var val = $textarea.val() || "";
         var targetStr = "' Paste your PlantUML code here";
@@ -450,6 +450,18 @@ function showImportDialog(title, sampleCode) {
         translateX = 0;
         translateY = 0;
         applyTransform(true);
+      });
+
+      var externalLinks = [
+        [$dlg.find(".link-more-info"), "https://github.com/TwotNguyenVN/staruml-plantuml-importer"],
+        [$dlg.find(".link-issues"), "https://github.com/TwotNguyenVN/staruml-plantuml-importer/issues"],
+        [$dlg.find(".link-author"), "https://github.com/TwotNguyenVN"]
+      ];
+      externalLinks.forEach(function (entry) {
+        entry[0].on("click", function (e) {
+          e.preventDefault();
+          openExternalSafely(entry[1], require("electron").shell);
+        });
       });
 
       // Mouse Drag Panning handlers
@@ -501,7 +513,7 @@ function showImportDialog(title, sampleCode) {
 
           var newScale = currentScale * factor;
           newScale = Math.max(0.15, Math.min(newScale, 8.0));
-          
+
           currentScale = newScale;
           applyTransform(true);
         }
@@ -530,9 +542,30 @@ function showImportDialog(title, sampleCode) {
       });
 
       function cleanUpEvents() {
+        if (isClosed) return;
+        isClosed = true;
+        if (debounceTimeout) clearTimeout(debounceTimeout);
+        if (focusTimeout) clearTimeout(focusTimeout);
+        if (resizeRaf) cancelAnimationFrame(resizeRaf);
+        if (splitRaf) cancelAnimationFrame(splitRaf);
         $(window).off(".plantuml-pan");
         $(window).off(".plantuml-resize");
+        $(window).off(".plantuml-split");
+        $dlg.off("mousedown", ".resizer");
+        $splitter.off();
+        $textarea.off();
+        $previewContainer.off();
+        $previewImg.off();
+        $btnClearCode.off();
+        $btnZoomIn.off();
+        $btnZoomOut.off();
+        $btnZoomReset.off();
+        externalLinks.forEach(function (entry) { entry[0].off(); });
+        $dlg.find('[data-button-id="cancel"]').off();
+        $dlg.find('[data-button-id="ok"]').off();
+        $("body").css({ "user-select": "", "cursor": "" });
       }
+      activeDialogCleanup = cleanUpEvents;
 
       var isResolved = false;
 
@@ -543,6 +576,7 @@ function showImportDialog(title, sampleCode) {
         cleanUpEvents();
         dialog.close("cancel");
         activeDialog = null;
+        activeDialogCleanup = null;
         resolve(null);
       });
 
@@ -554,6 +588,7 @@ function showImportDialog(title, sampleCode) {
         cleanUpEvents();
         dialog.close("ok");
         activeDialog = null;
+        activeDialogCleanup = null;
         resolve(valueToReturn);
       });
 
@@ -565,6 +600,7 @@ function showImportDialog(title, sampleCode) {
             isResolved = true;
             cleanUpEvents();
             activeDialog = null;
+            activeDialogCleanup = null;
             resolve(buttonId === "ok" ? ($textarea.val() || "") : null);
           }
         });
@@ -574,11 +610,18 @@ function showImportDialog(title, sampleCode) {
             isResolved = true;
             cleanUpEvents();
             activeDialog = null;
+            activeDialogCleanup = null;
             resolve(buttonId === "ok" ? ($textarea.val() || "") : null);
           }
         });
       }
     } catch (dialogErr) {
+      if (dialog) {
+        if (activeDialogCleanup) activeDialogCleanup();
+        try { dialog.close("cancel"); } catch (closeErr) {}
+        activeDialog = null;
+        activeDialogCleanup = null;
+      }
       reject(dialogErr);
     }
   });
@@ -587,5 +630,6 @@ function showImportDialog(title, sampleCode) {
 module.exports = {
   showImportDialog: showImportDialog,
   closeImportDialog: closeImportDialog,
-  encodePlantUML: encodePlantUML
+  encodePlantUML: encodePlantUML,
+  openExternalSafely: openExternalSafely
 };

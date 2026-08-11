@@ -24,13 +24,12 @@
 - [StarUML Integration Checklist](#-staruml-integration-checklist)
 - [Privacy & Preview Server](#-privacy--preview-server-configuration)
 - [Running Tests](#-running-tests)
-- [Uninstalling StarUML Completely](#-clean-uninstallation-of-staruml-windows--macos)
 - [License](#-license)
 
 ## ✨ Features
 
-- **Live Server Preview** — an interactive side-by-side dialog that renders a preview of your PlantUML
-  code through the PlantUML server while you type.
+- **Opt-in Server Preview** — an interactive side-by-side dialog can render your PlantUML through a
+  configured server while you type. Preview is disabled by default.
 - **Auto diagram-type detection** — paste any supported PlantUML snippet and the importer detects the
   diagram kind automatically (Use Case, Class, Sequence, Activity, State, ER, Mindmap, Requirement).
 - **Native StarUML elements** — every diagram is built from real StarUML model/view types (e.g.
@@ -86,6 +85,11 @@ node manage.js update    # pull latest code from GitHub and reinstall
 node manage.js clear     # remove the extension from StarUML only
 ```
 
+`update` requires a clean worktree and a configured upstream branch. It validates that the upstream
+remote is the expected HTTPS or SSH URL for this repository, fetches that remote, displays the target
+revision, and accepts only a fast-forward merge before reinstalling. This source update does not verify a
+signed release, so review the target revision when release-signature assurance is required.
+
 #### 3. Native Scripts (No Node.js required)
 
 **Windows** — double-click `install.bat`, or run it from Command Prompt:
@@ -100,6 +104,16 @@ node manage.js clear     # remove the extension from StarUML only
 chmod +x install.sh
 ./install.sh
 ```
+
+To remove only the PlantUML Importer extension without removing StarUML or its settings:
+
+- **Windows:** double-click `clear.bat`, or run `.\clear.bat` in Command Prompt.
+- **macOS / Linux:** run `chmod +x clear.sh && ./clear.sh`.
+
+Both scripts ask for confirmation and delete only the `twot.staruml-plantuml-importer` extension directory.
+On Windows, `choice` accepts only an explicit `Y` or `N`; Enter does not select a default, and `N` cancels.
+Before recursive deletion, the management tools resolve the exact StarUML user-extension root, verify
+canonical containment, and refuse symbolic-link, junction, reparse-point, or linked-child targets.
 
 > **💡 Note:** After installing or updating, please restart (or press `Ctrl/Cmd + R` to reload) StarUML.
 
@@ -120,7 +134,8 @@ chmod +x install.sh
 
    *(💡 Tip: press the shortcut again to quickly close the dialog. The input field is auto-focused so you
    can paste immediately.)*
-4. Paste your PlantUML code; a live preview is rendered on the right.
+4. Paste your PlantUML code. If you explicitly enabled preview, a server-rendered image appears on the
+   right; otherwise the extension makes no preview network request.
 5. Click **Import**. The importer auto-detects the diagram type and validates it against the open diagram;
    if the types mismatch you'll be warned before anything is created.
 6. Click **OK**, then view and refine the generated diagram.
@@ -291,49 +306,44 @@ parsing correctness.
 
 ## 🔒 Privacy & Preview Server Configuration
 
-By default, the Live Server Preview sends your PlantUML code (in compressed/encoded form) to the public
-PlantUML rendering server (`https://www.plantuml.com/plantuml`) to fetch a visual preview image.
-
-If you are working with sensitive or proprietary architecture, you can point the extension at a private,
-self-hosted PlantUML server, or disable the preview entirely:
+Preview is disabled by default. Importing diagrams remains local unless you explicitly enable preview.
+When enabled, the extension puts a reversibly encoded (not encrypted) form of the PlantUML source in an
+HTTP GET URL sent to the configured rendering server. The destination server, proxies, browser/runtime,
+and network logs may retain that URL and recover its source. Do not preview sensitive diagrams through a
+server or network path you do not trust.
 
 1. Open **StarUML**.
 2. Go to **StarUML → Preferences → PlantUML Importer**.
 3. Customize:
-   - **PlantUML Server URL**: your self-hosted instance (e.g. `http://localhost:8080` or
+   - **PlantUML Server URL**: the opt-in preview destination, such as your self-hosted instance (e.g.
+     `http://localhost:8080` or
      `https://plantuml.yourcompany.com`). The extension normalizes the URL (strips redundant trailing
      slashes/paths like `/png`) and prefers HTTPS for remote domains.
-   - **Enable Preview**: uncheck to disable the preview server completely. When disabled, no diagram code
-     is sent over the network and the preview pane shows a disabled message.
+   - **Enable Preview**: check only after reviewing the destination and logging risk. When unchecked, no
+     diagram code is sent over the network and the preview pane shows a disabled message.
+
+Input is rejected before import when it exceeds 200,000 characters, 10,000 lines, 2,000 declarations,
+5,000 relationships, or 50 nesting levels. Preview URLs are also capped at 16,384 characters. Invalid or
+oversized input is not imported. If model creation fails after changes begin, the importer attempts to
+roll back that import and reports rollback failures rather than silently leaving partial results.
 
 ## 🧪 Running Tests
 
-The test suite runs entirely under Node.js (no StarUML runtime required) using a mocked StarUML API:
+The test suite and repository checks run under Node.js without a StarUML runtime:
 
 ```bash
-npm test
-# equivalent to:
-node test/run_all_tests.js
+npm ci
+npm run check
+npm run coverage
 ```
 
-Each parser has a dedicated fixture under `test/` and a matching test script (e.g.
-`test/run_requirement_test.js` for the Requirement parser). All scripts must exit `0`.
-
-## 🗑️ Clean Uninstallation of StarUML (Windows & macOS)
-
-> **⚠️ WARNING:** The following command does **NOT** merely remove the extension. It will **COMPLETELY
-> UNINSTALL** the StarUML application and wipe all of its configurations, caches, extensions, and logs.
-> Only use it for a full reset.
-> (The script asks for a `y/N` confirmation before proceeding.)
-
-```bash
-node manage.js clear-all
-```
-
-**Native scripts (no Node.js):**
-
-- **Windows:** double-click `clear.bat`, or run `.\clear.bat` in Command Prompt.
-- **macOS / Linux:** `chmod +x clear.sh && ./clear.sh`
+`npm run check` runs correctness-only ESLint, deterministic syntax/source policy checks, and all tests.
+`npm run coverage` enforces fixed floors of 40% lines/functions and 30% branches. CI runs both commands,
+`git diff --check`, a full dependency audit (including installed/executed development tools), and the
+production high-severity audit on Node.js 20 and 22. Each parser has a fixture under `test/`; release
+candidates must also pass the [StarUML v7 smoke checklist](docs/STARUML_V7_SMOKE_TEST.md). The live
+StarUML v7 checklist has not been executed in this development environment, so live compatibility remains
+unverified until a maintainer records a completed run.
 
 ## 📄 License
 

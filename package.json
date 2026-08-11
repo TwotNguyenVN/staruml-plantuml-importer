@@ -17,10 +17,19 @@
   "bugs": {
     "url": "https://github.com/TwotNguyenVN/staruml-plantuml-importer/issues"
   },
+  "license": "MIT",
   "engines": {
-    "staruml": ">=6.0.0"
+    "staruml": ">=7.0.0"
   },
   "scripts": {
-    "test": "node test/run_all_tests.js"
+    "test": "node test/run_all_tests.js",
+    "lint": "eslint .",
+    "check:source": "node scripts/check-source.js",
+    "check": "npm run lint && npm run check:source && npm test",
+    "coverage": "c8 --all --include=main.js --include=manage.js --include=parsers/*.js --include=utils/*.js --reporter=text --reporter=lcov --check-coverage --lines=40 --functions=40 --branches=30 npm test"
+  },
+  "devDependencies": {
+    "c8": "^10.1.3",
+    "eslint": "^9.0.0"
   }
 }

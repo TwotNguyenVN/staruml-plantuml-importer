@@ -19,20 +19,20 @@ function generateDiagram(diagram, text) {
       app.dialogs.showAlertDialog("Please create and open a 'Statechart Diagram' first before importing PlantUML State Code. Current diagram is: " + diagram.getClassName());
       return;
     }
-    
+
     var lines = text.split("\n");
     var elementsMap = {};
-    
+
     var parsedStates = [];
     var parsedTransitions = [];
-    
+
     var stack = [];
-    
+
     function getOrCreateStateInfo(alias, parentAlias) {
       if (alias === "[*]") return null;
       var existing = parsedStates.find(function(s) { return s.alias === alias; });
       if (existing) return existing;
-      
+
       var newState = {
         type: "UMLState",
         name: alias,
@@ -45,20 +45,20 @@ function generateDiagram(diagram, text) {
       parsedStates.push(newState);
       return newState;
     }
-    
+
     // 1. First Pass: Parse lines to build State and Transition AST
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i].trim();
-      
+
       if (!line || line.indexOf("'") === 0 || line.indexOf("@startuml") === 0 || line.indexOf("@enduml") === 0 || line.indexOf("title ") === 0) {
         continue;
       }
-      
+
       if (line === "}") {
         if (stack.length > 0) stack.pop();
         continue;
       }
-      
+
       // Parse orthogonal region (--)
       var matchRegion = line.match(/^\s*--\s*$/);
       if (matchRegion) {
@@ -72,7 +72,7 @@ function generateDiagram(diagram, text) {
         }
         continue;
       }
-      
+
       var matchStateBlock = line.match(/^state\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))(?:\s+as\s+(\w+))?(?:\s+<<([^>]+)>>)?\s*\{$/i);
       if (matchStateBlock) {
         var stateName = matchStateBlock[1] || matchStateBlock[2];
@@ -80,7 +80,7 @@ function generateDiagram(diagram, text) {
         var stereotype = matchStateBlock[4] || "";
         var parentAlias = stack.length > 0 ? stack[stack.length - 1].alias : null;
         var regionIndex = stack.length > 0 ? (stack[stack.length - 1].activeRegionIndex || 0) : 0;
-        
+
         var existing = parsedStates.find(function(s) { return s.alias === alias; });
         var stateObj;
         if (existing) {
@@ -101,7 +101,7 @@ function generateDiagram(diagram, text) {
         stack.push({ alias: stateObj.alias, activeRegionIndex: 0 });
         continue;
       }
-      
+
       var matchState = line.match(/^state\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))(?:\s+as\s+(\w+))?(?:\s+<<([^>]+)>>)?$/i);
       if (matchState) {
         var stateName = matchState[1] || matchState[2];
@@ -109,7 +109,7 @@ function generateDiagram(diagram, text) {
         var stereotype = matchState[4] || "";
         var parentAlias = stack.length > 0 ? stack[stack.length - 1].alias : null;
         var regionIndex = stack.length > 0 ? (stack[stack.length - 1].activeRegionIndex || 0) : 0;
-        
+
         var existing = parsedStates.find(function(s) { return s.alias === alias; });
         if (existing) {
           existing.name = stateName;
@@ -124,7 +124,7 @@ function generateDiagram(diagram, text) {
         }
         continue;
       }
-      
+
       var matchStateValue = line.match(/^state\s+(\w+)\s*:\s*(.+)$/i);
       if (matchStateValue) {
         var alias = matchStateValue[1];
@@ -142,7 +142,7 @@ function generateDiagram(diagram, text) {
         }
         continue;
       }
-      
+
       var arrowRegex = /\s*(-->|->)\s*/;
       var parts = line.split(arrowRegex);
       if (parts.length >= 3) {
@@ -159,11 +159,11 @@ function generateDiagram(diagram, text) {
         var regionIndex = stack.length > 0 ? (stack[stack.length - 1].activeRegionIndex || 0) : 0;
         getOrCreateStateInfo(leftStr, currentParentAlias);
         getOrCreateStateInfo(rightStr, currentParentAlias);
-        
+
         parsedTransitions.push({ from: leftStr, to: rightStr, label: label, parentAlias: currentParentAlias, regionIndex: regionIndex });
       }
     }
-    
+
     // 2. Initialize Models in StarUML
     var parentModel = diagram._parent || app.project.getProject();
     var stateMachineModel = null;
@@ -220,14 +220,14 @@ function generateDiagram(diagram, text) {
           stateMachineModel = addModel("UMLStateMachine", parentModel, "ownedElements", function(m) { m.name = "StateMachineContext"; });
       }
     }
-    
+
     var rlen = stateMachineModel.regions ? stateMachineModel.regions.length : 0;
     if (rlen > 0) {
         rootRegion = stateMachineModel.regions[0];
     } else {
         rootRegion = addModel("UMLRegion", stateMachineModel, "regions", function(m) { m.name = "Region1"; });
     }
-    
+
     if (diagram && diagram._parent !== stateMachineModel) {
         var oldParent = diagram._parent;
         diagram._parent = stateMachineModel;
@@ -242,7 +242,7 @@ function generateDiagram(diagram, text) {
             throw reloErr;
         }
     }
-    
+
     var childrenMap = {};
     var rootStates = [];
     var elementsData = {};
@@ -279,7 +279,7 @@ function generateDiagram(diagram, text) {
 
     var HEADER_HEIGHT = 40;
     var REGION_DIVIDER_HEIGHT = 10;
-    
+
     // Phase 3.1: Calculate Sizes Bottom-Up
     function calculateSize(stateAlias) {
       var state = elementsData[stateAlias];
@@ -289,7 +289,7 @@ function generateDiagram(diagram, text) {
         state.h = 40;
         return;
       }
-      
+
       var regionsData = [];
       var numRegions = state.regionsCounter || 1;
       for (var k = 0; k < numRegions; k++) regionsData[k] = [];
@@ -298,14 +298,14 @@ function generateDiagram(diagram, text) {
         if (!regionsData[rIdx]) regionsData[rIdx] = [];
         regionsData[rIdx].push(c);
       });
-      
+
       var maxRegW = 0;
       var totalRegH = 0;
       state.regionSizes = [];
-      
+
       for (var r = 0; r < regionsData.length; r++) {
         var rStates = regionsData[r] || [];
-        
+
         var rStateAliases = rStates.map(function(c) { return c.alias; });
         var inDegree = {};
         var adj = {};
@@ -347,7 +347,7 @@ function generateDiagram(diagram, text) {
 
         var rX = 0;
         var maxRegH = 0;
-        
+
         for (var i = 0; i < cols.length; i++) {
             var colStates = cols[i];
             if (!colStates) continue;
@@ -375,20 +375,20 @@ function generateDiagram(diagram, text) {
         totalRegH += regH;
         state.regionSizes.push({ w: regW, h: regH });
       }
-      
+
       state.w = Math.max(150, maxRegW);
       state.h = HEADER_HEIGHT + totalRegH + (regionsData.length - 1) * REGION_DIVIDER_HEIGHT;
     }
-    
+
     // Phase 3.2: Calculate Absolute Positions Top-Down
     function calculateAbsolute(stateAlias, absX, absY) {
       var state = elementsData[stateAlias];
       state.x = absX;
       state.y = absY;
-      
+
       var children = childrenMap[stateAlias] || [];
       if (children.length === 0) return;
-      
+
       var regionsData = [];
       var numRegions = state.regionsCounter || 1;
       for (var k = 0; k < numRegions; k++) regionsData[k] = [];
@@ -397,24 +397,24 @@ function generateDiagram(diagram, text) {
         if (!regionsData[rIdx]) regionsData[rIdx] = [];
         regionsData[rIdx].push(c);
       });
-      
+
       var currY = absY + HEADER_HEIGHT;
       for (var r = 0; r < state.regionSizes.length; r++) {
         var rStates = regionsData[r] || [];
         var rSize = state.regionSizes[r];
-        
+
         rSize.absX = absX;
         rSize.absY = currY;
         rSize.w = state.w; // force width to match composite state width
-        
+
         rStates.forEach(function(c) {
           calculateAbsolute(c.alias, absX + c.relX, currY + c.relY);
         });
-        
+
         currY += rSize.h + REGION_DIVIDER_HEIGHT;
       }
     }
-    
+
     var rootAliases = rootStates.map(function(c) { return c.alias; });
     var inDegreeRoot = {};
     var adjRoot = {};
@@ -425,7 +425,7 @@ function generateDiagram(diagram, text) {
             inDegreeRoot[t.to] = (inDegreeRoot[t.to] || 0) + 1;
         }
     });
-    
+
     var rootsOfRoots = rootAliases.filter(function(a) { return inDegreeRoot[a] === 0; });
     if (rootsOfRoots.length === 0 && rootAliases.length > 0) rootsOfRoots.push(rootAliases[0]);
 
@@ -477,7 +477,7 @@ function generateDiagram(diagram, text) {
 
     function renderState(stateAlias, parentRegionModel, parentContainerView) {
       var state = elementsData[stateAlias];
-      
+
       var children = childrenMap[stateAlias] || [];
 
       var model = addModel("UMLState", parentRegionModel, "vertices", function(m) {
@@ -523,9 +523,9 @@ function generateDiagram(diagram, text) {
               regionViews.push(regView);
           }
       }
-      
+
       elementsMap[state.alias] = { model: model, view: view, regions: regionModels, regionViews: regionViews };
-      
+
       if (children.length > 0) {
           var regionsData = [];
           var numRegions = state.regionsCounter || 1;
@@ -535,12 +535,12 @@ function generateDiagram(diagram, text) {
             if (!regionsData[rIdx]) regionsData[rIdx] = [];
             regionsData[rIdx].push(c);
           });
-          
+
           var regionCount = state.regionSizes ? state.regionSizes.length : 1;
           for (var r = 0; r < regionCount; r++) {
             var regModel = (regionModels.length > r) ? regionModels[r] : model;
             var regView = (regionViews.length > r) ? regionViews[r] : null;
-            
+
             var rStates = regionsData[r] || [];
             rStates.forEach(function(c) {
               renderState(c.alias, regModel, regView);
@@ -548,19 +548,19 @@ function generateDiagram(diagram, text) {
           }
       }
     }
-    
+
     // Render all roots
     rootStates.forEach(function(s) {
       renderState(s.alias, rootRegion, null);
     });
-    
+
     // 5. Create Pseudostates & Transitions
     var pseudostateCount = 0;
     function createPseudostate(isInitial, parentAlias, referenceView, overrideRegionIndex) {
       var typeId = isInitial ? "UMLPseudostate" : "UMLFinalState";
       var parentRegionModel = rootRegion;
       var parentContainerView = null;
-      
+
       if (parentAlias && elementsMap[parentAlias]) {
         var parentData = elementsMap[parentAlias];
         var rIdx = overrideRegionIndex || 0;
@@ -571,7 +571,7 @@ function generateDiagram(diagram, text) {
           parentContainerView = parentData.regionViews[rIdx];
         }
       }
-      
+
       var posX = 60 + pseudostateCount * 80;
       var posY = 40;
       if (referenceView) {
@@ -584,7 +584,7 @@ function generateDiagram(diagram, text) {
          }
       }
       pseudostateCount++;
-      
+
       var model = addModel(typeId, parentRegionModel, "vertices", function(m) {
         m.name = isInitial ? "Initial" : "Final";
         if (isInitial && typeof type !== "undefined" && type.UMLPseudostate) {
@@ -602,16 +602,16 @@ function generateDiagram(diagram, text) {
 
       return view;
     }
-    
+
     parsedTransitions.forEach(function (trans) {
       var tailView = trans.from === "[*]" ? null : (elementsMap[trans.from] ? elementsMap[trans.from].view : null);
       var headView = trans.to === "[*]" ? null : (elementsMap[trans.to] ? elementsMap[trans.to].view : null);
-      
+
       if (trans.from === "[*]") tailView = createPseudostate(true, trans.parentAlias, headView, trans.regionIndex);
       if (trans.to === "[*]") headView = createPseudostate(false, trans.parentAlias, tailView, trans.regionIndex);
-      
+
       if (!tailView || !headView) return;
-      
+
       var parentRegionModel = rootRegion;
       if (trans.parentAlias && elementsMap[trans.parentAlias]) {
          var pData = elementsMap[trans.parentAlias];
@@ -621,7 +621,7 @@ function generateDiagram(diagram, text) {
             parentRegionModel = pData.regions[0];
          }
       }
-      
+
       var model = addModel("UMLTransition", parentRegionModel, "transitions", function(m) {
         m.source = tailView.model;
         m.target = headView.model;
@@ -667,7 +667,7 @@ function generateDiagram(diagram, text) {
         app.repository.doOperation(cmd);
     }
     } catch (finalErr) {
-        console.error("[state-parser] Failed during state generation:", finalErr);
+        console.error("[state-parser] State generation failed.");
         if (diagramParentChanged) {
             diagram._parent = originalDiagramParent;
         }

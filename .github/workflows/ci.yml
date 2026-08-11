@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run coverage
+      - run: git diff --check
+      - name: Check pull request changes for whitespace errors
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+          git diff --check "origin/${{ github.base_ref }}...HEAD"
+      - name: Check pushed commits for whitespace errors
+        if: github.event_name == 'push'
+        run: |
+          before="${{ github.event.before }}"
+          if [[ ! "$before" =~ ^0+$ ]] && git cat-file -e "$before^{commit}" 2>/dev/null; then
+            commits=$(git rev-list --reverse "$before..HEAD")
+          else
+            commits=$(git rev-list --reverse HEAD)
+          fi
+          while IFS= read -r commit; do
+            git diff-tree --check --root --no-commit-id -m -r "$commit"
+          done <<< "$commits"
+      - run: npm audit
+      - run: npm audit --omit=dev --audit-level=high

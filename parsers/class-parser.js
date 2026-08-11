@@ -24,7 +24,7 @@ function parseParameters(paramsStr) {
   parts.forEach(function (part) {
     part = part.trim();
     if (!part) return;
-    
+
     // Check "name: type"
     var matchParam = part.match(/^(\w+)\s*:\s*(.+)$/);
     if (matchParam) {
@@ -58,13 +58,13 @@ function generateDiagram(diagram, text) {
   var elementsMap = {};
   var elements = [];
   var relations = [];
-  
+
   var currentElement = null;
-  
+
   // 1. Parser Engine (Line by line)
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i].trim();
-    
+
     // Skip empty, comments, directives, title, skinparam
     if (
       !line ||
@@ -77,7 +77,7 @@ function generateDiagram(diagram, text) {
     ) {
       continue;
     }
-    
+
     // Skip skinparam block
     if (line.indexOf("skinparam") === 0) {
       if (line.indexOf("{") !== -1) {
@@ -88,13 +88,13 @@ function generateDiagram(diagram, text) {
       }
       continue;
     }
-    
+
     // End of block
     if (line === "}") {
       currentElement = null;
       continue;
     }
-    
+
     // If inside class/enum/interface block
     if (currentElement) {
       if (currentElement.type === "UMLEnumeration") {
@@ -145,7 +145,7 @@ function generateDiagram(diagram, text) {
       }
       continue;
     }
-    
+
     // Check start of class/interface/enum block
     var matchBlock = line.match(/^(abstract\s+class|class|interface|enum)\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))(?:\s+as\s+(\w+))?(?:\s+<<([^>]+)>>)?\s*\{?$/);
     if (matchBlock) {
@@ -153,7 +153,7 @@ function generateDiagram(diagram, text) {
       var blockName = matchBlock[2] || matchBlock[3];
       var alias = matchBlock[4] || blockName;
       var stereotype = matchBlock[5] || "";
-      
+
       var type = "UMLClass";
       var isAbstract = false;
       if (blockType === "interface") type = "UMLInterface";
@@ -162,7 +162,7 @@ function generateDiagram(diagram, text) {
         type = "UMLClass";
         isAbstract = true;
       }
-      
+
       currentElement = {
         type: type,
         name: blockName,
@@ -176,7 +176,7 @@ function generateDiagram(diagram, text) {
       elements.push(currentElement);
       continue;
     }
-    
+
     // Relations (e.g. A <|-- B, A --|> B, A "1" o-- "0..*" B, etc.)
     // Matches: LeftName "LeftMult" RelationSymbol "RightMult" RightName : label
     var matchRel = line.match(/^([a-zA-Z0-9_\.]+)\s*(?:"([^"]+)")?\s*([<|o*.\-~>]+)\s*(?:"([^"]+)")?\s*([a-zA-Z0-9_\.]+)(?:\s*:\s*(.*?)(?:\s+([><]))?)?$/);
@@ -187,11 +187,11 @@ function generateDiagram(diagram, text) {
       var rightMult = matchRel[4] || "";
       var right = matchRel[5];
       var label = matchRel[6] ? matchRel[6].trim() : "";
-      
+
       var relType = "UMLAssociation";
       var tailAggregation = "none";
       var headAggregation = "none";
-      
+
       if (arrow.indexOf("<|--") !== -1 || arrow.indexOf("--|>") !== -1) {
         relType = "UMLGeneralization";
       } else if (arrow.indexOf("<|..") !== -1 || arrow.indexOf("..|>") !== -1) {
@@ -211,10 +211,10 @@ function generateDiagram(diagram, text) {
         relType = "UMLAssociation";
         headAggregation = "composite";
       }
-      
+
       var from = left;
       var to = right;
-      
+
       // Generalization and Realization direction normalization
       if (arrow.indexOf("<|--") !== -1 || arrow.indexOf("<|..") !== -1) {
         from = right;
@@ -223,7 +223,7 @@ function generateDiagram(diagram, text) {
         from = left;
         to = right;
       }
-      
+
       relations.push({
         type: relType,
         from: from,
@@ -236,7 +236,7 @@ function generateDiagram(diagram, text) {
       });
     }
   }
-  
+
   // 2. Build Graph for Hierarchical (Sugiyama-style) Layout
   var nodesMap = {};
   elements.forEach(function(e) {
@@ -248,7 +248,7 @@ function generateDiagram(diagram, text) {
       avgParentIndex: 0
     };
   });
-  
+
   relations.forEach(function(r) {
     var from = r.from;
     var to = r.to;
@@ -257,7 +257,7 @@ function generateDiagram(diagram, text) {
       from = r.to;
       to = r.from;
     }
-    
+
     if (nodesMap[from] && nodesMap[to]) {
       nodesMap[from].edgesOut.push(to);
       nodesMap[to].edgesIn.push(from);
@@ -275,10 +275,10 @@ function generateDiagram(diagram, text) {
       if (r.type === "UMLGeneralization" || r.type === "UMLInterfaceRealization") {
         from = r.to; to = r.from;
       }
-      
+
       var nodeFrom = nodesMap[from];
       var nodeTo = nodesMap[to];
-      
+
       if (nodeFrom && nodeTo) {
         if (nodeTo.level <= nodeFrom.level) {
           nodeTo.level = nodeFrom.level + 1;
@@ -295,7 +295,7 @@ function generateDiagram(diagram, text) {
   Object.keys(nodesMap).forEach(function(k) {
     if (nodesMap[k].level > maxLevel) maxLevel = nodesMap[k].level;
   });
-  
+
   for (var i = maxLevel - 1; i >= 0; i--) {
     Object.keys(nodesMap).forEach(function(k) {
       var node = nodesMap[k];
@@ -320,10 +320,10 @@ function generateDiagram(diagram, text) {
     if (!levels[n.level]) levels[n.level] = [];
     levels[n.level].push(n);
   });
-  
+
   // Remove empty levels
   levels = levels.filter(function(l) { return l !== undefined && l.length > 0; });
-  
+
   // 2.2 Multi-pass Barycenter Heuristic (Reduce crossings)
   for (var iter = 0; iter < 4; iter++) {
     // Sweep Down
@@ -347,7 +347,7 @@ function generateDiagram(diagram, text) {
         return a.barycenter - b.barycenter;
       });
     }
-    
+
     // Sweep Up
     for (var i = levels.length - 2; i >= 0; i--) {
       levels[i].forEach(function(node) {
@@ -372,16 +372,16 @@ function generateDiagram(diagram, text) {
   }
 
   var parentModel = diagram._parent || app.project.getProject();
-  
+
   // 3. Layout Grid & Calculate Coordinates (Symmetrical Centered Grid)
   var currentY = 50;
   var verticalSpacing = 150;
   var horizontalSpacing = 100;
-  
+
   // First pass: calculate widths, heights, and total width of each level
   var levelWidths = [];
   var maxDiagramWidth = 0;
-  
+
   levels.forEach(function(levelNodes, i) {
     var totalWidth = 0;
     levelNodes.forEach(function(nodeNode) {
@@ -398,16 +398,16 @@ function generateDiagram(diagram, text) {
       el.literals.forEach(function (lit) {
         if (lit.length > maxLength) maxLength = lit.length;
       });
-      
+
       var width = Math.max(180, maxLength * 7.5);
       var height = Math.max(65, 45 + (el.attributes.length + el.operations.length + el.literals.length) * 15);
-      
+
       nodeNode.width = width;
       nodeNode.height = height;
-      
+
       totalWidth += width + horizontalSpacing;
     });
-    
+
     totalWidth -= horizontalSpacing; // Remove trailing spacing
     levelWidths[i] = totalWidth;
     if (totalWidth > maxDiagramWidth) maxDiagramWidth = totalWidth;
@@ -418,15 +418,15 @@ function generateDiagram(diagram, text) {
     // Center this level relative to the max diagram width
     var currentX = 50 + (maxDiagramWidth - levelWidths[i]) / 2;
     var maxLevelHeight = 0;
-    
+
     levelNodes.forEach(function(nodeNode) {
       nodeNode.x = currentX;
       nodeNode.y = currentY;
-      
+
       currentX += nodeNode.width + horizontalSpacing;
       if (nodeNode.height > maxLevelHeight) maxLevelHeight = nodeNode.height;
     });
-    
+
     currentY += maxLevelHeight + verticalSpacing;
   });
 
@@ -438,7 +438,7 @@ function generateDiagram(diagram, text) {
       var height = nodeNode.height;
       var posX = Math.round(nodeNode.x);
       var posY = Math.round(nodeNode.y);
-      
+
       try {
         var view = app.factory.createModelAndView({
           id: el.type,
@@ -456,11 +456,11 @@ function generateDiagram(diagram, text) {
             dgmView.height = height;
           }
         });
-        
+
         if (view && view.model) {
           elementsMap[el.alias] = view;
           var model = view.model;
-          
+
           // Add attributes
           el.attributes.forEach(function (attrData) {
             try {
@@ -475,11 +475,11 @@ function generateDiagram(diagram, text) {
                 }
               });
             } catch (errAttr) {
-              console.error("[class-parser] Failed to create attribute:", attrData.name, errAttr);
+              console.error("[class-parser] Failed to create an attribute.");
               throw errAttr;
             }
           });
-          
+
           // Add operations
           el.operations.forEach(function (opData) {
             try {
@@ -493,7 +493,7 @@ function generateDiagram(diagram, text) {
                   op.visibility = opData.visibility;
                 }
               });
-              
+
               opData.parameters.forEach(function (paramData) {
                 try {
                   app.factory.createModel({
@@ -507,16 +507,16 @@ function generateDiagram(diagram, text) {
                     }
                   });
                 } catch (errParam) {
-                  console.error("[class-parser] Failed to create parameter:", paramData.name, errParam);
+                  console.error("[class-parser] Failed to create a parameter.");
                   throw errParam;
                 }
               });
             } catch (errOp) {
-              console.error("[class-parser] Failed to create operation:", opData.name, errOp);
+              console.error("[class-parser] Failed to create an operation.");
               throw errOp;
             }
           });
-          
+
           // Add literals (for enums)
           el.literals.forEach(function (litName) {
             try {
@@ -529,32 +529,28 @@ function generateDiagram(diagram, text) {
                 }
               });
             } catch (errLit) {
-              console.error("[class-parser] Failed to create literal:", litName, errLit);
+              console.error("[class-parser] Failed to create a literal.");
               throw errLit;
             }
           });
         }
       } catch (e) {
-        console.error("[class-parser] Failed to create element:", el.name, e);
+        console.error("[class-parser] Failed to create an element.");
         throw e;
       }
     });
   });
-  
+
   // 3. Create Relations
   relations.forEach(function (rel) {
     var tailView = elementsMap[rel.from];
     var headView = elementsMap[rel.to];
-    
+
     if (!tailView || !headView) {
-      console.warn(
-        "[class-parser] Skipping relation: " +
-        rel.from + " -> " + rel.to +
-        " (missing element)"
-      );
+      console.warn("[class-parser] Skipping a relation with a missing element.");
       return;
     }
-    
+
     try {
       app.factory.createModelAndView({
         id: rel.type,
@@ -570,7 +566,7 @@ function generateDiagram(diagram, text) {
             model.end2.multiplicity = rel.rightMult;
             model.end1.aggregation = rel.tailAggregation;
             model.end2.aggregation = rel.headAggregation;
-            
+
             var stereo = "";
             var cleanLabel = rel.label || "";
             if (cleanLabel.indexOf("<<") !== -1) {
@@ -591,10 +587,7 @@ function generateDiagram(diagram, text) {
         }
       });
     } catch (e) {
-      console.error(
-        "[class-parser] Failed to create relation:",
-        rel.type, rel.from, "->", rel.to, e
-      );
+      console.error("[class-parser] Failed to create a relation.");
       throw e;
     }
   });

@@ -149,5 +149,6 @@ plan*.md
 # Test outputs
 test/test_output.txt
 
-# Documentation & Spec files
-docs/
+# Generated documentation output
+docs/_site/
+docs/.vitepress/dist/

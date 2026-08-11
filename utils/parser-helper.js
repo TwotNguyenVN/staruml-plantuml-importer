@@ -53,11 +53,13 @@ function runInTransaction(diagramType, parseFn) {
   };
 
   var builderInstance = null;
+  var builderPatches = [];
   if (app.repository && originalGetOperationBuilder) {
     app.repository.getOperationBuilder = function() {
       var builder = originalGetOperationBuilder.call(app.repository);
       builderInstance = builder;
       var originalInsert = builder.insert;
+      builderPatches.push({ builder: builder, insert: originalInsert });
       builder.insert = function(elem) {
         originalInsert.call(builder, elem);
         if (isViewElement(elem)) {
@@ -76,10 +78,14 @@ function runInTransaction(diagramType, parseFn) {
 
   try {
     parseFn(warnings, errors);
+    var createdCount = createdModels.length + createdViews.length;
+    if (createdCount === 0) {
+      errors.push("No elements were created.");
+    }
     return {
-      success: true,
+      success: errors.length === 0,
       diagramType: diagramType,
-      createdCount: createdModels.length + createdViews.length,
+      createdCount: createdCount,
       warnings: warnings,
       errors: errors,
       rollbackAttempted: false,
@@ -117,10 +123,10 @@ function runInTransaction(diagramType, parseFn) {
       residualCount = 0;
     }
 
-    var errMsg = err.message || String(err);
-    errors.push(errMsg);
+    errors.length = 0;
+    errors.push("Import failed because an unexpected error occurred.");
     if (rollbackError) {
-      errors.push("Rollback failed: " + (rollbackError.message || String(rollbackError)));
+      errors.push("Rollback failed or may be incomplete.");
     }
 
     return {
@@ -138,6 +144,9 @@ function runInTransaction(diagramType, parseFn) {
     app.factory.createModelAndView = originalCreateModelAndView;
     if (app.repository && originalGetOperationBuilder) {
       app.repository.getOperationBuilder = originalGetOperationBuilder;
+    }
+    for (var i = builderPatches.length - 1; i >= 0; i--) {
+      builderPatches[i].builder.insert = builderPatches[i].insert;
     }
   }
 }

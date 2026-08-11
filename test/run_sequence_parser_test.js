@@ -40,10 +40,10 @@ global.app = {
             createdCount++;
             const mockModel = {};
             const mockView = { model: mockModel };
-            
+
             if (options.modelInitializer) options.modelInitializer(mockModel);
             if (options.viewInitializer) options.viewInitializer(mockView);
-            
+
             return mockView;
         }
     }

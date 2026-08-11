@@ -165,7 +165,7 @@ function generateDiagram(diagram, text) {
       var name = matchLife[2] || matchLife[3];
       var alias = matchLife[4] || name;
       var stereotype = matchLife[5] || "";
-      
+
       parsedLifelines.push({
         type: lifeType,
         name: name,
@@ -202,7 +202,7 @@ function generateDiagram(diagram, text) {
 
   // 2. Element Positioning & Layout Calculations
   var spacingX = 220;
-  
+
   var yCursor = 100;
   events.forEach(function(ev) {
     if (ev.type === "message") yCursor += 45;
@@ -212,7 +212,7 @@ function generateDiagram(diagram, text) {
     else if (ev.type === "fragment_end") yCursor += 25;
     else if (ev.type === "divider") yCursor += 40;
   });
-  
+
   var lifelineHeight = Math.max(300, yCursor + 50);
 
   var interaction = diagram._parent;
@@ -372,11 +372,11 @@ function generateDiagram(diagram, text) {
       } else if (ev.type === "note") {
         var targetData = elementsMap[ev.target];
         if (!targetData) return;
-        
+
         var lines = ev.text.split("\n");
         var width = 150;
         var height = Math.max(40, lines.length * 15 + 20);
-        
+
         var nx = targetData.posX;
         if (ev.position === "right") {
            nx = targetData.posX + 30;
@@ -385,7 +385,7 @@ function generateDiagram(diagram, text) {
         } else {
            nx = targetData.posX - (width / 2);
         }
-        
+
         notesToDraw.push({
             text: ev.text,
             left: nx,
@@ -426,10 +426,10 @@ function generateDiagram(diagram, text) {
         if (fragmentStack.length > 0) {
             var fState = fragmentStack.pop();
             var depth = fragmentStack.length; // 0 for outermost, 1 for inner...
-            
+
             var prevOp = fState.operands[fState.operands.length - 1];
             prevOp.height = currentY - prevOp.top + 15;
-            
+
             currentY += 20;
 
             if (fState.minX > fState.maxX) {

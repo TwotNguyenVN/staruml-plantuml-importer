@@ -22,10 +22,10 @@ global.app = {
     createModelAndView: (opts) => {
       let view = { id: opts.id + '_' + (views.length + connections.length) };
       let m = { id: opts.id + '_model_' + (views.length + connections.length), getClassName: () => opts.id };
-      
+
       if (opts.viewInitializer) opts.viewInitializer(view);
       if (opts.modelInitializer) opts.modelInitializer(m);
-      
+
       if (opts.id === 'UMLControlFlow') {
         connections.push({
           from: opts.tailView.name || opts.tailView.id,
@@ -55,19 +55,19 @@ const mockDiagram = {
 
 try {
   const result = parser.generateDiagram(mockDiagram, text);
-  
+
   // Assertions on result
   assert.strictEqual(result.success, true, "Import should succeed");
   assert.strictEqual(result.diagramType, "UMLActivityDiagram", "Expected UMLActivityDiagram");
   assert.deepStrictEqual(result.errors, [], "Errors should be empty");
-  
+
   const partitions = views.filter(v => v.type === 'UMLActivityPartition');
   const nodes = views.filter(v => v.type !== 'UMLActivityPartition');
-  
+
   assert.ok(partitions.length > 0, "Should have created activity partitions");
   assert.ok(nodes.length > 0, "Should have created action nodes");
   assert.ok(connections.length > 0, "Should have created connections");
-  
+
   console.log("Success: run_activity_sequence_test completed successfully.");
 } catch (e) {
   console.error("Test failed with exception:", e);

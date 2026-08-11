@@ -27,7 +27,7 @@ function generateDiagram(diagram, text) {
   var parsedNotes = [];
   var relations = [];
   var noteLinks = [];
-  
+
   var currentPackage = null;
   var packageStack = []; // stores nested package context
   var inSkinparam = false;
@@ -148,18 +148,18 @@ function generateDiagram(diagram, text) {
     if (matchSub) {
       var pkgName = matchSub[2] || matchSub[3];
       var pkgAlias = matchSub[4] || pkgName;
-      var newPkg = { 
-        name: pkgName, 
-        alias: pkgAlias, 
+      var newPkg = {
+        name: pkgName,
+        alias: pkgAlias,
         children: [],
-        parent: packageStack.length > 0 ? packageStack[packageStack.length - 1].alias : null 
+        parent: packageStack.length > 0 ? packageStack[packageStack.length - 1].alias : null
       };
       parsedPackages.push(newPkg);
       packageStack.push(newPkg);
       currentPackage = pkgAlias;
       continue;
     }
-    
+
     if (line === "}") {
       if (packageStack.length > 0) {
         packageStack.pop();
@@ -603,7 +603,7 @@ function generateDiagram(diagram, text) {
         pkgHeight = maxY - minY + 100;
       } else {
         pkgTop = Math.min(centerY - 100, extendStartY - 50);
-        pkgLeft = centerX - 100;
+        pkgLeft = mainCenter - 100;
         pkgWidth = mainUC.width + 500;
         pkgHeight = otherY + 100 - pkgTop;
       }
@@ -763,7 +763,7 @@ function generateDiagram(diagram, text) {
     var depths = {};
     var queue = [];
     var actorAliases = parsedActors.map(function(a) { return a.alias; });
-    
+
     parsedUseCases.forEach(function(uc) {
       var connectedToActor = relations.some(function(r) {
         return (r.from === uc.alias && actorAliases.indexOf(r.to) !== -1) ||
@@ -867,7 +867,7 @@ function generateDiagram(diagram, text) {
       });
 
       var sortedDepths = Object.keys(columns).map(Number).sort(function(a,b){return a-b;});
-      
+
       var currentX = PADDING;
       var maxH = 0;
 
@@ -880,7 +880,7 @@ function generateDiagram(diagram, text) {
           layoutElement(child); // Recursively layout the child
           child.relX = currentX;
           child.relY = currentY;
-          
+
           colMaxWidth = Math.max(colMaxWidth, child.width);
           currentY += child.height + SPACING_Y;
         });

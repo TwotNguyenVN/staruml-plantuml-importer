@@ -152,7 +152,7 @@ function generateDiagram(diagram, text) {
           });
         }
       } catch (dmErr) {
-        console.error("[erd-parser] Failed to find/create ERDDataModel context:", dmErr);
+        console.error("[erd-parser] Failed to create the data model context.");
         throw dmErr;
       }
     }
@@ -214,13 +214,13 @@ function generateDiagram(diagram, text) {
                 }
               });
             } catch (colErr) {
-              console.error("[erd-parser] Failed to create column:", col.name, colErr);
+              console.error("[erd-parser] Failed to create a column.");
               throw colErr;
             }
           });
         }
       } catch (entityErr) {
-        console.error("[erd-parser] Failed to create entity:", entity.name, entityErr);
+        console.error("[erd-parser] Failed to create an entity.");
         throw entityErr;
       }
     });
@@ -231,7 +231,7 @@ function generateDiagram(diagram, text) {
       var headView = elementsMap[rel.to];
 
       if (!tailView || !headView) {
-        console.warn("[erd-parser] Skipping relationship: missing entity views", rel.from, "->", rel.to);
+        console.warn("[erd-parser] Skipping a relationship with missing entity views.");
         return;
       }
 
@@ -261,7 +261,7 @@ function generateDiagram(diagram, text) {
           }
         });
       } catch (relErr) {
-        console.error("[erd-parser] Failed to create ERDRelationship:", rel.from, "->", rel.to, relErr);
+        console.error("[erd-parser] Failed to create a relationship.");
         throw relErr;
       }
     });

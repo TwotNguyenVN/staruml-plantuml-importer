@@ -9,15 +9,19 @@ function parseRequirementDiagram(text) {
   var ast = {
     requirements: [],
     elements: [],
-    relations: []
+    relations: [],
+    diagnostics: []
   };
 
   var lines = text.split("\n");
   var inRequirement = false;
   var currentReq = null;
+  var relationRows = [];
 
   for (var i = 0; i < lines.length; i++) {
-    var line = lines[i].trim();
+    var rawLine = lines[i];
+    var line = rawLine.trim();
+    var col = rawLine.search(/\S/);
     if (!line || line.indexOf("'") === 0 || line.indexOf("@startuml") === 0 || line.indexOf("@enduml") === 0) continue;
 
     if (inRequirement) {
@@ -35,6 +39,9 @@ function parseRequirementDiagram(text) {
         else if (key === "risk") currentReq.risk = val;
         else if (key === "verifymethod") currentReq.verifymethod = val;
         else if (key === "kind") currentReq.kind = val;
+        else ast.diagnostics.push({ severity: "warning", line: i + 1, message: "Unsupported requirement property: " + propMatch[1] });
+      } else {
+        ast.diagnostics.push({ severity: "warning", line: i + 1, message: "Unsupported syntax: " + line });
       }
       continue;
     }
@@ -44,7 +51,7 @@ function parseRequirementDiagram(text) {
       var name = reqBlockMatch[1] || reqBlockMatch[2];
       var alias = reqBlockMatch[3] || name;
       var stereo = reqBlockMatch[4] || "";
-      currentReq = { alias: alias, name: name, id: "", text: "", risk: "", verifymethod: "", kind: "", stereotype: stereo };
+      currentReq = { alias: alias, name: name, id: "", text: "", risk: "", verifymethod: "", kind: "", stereotype: stereo, row: i + 1, col: col };
       ast.requirements.push(currentReq);
       inRequirement = true;
       continue;
@@ -55,7 +62,7 @@ function parseRequirementDiagram(text) {
       var name = reqLineMatch[1] || reqLineMatch[2];
       var alias = reqLineMatch[3] || name;
       var stereo = reqLineMatch[4] || "";
-      ast.requirements.push({ alias: alias, name: name, id: "", text: "", risk: "", verifymethod: "", kind: "", stereotype: stereo });
+      ast.requirements.push({ alias: alias, name: name, id: "", text: "", risk: "", verifymethod: "", kind: "", stereotype: stereo, row: i + 1, col: col });
       continue;
     }
 
@@ -64,11 +71,13 @@ function parseRequirementDiagram(text) {
       var name = elemMatch[1] || elemMatch[2];
       var alias = elemMatch[3] || name;
       var stereo = elemMatch[4] || "";
-      ast.elements.push({ alias: alias, name: name, type: "element", stereotype: stereo });
+      ast.elements.push({ alias: alias, id: alias, name: name, type: "element", docRef: "", stereotype: stereo, row: i + 1, col: col });
       continue;
     }
 
-    var relMatch = line.match(/^([a-zA-Z0-9_]+)\s+-+([a-zA-Z]*)-*>\s+([a-zA-Z0-9_]+)$/);
+    var relMatch = line.match(
+      /^([a-zA-Z0-9_]+)\s+-+([a-zA-Z]*)-*?>\s+([a-zA-Z0-9_]+)(?:\s*:\s*(.+))?$/
+    );
     if (relMatch) {
       var from = relMatch[1];
       var typeStr = relMatch[2].toLowerCase();
@@ -81,31 +90,68 @@ function parseRequirementDiagram(text) {
       else if (typeStr === "copies" || typeStr === "copy") type = "copies";
       else if (typeStr === "contains" || typeStr === "contain") type = "contains";
       else if (typeStr === "traces" || typeStr === "trace") type = "traces";
-      
-      ast.relations.push({ type: type, from: from, to: to, label: "" });
+      else if (typeStr) {
+        ast.diagnostics.push({ severity: "warning", line: i + 1, message: "Unknown relationship arrow: " + typeStr });
+        continue;
+      }
+
+      var label = relMatch[4] || "";
+      ast.relations.push({ type: type, from: from, to: to, label: label });
+      relationRows.push(i + 1);
+      if (type === "contains" && label.trim()) {
+        ast.diagnostics.push({
+          severity: "warning",
+          line: i + 1,
+          message: "Containment relation labels are not supported by StarUML and were omitted."
+        });
+      }
+      continue;
     }
+
+    ast.diagnostics.push({ severity: "warning", line: i + 1, message: "Unsupported syntax: " + line });
   }
 
   // Deduplicate
-  var reqMap = {};
-  var dedupReqs = [];
-  ast.requirements.forEach(function(r) {
-    if (!reqMap[r.alias]) {
-      reqMap[r.alias] = r;
-      dedupReqs.push(r);
-    }
+  var aliases = Object.create(null);
+  var declarations = ast.requirements.map(function(requirement) {
+    return { kind: "requirement", value: requirement };
+  }).concat(ast.elements.map(function(element) {
+    return { kind: "element", value: element };
+  })).sort(function(left, right) {
+    return left.value.row - right.value.row;
   });
-  ast.requirements = dedupReqs;
+  declarations.forEach(function(declaration) {
+    var existing = aliases[declaration.value.alias];
+    if (!existing) {
+      aliases[declaration.value.alias] = declaration;
+      return;
+    }
+    declaration.duplicate = true;
+    var message = existing.kind === declaration.kind
+      ? "Duplicate " + declaration.kind + " alias: " + declaration.value.alias
+      : "Duplicate alias across requirement and element declarations: " + declaration.value.alias;
+    ast.diagnostics.push({ severity: "warning", line: declaration.value.row, message: message });
+  });
+  ast.requirements = declarations.filter(function(declaration) {
+    return declaration.kind === "requirement" && !declaration.duplicate;
+  }).map(function(declaration) { return declaration.value; });
+  ast.elements = declarations.filter(function(declaration) {
+    return declaration.kind === "element" && !declaration.duplicate;
+  }).map(function(declaration) { return declaration.value; });
 
-  var elemMap = {};
-  var dedupElems = [];
-  ast.elements.forEach(function(e) {
-    if (!elemMap[e.alias]) {
-      elemMap[e.alias] = e;
-      dedupElems.push(e);
+  var reqMap = Object.create(null);
+  ast.requirements.forEach(function(requirement) { reqMap[requirement.alias] = requirement; });
+  var elemMap = Object.create(null);
+  ast.elements.forEach(function(element) { elemMap[element.alias] = element; });
+
+  ast.relations.forEach(function(rel, index) {
+    if (!reqMap[rel.from] && !elemMap[rel.from]) {
+      ast.diagnostics.push({ severity: "warning", line: relationRows[index], message: "Unresolved relationship endpoint: " + rel.from });
+    }
+    if (!reqMap[rel.to] && !elemMap[rel.to]) {
+      ast.diagnostics.push({ severity: "warning", line: relationRows[index], message: "Unresolved relationship endpoint: " + rel.to });
     }
   });
-  ast.elements = dedupElems;
 
   return ast;
 }
@@ -114,9 +160,21 @@ function generateDiagram(diagram, text) {
   return parserHelper.runInTransaction("SysMLRequirementDiagram", function(warnings, errors) {
     var ast = parseRequirementDiagram(text);
     var parentModel = diagram._parent || diagram;
-    var builder = app.repository ? app.repository.getOperationBuilder() : null; // In tests we might not have builder if mock creates it implicitly, wait parser-helper handles it.
+    var builder = app.repository && typeof app.repository.getOperationBuilder === "function"
+      ? app.repository.getOperationBuilder()
+      : null;
 
-    var elementsMap = {};
+    ast.diagnostics.forEach(function(diagnostic) {
+      var diagnosticMessage = diagnostic.message;
+      if (diagnosticMessage.indexOf("Unsupported syntax:") === 0) {
+        diagnosticMessage = "Unsupported syntax";
+      }
+      var message = "Line " + diagnostic.line + ": " + diagnosticMessage;
+      if (diagnostic.severity === "error") errors.push(message);
+      else warnings.push(message);
+    });
+
+    var elementsMap = Object.create(null);
     var currentX = 50;
     var currentY = 50;
 
@@ -129,7 +187,7 @@ function generateDiagram(diagram, text) {
           m.name = sanitizeName(req.name);
           m.id = req.id || "";
           m.text = req.text || "";
-          
+
           var doc = [];
           if (req.risk) doc.push("Risk: " + req.risk);
           if (req.verifymethod) doc.push("VerifyMethod: " + req.verifymethod);
@@ -210,21 +268,48 @@ function generateDiagram(diagram, text) {
       else if (rel.type === "contains") typeId = "UMLContainmentView";
 
       if (typeId === "UMLContainmentView") {
-        try {
-          var T = typeof type !== "undefined" ? type.UMLContainmentView : (global.type ? global.type.UMLContainmentView : null);
-          if (T) {
-            var v = new T();
-            v.tail = tailView;
-            v.head = headView;
-            v._parent = diagram;
-            if (builder && builder.insert) {
-              builder.insert(v);
-              builder.fieldInsert(diagram, "ownedViews", v);
-            }
-          }
-        } catch (e) {
-           console.warn("Failed to create UMLContainmentView", e);
+        if (!builder || typeof app.repository.doOperation !== "function") {
+          throw new Error("Requirement containment requires repository operation support");
         }
+        var T = typeof type !== "undefined" ? type.UMLContainmentView : (global.type ? global.type.UMLContainmentView : null);
+        if (!T) throw new Error("UMLContainmentView type is unavailable");
+
+        var containmentView = new T();
+        containmentView.tail = tailView;
+        containmentView.head = headView;
+        containmentView._parent = diagram;
+
+        var oldOwner = headView.model._parent;
+        var oldOwnerElements = oldOwner && oldOwner.ownedElements;
+        var newOwnerElements = tailView.model.ownedElements;
+        var diagramViews = diagram.ownedViews;
+        var oldOwnerHadModel = !!oldOwnerElements && oldOwnerElements.indexOf(headView.model) !== -1;
+        var newOwnerHadModel = !!newOwnerElements && newOwnerElements.indexOf(headView.model) !== -1;
+        var diagramHadView = !!diagramViews && diagramViews.indexOf(containmentView) !== -1;
+        builder.begin("Create requirement containment");
+        builder.fieldRemove(oldOwner, "ownedElements", headView.model);
+        builder.fieldInsert(tailView.model, "ownedElements", headView.model);
+        builder.insert(containmentView);
+        builder.fieldInsert(diagram, "ownedViews", containmentView);
+        builder.end();
+        try {
+          app.repository.doOperation(builder.getOperation());
+        } catch (operationError) {
+          if (oldOwnerElements && oldOwnerHadModel && oldOwnerElements.indexOf(headView.model) === -1) {
+            oldOwnerElements.push(headView.model);
+          }
+          if (newOwnerElements && !newOwnerHadModel) {
+            var newOwnerIndex = newOwnerElements.indexOf(headView.model);
+            if (newOwnerIndex !== -1) newOwnerElements.splice(newOwnerIndex, 1);
+          }
+          if (diagramViews && !diagramHadView) {
+            var viewIndex = diagramViews.indexOf(containmentView);
+            if (viewIndex !== -1) diagramViews.splice(viewIndex, 1);
+          }
+          headView.model._parent = oldOwner;
+          throw operationError;
+        }
+        headView.model._parent = tailView.model;
       } else {
         app.factory.createModelAndView({
           id: typeId,
@@ -238,6 +323,7 @@ function generateDiagram(diagram, text) {
             if (rel.type === "traces") {
               m.stereotype = "trace";
             }
+            m.name = rel.label || "";
           }
         });
       }

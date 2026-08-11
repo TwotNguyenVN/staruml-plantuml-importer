@@ -294,7 +294,8 @@ assert.strictEqual(res4.errors[0], "Forced Failure Mid-Build");
 assert.strictEqual(discardCalled, true, "builder.discard should be called");
 assert.strictEqual(doOperationCount, 0, "doOperation should not be called");
 assert.strictEqual(elements.length, 0, "Tree should be clean after rollback");
-assert.ok(loggedErrors.some(msg => msg.includes("Forced Failure Mid-Build")), "Expected error message not logged");
+assert.ok(loggedErrors.some(msg => msg.includes("State generation failed")), "Expected stable generic error log");
+assert.ok(loggedErrors.every(msg => !msg.includes("Forced Failure Mid-Build")), "Unexpected exception details must not be logged");
 
 // 5. Targeted relocation rollback test
 let setup5 = setupDiagram();

@@ -5,7 +5,7 @@ function isPreviewEnabled() {
     var val = app.preferences.get("plantuml-importer.preview");
     if (val !== undefined) return !!val;
   }
-  return true;
+  return false;
 }
 
 function getNormalizedServerUrl(val) {
@@ -66,12 +66,46 @@ function isValidUrl(urlString) {
 
 function buildPreviewUrl(configuredUrl, encodedDiagram) {
   var normalized = getNormalizedServerUrl(configuredUrl);
-  return normalized + "/png/" + encodedDiagram;
+  var url = normalized + "/png/" + encodedDiagram;
+  if (url.length > 16384) {
+    throw new Error("Preview URL exceeds 16384 characters.");
+  }
+  return url;
+}
+
+function preparePreview(code, options, dependencies) {
+  dependencies = dependencies || {};
+  var validateInput = dependencies.validateInput || require("./input-guard").validateInput;
+  var createPreviewUrl = dependencies.buildPreviewUrl || buildPreviewUrl;
+  if (!options.enabled) {
+    return {
+      status: "disabled",
+      message: "Preview disabled. Enable it in Preferences after reviewing the source-disclosure risk.",
+      url: null
+    };
+  }
+
+  var normalized = getNormalizedServerUrl(options.configuredUrl);
+  var validation = validateInput(code);
+  if (!validation.valid) {
+    return { status: "invalid", message: validation.errors.slice(0, 5).join("\n"), url: null };
+  }
+  if (!isValidUrl(normalized)) {
+    return { status: "invalid-url", message: "Invalid PlantUML Server URL configured.", url: null };
+  }
+
+  var encoded = options.encode(code);
+  return {
+    status: "ready",
+    message: "Loading preview from " + normalized + ". The complete reversibly encoded PlantUML source is sent in a GET URL.",
+    url: createPreviewUrl(normalized, encoded)
+  };
 }
 
 module.exports = {
   isPreviewEnabled: isPreviewEnabled,
   getNormalizedServerUrl: getNormalizedServerUrl,
   isValidUrl: isValidUrl,
-  buildPreviewUrl: buildPreviewUrl
+  buildPreviewUrl: buildPreviewUrl,
+  preparePreview: preparePreview
 };
