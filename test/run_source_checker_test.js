@@ -231,7 +231,7 @@ assert.match(
 );
 assert.doesNotMatch(pushStep, /exit 0/, "push CI should not exit after an HEAD-only fallback check");
 
-const auditMovedToDisabledJob = workflow.replace("      - run: npm audit\n", "") + [
+const auditMovedToDisabledJob = workflow.replace(/      - run: npm audit\r?\n/, "") + [
   "  disabled-audit:",
   "    if: false",
   "    steps:",
@@ -244,14 +244,14 @@ assert.throws(
   "CI validation must reject commands moved outside active jobs.test"
 );
 
-const missingPullRequestGuard = workflow.replace("        if: github.event_name == 'pull_request'\n", "");
+const missingPullRequestGuard = workflow.replace(/        if: github\.event_name == 'pull_request'\r?\n/, "");
 assert.throws(
   () => validateWorkflow(missingPullRequestGuard),
   /guard must be exact/,
   "CI validation must reject a missing pull request event guard"
 );
 
-const disabledTestJob = workflow.replace("  test:\n", "  test:\n    if: false\n");
+const disabledTestJob = workflow.replace(/  test:\r?\n/, "  test:\n    if: false\n");
 assert.throws(
   () => validateWorkflow(disabledTestJob),
   /jobs\.test must not be disabled/,
