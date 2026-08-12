@@ -103,6 +103,8 @@ assert.strictEqual(count1, count2, "Consecutive calls should generate the same n
 let deleteElementsCalled = false;
 let deletedModelsCount = 0;
 let deletedViewsCount = 0;
+let rollbackElementId = 0;
+const rollbackRepository = Object.create(null);
 
 global.app = {
   project: { getProject: () => ({ getClassName: () => 'Project', ownedElements: [] }) },
@@ -111,24 +113,33 @@ global.app = {
       deleteElementsCalled = true;
       deletedModelsCount = models.length;
       deletedViewsCount = views.length;
+      models.concat(views).forEach(element => { delete rollbackRepository[element._id]; });
     }
+  },
+  repository: {
+    get: id => rollbackRepository[id] || null
   },
   factory: {
     createModel: (opts) => {
-      return { getClassName: () => opts.id };
+      const model = { _id: "rollback-" + rollbackElementId++, getClassName: () => opts.id };
+      rollbackRepository[model._id] = model;
+      return model;
     },
     createModelAndView: (opts) => {
       // Deliberately fail if we try to create a relationship, to simulate partial failure after creating entities
       if (opts.id === 'ERDRelationship') {
         throw new Error("Simulated ERDRelationship creation failure");
       }
-      return {
-        model: {
+      const model = {
+          _id: "rollback-" + rollbackElementId++,
           getClassName: () => opts.id,
           end1: {},
           end2: {}
-        }
       };
+      const view = { _id: "rollback-" + rollbackElementId++, model: model };
+      rollbackRepository[model._id] = model;
+      rollbackRepository[view._id] = view;
+      return view;
     }
   }
 };
@@ -146,7 +157,7 @@ User ||--o{ Post
 @enduml
 `;
 
-const dummyDiagram = { _parent: { getClassName: () => "ERDDataModel", ownedElements: [] } };
+const dummyDiagram = { _parent: { getClassName: () => "ERDDataModel", ownedElements: [] }, ownedViews: [] };
 global.silenceConsoleError();
 let result;
 try {
@@ -157,8 +168,8 @@ try {
 
 assert.strictEqual(result.success, false, "Import should fail due to simulated relationship failure");
 assert.strictEqual(result.rollbackAttempted, true, "Rollback should have been attempted");
-assert.strictEqual(result.rollbackSucceeded, true, "Rollback should succeed");
-assert.strictEqual(result.createdCount, 0, "Residual createdCount should be 0 after successful rollback");
+assert.strictEqual(result.rollbackSucceeded, false, "A throwing factory call makes rollback unverifiable");
+assert.strictEqual(result.createdCount, null, "Residual count must be unknown after a throwing factory call");
 assert.ok(deleteElementsCalled, "deleteElements should have been called to roll back elements");
 assert.ok(deletedModelsCount > 0, "Should have rolled back created models");
 
@@ -202,6 +213,217 @@ assert.strictEqual(warningResult.errors.length, 0);
 assert.strictEqual(transactionDeleteCalled, false);
 assert.strictEqual(transactionBuilder.insert, transactionBuilderInsert, "Operation builder insert should be restored");
 
+// Recorded parser errors after element creation must trigger rollback without being replaced.
+let recordedErrorDeletedModels = [];
+let recordedErrorDeletedViews = [];
+const recordedErrorOwner = { ownedElements: [] };
+const recordedErrorDiagram = { ownedViews: [] };
+global.app = {
+  engine: {
+    deleteElements: (models, views) => {
+      recordedErrorDeletedModels = models;
+      recordedErrorDeletedViews = views;
+      models.forEach(model => {
+        const index = recordedErrorOwner.ownedElements.indexOf(model);
+        if (index !== -1) recordedErrorOwner.ownedElements.splice(index, 1);
+      });
+      views.forEach(view => {
+        const index = recordedErrorDiagram.ownedViews.indexOf(view);
+        if (index !== -1) recordedErrorDiagram.ownedViews.splice(index, 1);
+      });
+    }
+  },
+  factory: {
+    createModel: () => {
+      const model = { _parent: recordedErrorOwner, getClassName: () => "UMLClass" };
+      recordedErrorOwner.ownedElements.push(model);
+      return model;
+    },
+    createModelAndView: () => {
+      const model = { _parent: recordedErrorOwner, getClassName: () => "UMLClass" };
+      recordedErrorOwner.ownedElements.push(model);
+      const view = { model: model, _parent: recordedErrorDiagram, getClassName: () => "UMLClassView" };
+      recordedErrorDiagram.ownedViews.push(view);
+      return view;
+    }
+  }
+};
+const recordedErrorResult = parserHelper.runInTransaction("TestDiagram", function(warnings, errors) {
+  app.factory.createModel({ id: "UMLClass" });
+  app.factory.createModelAndView({ id: "UMLClass" });
+  errors.push("Controlled parser error");
+});
+assert.strictEqual(recordedErrorResult.success, false);
+assert.strictEqual(recordedErrorResult.rollbackAttempted, true);
+assert.strictEqual(recordedErrorResult.rollbackSucceeded, true);
+assert.strictEqual(recordedErrorResult.createdCount, 0);
+assert.deepStrictEqual(recordedErrorResult.errors, ["Controlled parser error"]);
+assert.strictEqual(recordedErrorDeletedModels.length, 2);
+assert.strictEqual(recordedErrorDeletedViews.length, 1);
+
+global.app = {
+  engine: {
+    deleteElements: () => { throw new Error("SECRET rollback exception at C:\\Users\\admin\\project"); }
+  },
+  factory: {
+    createModel: () => ({ getClassName: () => "UMLClass" }),
+    createModelAndView: () => null
+  }
+};
+const recordedErrorRollbackFailure = parserHelper.runInTransaction("TestDiagram", function(warnings, errors) {
+  app.factory.createModel({ id: "UMLClass" });
+  errors.push("Controlled parser error");
+});
+assert.strictEqual(recordedErrorRollbackFailure.success, false);
+assert.strictEqual(recordedErrorRollbackFailure.rollbackAttempted, true);
+assert.strictEqual(recordedErrorRollbackFailure.rollbackSucceeded, false);
+assert.strictEqual(recordedErrorRollbackFailure.createdCount, 1);
+assert.strictEqual(recordedErrorRollbackFailure.errors[0], "Controlled parser error");
+assert.match(recordedErrorRollbackFailure.errors[1], /rollback failed or may be incomplete/i);
+assert.doesNotMatch(recordedErrorRollbackFailure.errors.join("\n"), /SECRET|Users|project/);
+
+// Parser diagnostics must survive a later exception and gain only a generic stage diagnostic.
+global.app = {
+  engine: { deleteElements: () => {} },
+  factory: {
+    createModel: () => null,
+    createModelAndView: () => null
+  }
+};
+const recordedErrorThenException = parserHelper.runInTransaction("TestDiagram", function(warnings, errors) {
+  warnings.push("Controlled parser warning");
+  errors.push("Controlled parser error before exception");
+  throw new Error("Authorization: Bearer raw-exception-secret at file:///private/import.js");
+});
+assert.strictEqual(recordedErrorThenException.success, false);
+assert.deepStrictEqual(recordedErrorThenException.warnings, ["Controlled parser warning"]);
+assert.strictEqual(recordedErrorThenException.errors[0], "Controlled parser error before exception");
+assert.match(recordedErrorThenException.errors[1], /unexpected error/i);
+assert.doesNotMatch(recordedErrorThenException.errors.join("\n"), /raw-exception-secret|private|import\.js/);
+
+function createObservableRollbackApp(deleteElements) {
+  const owner = { ownedElements: [] };
+  const records = Object.create(null);
+  let nextId = 1;
+  global.app = {
+    engine: { deleteElements: deleteElements.bind(null, records, owner) },
+    repository: {
+      get: id => records[id] || null
+    },
+    factory: {
+      createModel: () => {
+        const model = { _id: "observable-" + nextId++, _parent: owner, getClassName: () => "UMLClass" };
+        records[model._id] = model;
+        owner.ownedElements.push(model);
+        return model;
+      },
+      createModelAndView: () => null
+    }
+  };
+  return { owner, records };
+}
+
+// A silent no-op delete must never be reported as a successful rollback.
+createObservableRollbackApp(function() {});
+const noOpDeleteResult = parserHelper.runInTransaction("TestDiagram", function(warnings, errors) {
+  app.factory.createModel({ id: "UMLClass" });
+  app.factory.createModel({ id: "UMLClass" });
+  errors.push("Force rollback");
+});
+assert.strictEqual(noOpDeleteResult.rollbackSucceeded, false);
+assert.strictEqual(noOpDeleteResult.createdCount, 2);
+assert.match(noOpDeleteResult.errors.join("\n"), /rollback failed or may be incomplete/i);
+
+// Partial deletion must report only the element still observable in the repository/owner.
+createObservableRollbackApp(function(records, owner, models) {
+  const deleted = models[0];
+  delete records[deleted._id];
+  owner.ownedElements.splice(owner.ownedElements.indexOf(deleted), 1);
+  deleted._parent = null;
+});
+const partialDeleteResult = parserHelper.runInTransaction("TestDiagram", function(warnings, errors) {
+  app.factory.createModel({ id: "UMLClass" });
+  app.factory.createModel({ id: "UMLClass" });
+  errors.push("Force rollback");
+});
+assert.strictEqual(partialDeleteResult.rollbackSucceeded, false);
+assert.strictEqual(partialDeleteResult.createdCount, 1);
+assert.match(partialDeleteResult.errors.join("\n"), /rollback failed or may be incomplete/i);
+
+function assertMutateThenThrowFailsClosed(apiName, configureApp, invoke) {
+  const trackedOwner = { ownedElements: [] };
+  const trackedRecords = Object.create(null);
+  const trackedModel = {
+    _id: "tracked-" + apiName,
+    _parent: trackedOwner,
+    getClassName: () => "UMLClass"
+  };
+  trackedOwner.ownedElements.push(trackedModel);
+  trackedRecords[trackedModel._id] = trackedModel;
+  global.app = {
+    engine: {
+      deleteElements: models => {
+        models.forEach(model => {
+          delete trackedRecords[model._id];
+          const index = trackedOwner.ownedElements.indexOf(model);
+          if (index !== -1) trackedOwner.ownedElements.splice(index, 1);
+        });
+      }
+    },
+    repository: { get: id => trackedRecords[id] || null },
+    factory: {
+      createModel: () => trackedModel,
+      createModelAndView: () => null
+    }
+  };
+  configureApp(app);
+
+  const mutationResult = parserHelper.runInTransaction("TestDiagram", function() {
+    app.factory.createModel({ id: "UMLClass", parent: trackedOwner });
+    invoke(app);
+  });
+  assert.strictEqual(mutationResult.success, false, apiName + " mutation failure must fail the import");
+  assert.strictEqual(mutationResult.rollbackAttempted, true, apiName + " mutation failure must attempt rollback");
+  assert.strictEqual(mutationResult.rollbackSucceeded, false, apiName + " mutation failure must make rollback unverifiable");
+  assert.strictEqual(mutationResult.createdCount, null, apiName + " mutation failure must report an unknown residual count");
+  assert.match(mutationResult.errors.join("\n"), /rollback failed or may be incomplete/i);
+}
+
+let trackedCreateModelMutation = null;
+assertMutateThenThrowFailsClosed("createModel", app => {
+  const originalCreateModel = app.factory.createModel;
+  let callCount = 0;
+  app.factory.createModel = options => {
+    callCount += 1;
+    if (callCount === 1) return originalCreateModel(options);
+    trackedCreateModelMutation = { persisted: true };
+    throw new Error("createModel mutated then threw");
+  };
+}, app => app.factory.createModel({ id: "UMLClass" }));
+assert.ok(trackedCreateModelMutation, "createModel test must mutate before throwing");
+
+let trackedCreateModelAndViewMutation = null;
+assertMutateThenThrowFailsClosed("createModelAndView", app => {
+  app.factory.createModelAndView = () => {
+    trackedCreateModelAndViewMutation = { persisted: true };
+    throw new Error("createModelAndView mutated then threw");
+  };
+}, app => app.factory.createModelAndView({ id: "UMLClass" }));
+assert.ok(trackedCreateModelAndViewMutation, "createModelAndView test must mutate before throwing");
+
+let trackedBuilderMutation = null;
+assertMutateThenThrowFailsClosed("builder.insert", app => {
+  const builder = {
+    insert: () => {
+      trackedBuilderMutation = { persisted: true };
+      throw new Error("builder.insert mutated then threw");
+    },
+    discard: () => {}
+  };
+  app.repository.getOperationBuilder = () => builder;
+}, app => app.repository.getOperationBuilder().insert({ getClassName: () => "UMLClass" }));
+assert.ok(trackedBuilderMutation, "builder.insert test must mutate before throwing");
+
 // A containment commit exception must remain a failure and trigger rollback.
 const requirementParser = require('../parsers/requirement-parser.js');
 let containmentDiscarded = false;
@@ -226,7 +448,25 @@ const containmentBuilder = {
 };
 global.app = {
   engine: {
-    deleteElements: () => { containmentDeleteCalled = true; }
+    deleteElements: (models, views) => {
+      containmentDeleteCalled = true;
+      models.concat(views).forEach(element => {
+        const owner = element && element._parent;
+        if (!owner) return;
+        Object.keys(owner).forEach(field => {
+          if (!Array.isArray(owner[field])) return;
+          const index = owner[field].indexOf(element);
+          if (index !== -1) owner[field].splice(index, 1);
+        });
+        element._parent = null;
+      });
+      views.forEach(view => {
+        const index = containmentDiagram.ownedViews.indexOf(view);
+        if (index !== -1) containmentDiagram.ownedViews.splice(index, 1);
+      });
+      const viewIndex = containmentDiagram.ownedViews.indexOf(partiallyInsertedContainmentView);
+      if (viewIndex !== -1) containmentDiagram.ownedViews.splice(viewIndex, 1);
+    }
   },
   repository: {
     getOperationBuilder: () => containmentBuilder,
@@ -278,8 +518,8 @@ assert.match(containmentResult.errors[0], /unexpected error/i);
 assert.doesNotMatch(containmentResult.errors.join("\n"), /SECRET|private|containment commit failure/);
 assert.strictEqual(containmentDiscarded, true);
 assert.strictEqual(containmentDeleteCalled, true);
-assert.strictEqual(containmentChildModel._parent, containmentDiagram._parent, "Failed commit must leave child with its old owner");
-assert.ok(containmentDiagram._parent.ownedElements.includes(containmentChildModel), "Failed commit must restore the old owner's child");
+assert.strictEqual(containmentChildModel._parent, null, "Rollback must detach the created child from its owner");
+assert.ok(!containmentDiagram._parent.ownedElements.includes(containmentChildModel), "Rollback must remove the created child from its owner");
 assert.ok(!containmentParentModel.ownedElements.includes(containmentChildModel), "Failed commit must remove the child from the new owner");
 assert.ok(!containmentDiagram.ownedViews.includes(partiallyInsertedContainmentView), "Failed commit must remove the partially inserted containment view");
 
@@ -474,8 +714,17 @@ const manageDeletionTargets = Array.from(
   manageSource.matchAll(/fs\.rmSync\(\s*([^,\r\n]+)\s*,/g),
   match => match[1].trim()
 );
-assert.deepStrictEqual(manageDeletionTargets, ['extensionDir'], 'manage.js must centralize recursive deletion in its validator');
-assert.match(manageSource, /safeDeleteExtension\(targetDir, extensionRoot\)/, 'manage.js install and clear must use validated deletion');
+assert.deepStrictEqual(
+  manageDeletionTargets,
+  ['extensionDir', 'candidate'],
+  'manage.js must centralize recursive deletion in extension and installer-path validators'
+);
+assert.match(
+  manageSource,
+  /function safeDeleteInstallPath\(candidate, invocationDir, userExtensionRoot\)[\s\S]*assertNoLinks\(candidate\);[\s\S]*fs\.rmSync\(candidate,/,
+  'Atomic installer cleanup must validate invocation-owned paths before recursive deletion'
+);
+assert.match(manageSource, /safeDeleteExtension\(targetDir, extensionRoot\)/, 'manage.js clear must use validated deletion');
 
 assert.match(
   manageSource,
@@ -538,24 +787,32 @@ const sequenceParser = require('../parsers/sequence-parser.js');
 let seqDeleteCalled = false;
 let seqDeletedModels = [];
 let seqDeletedViews = [];
+let seqElementId = 0;
+const seqRepository = Object.create(null);
+function seqRecord(element) {
+  if (!element._id) element._id = "sequence-" + seqElementId++;
+  seqRepository[element._id] = element;
+  return element;
+}
 
 global.app = {
   project: {
     getProject: () => ({ _parent: null })
   },
   type: {
-    UMLActor: class UMLActor { getClassName() { return "UMLActor"; } },
-    UMLAttribute: class UMLAttribute { getClassName() { return "UMLAttribute"; } },
-    UMLLifeline: class UMLLifeline { getClassName() { return "UMLLifeline"; } },
-    UMLSeqLifelineView: class UMLSeqLifelineView { getClassName() { return "UMLSeqLifelineView"; } initialize() {} },
-    UMLMessage: class UMLMessage { getClassName() { return "UMLMessage"; } },
-    UMLSeqMessageView: class UMLSeqMessageView { getClassName() { return "UMLSeqMessageView"; } initialize() {} },
+    UMLActor: class UMLActor { constructor() { seqRecord(this); } getClassName() { return "UMLActor"; } },
+    UMLAttribute: class UMLAttribute { constructor() { seqRecord(this); } getClassName() { return "UMLAttribute"; } },
+    UMLLifeline: class UMLLifeline { constructor() { seqRecord(this); } getClassName() { return "UMLLifeline"; } },
+    UMLSeqLifelineView: class UMLSeqLifelineView { constructor() { seqRecord(this); } getClassName() { return "UMLSeqLifelineView"; } initialize() {} },
+    UMLMessage: class UMLMessage { constructor() { seqRecord(this); } getClassName() { return "UMLMessage"; } },
+    UMLSeqMessageView: class UMLSeqMessageView { constructor() { seqRecord(this); } getClassName() { return "UMLSeqMessageView"; } initialize() {} },
     UMLGeneralNodeView: { SD_ICON: 1 }
   },
   repository: {
+    get: id => seqRepository[id] || null,
     getOperationBuilder: () => ({
       begin: () => {},
-      insert: (elem) => {},
+      insert: elem => { seqRecord(elem); },
       fieldInsert: () => {},
       end: () => {},
       getOperation: () => ({}),
@@ -571,23 +828,23 @@ global.app = {
       seqDeleteCalled = true;
       seqDeletedModels = models;
       seqDeletedViews = views;
+      models.concat(views).forEach(element => { delete seqRepository[element._id]; });
     }
   },
   factory: {
     createModel: (opts) => {
-      return { getClassName: () => opts.id };
+      return seqRecord({ getClassName: () => opts.id });
     },
     createModelAndView: (opts) => {
       // Throw error during CombinedFragment or Note creation (late failure after core commit)
       if (opts.id === "UMLCombinedFragment" || opts.id === "UMLNote") {
         throw new Error("Simulated CombinedFragment creation failure");
       }
-      return {
-        model: {
+      const model = seqRecord({
           getClassName: () => opts.id.replace("View", ""),
           operands: []
-        }
-      };
+      });
+      return seqRecord({ model: model, getClassName: () => opts.id + "View" });
     }
   }
 };
@@ -615,8 +872,8 @@ try {
 
 assert.strictEqual(seqResult.success, false, "Sequence import should fail due to combined fragment error");
 assert.strictEqual(seqResult.rollbackAttempted, true);
-assert.strictEqual(seqResult.rollbackSucceeded, true);
-assert.strictEqual(seqResult.createdCount, 0);
+assert.strictEqual(seqResult.rollbackSucceeded, false);
+assert.strictEqual(seqResult.createdCount, null);
 
 // Verify that original methods were restored
 assert.strictEqual(app.factory.createModel, origCreateModel, "createModel should be restored");
@@ -712,11 +969,11 @@ try {
   global.restoreConsoleError();
 }
 
-assert.strictEqual(stateResult.success, false, "State import should fail on relocate failure");
+assert.strictEqual(stateResult.success, false, "State import should reject a region-parented diagram");
 assert.strictEqual(stateResult.rollbackAttempted, true);
 assert.strictEqual(stateResult.rollbackSucceeded, true);
 assert.strictEqual(stateResult.createdCount, 0);
-assert.ok(stateDeleteCalled, "Relocate failure must trigger rollback deleteElements");
+assert.strictEqual(stateDeleteCalled, false, "Preflight rejection must not create or delete elements");
 
 
 // 7.5 Dialog button markup regression test
@@ -773,6 +1030,51 @@ assert.ok(boundedWarningMessage.indexOf('warning-1') !== -1);
 assert.ok(boundedWarningMessage.indexOf('warning-10') !== -1);
 assert.ok(boundedWarningMessage.indexOf('warning-11') === -1);
 assert.ok(boundedWarningMessage.indexOf('2 more warning(s)') !== -1);
+const adversarialWarnings = [
+  'Authorization: Bearer bearer.secret+/=_- must disappear',
+  'Authorization=Basic dXNlcjpwYXNzd29yZA== must disappear',
+  'access_token=url-token&refresh_token=refresh-token&client_secret="quoted client secret"',
+  'UNC \\\\server\\private-share\\secret.txt and file:///C:/private/secret.txt\u0000\u001b[31m\u0085',
+  'long-warning ' + 'w'.repeat(1000)
+];
+const sanitizedSuccessWarnings = main.formatImportSuccessMessage({ createdCount: 1, warnings: adversarialWarnings });
+assert.doesNotMatch(sanitizedSuccessWarnings, /bearer\.secret|dXNlcj|url-token|refresh-token|quoted client secret|server|private-share|secret\.txt|\u001b|[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/i);
+assert.ok(sanitizedSuccessWarnings.length < 1500, 'Success warnings must have a bounded total length');
+const modernSecretWarnings = [
+  'password="correct horse battery staple" after login',
+  "token='quoted multiword token value' rejected",
+  'AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE AWS_SECRET_ACCESS_KEY="provider secret value"',
+  'GOOGLE_API_KEY=google-provider-key AZURE_CLIENT_SECRET=azure-provider-secret',
+  'GitHub credentials ghp_abcdefghijklmnopqrstuvwxyz1234567890 and github_pat_11AA0_exampleTokenValue',
+  'JWT eyJhbGciOiJIUzI1NiJ9.e30.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+  'key material -----BEGIN PRIVATE KEY-----\nprivate-key-body-value\n-----END PRIVATE KEY----- retained text',
+  'failed beneath ~/private/project/config.json'
+];
+const modernSecretMessage = main.formatImportSuccessMessage({ createdCount: 1, warnings: modernSecretWarnings });
+assert.doesNotMatch(modernSecretMessage, /correct horse|multiword token|AKIAIOSFODNN7EXAMPLE|provider secret value|google-provider-key|azure-provider-secret|ghp_|github_pat_|eyJhbGci|private-key-body-value|BEGIN PRIVATE KEY|~\/private/i);
+assert.match(modernSecretMessage, /after login/);
+assert.match(modernSecretMessage, /retained text/);
+assert.ok(modernSecretMessage.length < 1500, 'Modern secret diagnostics must remain bounded');
+const boundaryRedactionMessage = main.formatImportSuccessMessage({
+  createdCount: 1,
+  warnings: [
+    'truncated pem -----BEGIN PRIVATE KEY-----\ntruncated-pem-body must not leak',
+    'standalone keys AKIAIOSFODNN7EXAMPLE and ASIAIOSFODNN7EXAMPLE',
+    'login failed password=correct horse battery staple',
+    'windows path C:\\Program Files\\StarUML\\private file.js',
+    'posix path /Users/admin/My Projects/private file.js',
+    'home path ~/My Projects/private file.js',
+    'file path file:///C:/Program Files/StarUML/private file.js',
+    'unc path \\\\server\\Private Share\\secret file.txt',
+    'token=short-secret; retry remains safe prose'
+  ]
+});
+assert.doesNotMatch(boundaryRedactionMessage, /truncated-pem-body|BEGIN PRIVATE KEY|AKIAIOSFODNN7EXAMPLE|ASIAIOSFODNN7EXAMPLE|correct horse|battery staple|Program Files|My Projects|Private Share|secret file\.txt/i);
+assert.match(boundaryRedactionMessage, /retry remains safe prose/);
+const ordinaryDiagnosticMessage = main.formatImportSuccessMessage({
+  warnings: ['GitHub request failed during AWS deployment; retry the provider connection.']
+});
+assert.match(ordinaryDiagnosticMessage, /GitHub request failed during AWS deployment; retry the provider connection\./);
 const failedRollbackMessage = main.formatImportFailureMessage({
   rollbackAttempted: true,
   rollbackSucceeded: false,
@@ -782,6 +1084,45 @@ const failedRollbackMessage = main.formatImportFailureMessage({
 assert.match(failedRollbackMessage, /rollback failed or may be incomplete/i);
 assert.match(failedRollbackMessage, /Residual elements: 4/i);
 assert.doesNotMatch(failedRollbackMessage, /SECRET|token|private/);
+const boundedFailureMessage = main.formatImportFailureMessage({
+  rollbackAttempted: true,
+  rollbackSucceeded: false,
+  createdCount: 3,
+  errors: [
+    'error-1 user:super-secret@example.com at C:\\Users\\admin\\project\\file.js\u001b[31m',
+    'error-2 password=hunter2 at /home/admin/project/file.js',
+    'error-3 https://api-user:api-secret@example.com/resource',
+    'error-4 token=abc123\nforbidden-control',
+    'error-5 ' + 'x'.repeat(1000),
+    'error-6 must not be shown',
+    'error-7 must not be shown'
+  ]
+});
+assert.match(boundedFailureMessage, /rollback failed or may be incomplete/i);
+assert.match(boundedFailureMessage, /Residual elements: 3/i);
+['error-1', 'error-2', 'error-3', 'error-4', 'error-5'].forEach(label => {
+  assert.ok(boundedFailureMessage.includes(label), label + ' should be displayed');
+});
+assert.doesNotMatch(boundedFailureMessage, /error-6|error-7/);
+assert.match(boundedFailureMessage, /2 more error\(s\)/i);
+assert.doesNotMatch(boundedFailureMessage, /super-secret|hunter2|api-user|api-secret|abc123/);
+assert.doesNotMatch(boundedFailureMessage, /C:\\Users|\\project\\file|\/home\/admin\/project|\u001b|[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/);
+assert.ok(boundedFailureMessage.length < 1500, 'Failure diagnostics must have a bounded total length');
+const failureWarningMessage = main.formatImportFailureMessage({
+  rollbackAttempted: false,
+  warnings: adversarialWarnings.concat(Array.from({ length: 20 }, (_, index) => 'extra-warning-' + index + '-' + 'x'.repeat(300))),
+  errors: [
+    'Authorization: Bearer failure-bearer-secret trailing text',
+    'Authorization: Basic ZmFpbHVyZTpiYXNpYw== trailing text',
+    'access_token=failure-access refresh_token=failure-refresh client_secret=failure-client',
+    'file://server/share/private.txt and \\\\server\\share\\private.txt'
+  ]
+});
+assert.match(failureWarningMessage, /Warnings:/);
+assert.match(failureWarningMessage, /Errors:/);
+assert.doesNotMatch(failureWarningMessage, /failure-bearer-secret|ZmFpbHVy|failure-access|failure-refresh|failure-client|server|share|private\.txt/i);
+assert.doesNotMatch(failureWarningMessage, /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/);
+assert.ok(failureWarningMessage.length < 1800, 'Combined failure diagnostics must have a bounded total length');
 
 let alertDialogCalled = false;
 let alertDialogMessage = "";

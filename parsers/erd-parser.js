@@ -231,6 +231,11 @@ function generateDiagram(diagram, text) {
       var headView = elementsMap[rel.to];
 
       if (!tailView || !headView) {
+        var missingEndpoints = [];
+        if (!tailView) missingEndpoints.push(rel.from);
+        if (!headView) missingEndpoints.push(rel.to);
+        warnings.push("Skipped ERD relation " + rel.from + " -> " + rel.to + ": missing endpoint" +
+          (missingEndpoints.length === 1 ? " " : "s ") + missingEndpoints.join(", ") + ".");
         console.warn("[erd-parser] Skipping a relationship with missing entity views.");
         return;
       }

@@ -7,6 +7,7 @@ const stateParser = require('../parsers/state-parser');
 const simplePuml = fs.readFileSync(path.join(__dirname, 'state_simple.puml'), 'utf8');
 const compositePuml = fs.readFileSync(path.join(__dirname, 'state_composite.puml'), 'utf8');
 const orthogonalPuml = fs.readFileSync(path.join(__dirname, 'Statechart_Diagram.puml'), 'utf8');
+const directOrthogonalPuml = fs.readFileSync(path.join(__dirname, 'state_orthogonal_direct.puml'), 'utf8');
 
 let elements = [];
 let rollbackCalled = false;
@@ -61,9 +62,18 @@ global.app = {
         begin: (name) => { builderActive = true; pendingOperations = []; },
         insert: (elem) => { },
         fieldInsert: (parent, field, elem) => {
+          if (elem.getClassName() === "UMLRegionView") {
+            const compositeModel = elem.model && elem.model._parent;
+            if (parent.getClassName() !== "UMLDecompositionCompartmentView" || parent.model !== compositeModel) {
+              throw new Error("UMLRegionView requires decompositionCompartment.model to equal its composite state model");
+            }
+          }
           pendingOperations.push({ action: 'insert', parent, field, elem });
         },
         fieldRemove: (parent, field, elem) => {
+          if (!Array.isArray(parent[field]) || !parent[field].includes(elem)) {
+            throw new Error(`Cannot remove ${elem.getClassName()} from missing ${parent.getClassName()}.${field}`);
+          }
           pendingOperations.push({ action: 'remove', parent, field, elem });
         },
         end: () => {},
@@ -134,6 +144,146 @@ function setupDiagram() {
   diag._parent = sm;
   return { sm, rootRegion: region, diag };
 }
+
+// Hardening preflight: direct regions need a model-bound compartment, and declarations cannot move aliases.
+let hardeningFailures = [];
+let directSetup = setupDiagram();
+let directConsoleError = console.error;
+let directResult;
+try {
+  console.error = () => {};
+  directResult = stateParser.generateDiagram(directSetup.diag, directOrthogonalPuml);
+} finally {
+  console.error = directConsoleError;
+}
+if (!directResult.success) {
+  hardeningFailures.push("Direct orthogonal import failed: " + directResult.errors[0]);
+} else {
+  let directStates = elements.filter(e => e.getClassName() === "UMLState");
+  let parallel = directStates.find(s => s.name === "Parallel");
+  assert.ok(parallel, "Direct orthogonal fixture should create Parallel");
+  assert.strictEqual(parallel.regions.length, 2, "Parallel should own two regions");
+  assert.strictEqual(directStates.find(s => s.name === "LeftIdle")._parent, parallel.regions[0]);
+  assert.strictEqual(directStates.find(s => s.name === "LeftDone")._parent, parallel.regions[0]);
+  assert.strictEqual(directStates.find(s => s.name === "RightIdle")._parent, parallel.regions[1]);
+  assert.strictEqual(directStates.find(s => s.name === "RightDone")._parent, parallel.regions[1]);
+
+  let directVertices = elements.filter(e => ["UMLPseudostate", "UMLFinalState"].includes(e.getClassName()));
+  let directTransitions = elements.filter(e => e.getClassName() === "UMLTransition");
+  assert.strictEqual(directVertices.filter(vertex => vertex._parent === parallel.regions[0]).length, 2);
+  assert.strictEqual(directVertices.filter(vertex => vertex._parent === parallel.regions[1]).length, 2);
+  assert.strictEqual(directTransitions.filter(transition => transition._parent === parallel.regions[0]).length, 3);
+  assert.strictEqual(directTransitions.filter(transition => transition._parent === parallel.regions[1]).length, 3);
+
+  let parallelView = elements.find(e => e.getClassName() === "UMLStateView" && e.model === parallel);
+  let directRegionViews = elements.filter(e => e.getClassName() === "UMLRegionView" && e.model._parent === parallel);
+  assert.strictEqual(parallelView.decompositionCompartment.model, parallel);
+  assert.strictEqual(directRegionViews.length, 2);
+  directRegionViews.forEach(regionView => {
+    assert.ok(parallelView.decompositionCompartment.subViews.includes(regionView));
+  });
+}
+
+let crossRegionSetup = setupDiagram();
+let crossRegionResult = stateParser.generateDiagram(crossRegionSetup.diag, `@startuml
+state Parallel {
+  state Left
+  --
+  state Right
+  Left --> Right : cross-region
+}
+@enduml`);
+if (!crossRegionResult.success) {
+  hardeningFailures.push("Cross-region transition failed: " + crossRegionResult.errors[0]);
+} else {
+  let crossRegionStates = elements.filter(e => e.getClassName() === "UMLState");
+  let parallel = crossRegionStates.find(s => s.name === "Parallel");
+  let left = crossRegionStates.find(s => s.name === "Left");
+  let right = crossRegionStates.find(s => s.name === "Right");
+  let transition = elements.find(e => e.getClassName() === "UMLTransition");
+  assert.strictEqual(left._parent, parallel.regions[0], "Transition reference must not reparent its source");
+  assert.strictEqual(right._parent, parallel.regions[1], "Transition reference must not reparent its target");
+  assert.strictEqual(transition._parent, parallel.regions[0], "Cross-region transition should be owned by its source region");
+  assert.strictEqual(transition.source, left);
+  assert.strictEqual(transition.target, right);
+}
+
+let duplicateSetup = setupDiagram();
+let duplicateBuilder = global.app.repository.getOperationBuilder;
+let duplicateResult;
+try {
+  global.app.repository.getOperationBuilder = () => {
+    throw new Error("Operation builder requested for ambiguous alias");
+  };
+  duplicateResult = stateParser.generateDiagram(duplicateSetup.diag, `@startuml
+state Parallel {
+  state Shared
+  --
+  state Shared
+}
+@enduml`);
+} finally {
+  global.app.repository.getOperationBuilder = duplicateBuilder;
+}
+if (duplicateResult.success || !duplicateResult.errors[0].includes("Ambiguous state alias 'Shared'")) {
+  hardeningFailures.push("Cross-region duplicate declaration was not rejected before operation: " + duplicateResult.errors[0]);
+}
+
+let forwardReferenceSetup = setupDiagram();
+let forwardReferenceResult = stateParser.generateDiagram(forwardReferenceSetup.diag, `@startuml
+state Parallel {
+  Shared --> FirstTarget : before declaration
+  --
+  state Shared
+  state FirstTarget
+  state SecondTarget
+  Shared --> SecondTarget : after declaration
+}
+@enduml`);
+if (!forwardReferenceResult.success) {
+  hardeningFailures.push("Cross-region forward reference failed: " + forwardReferenceResult.errors[0]);
+} else {
+  let forwardStates = elements.filter(e => e.getClassName() === "UMLState");
+  let parallel = forwardStates.find(s => s.name === "Parallel");
+  let shared = forwardStates.find(s => s.name === "Shared");
+  let firstTarget = forwardStates.find(s => s.name === "FirstTarget");
+  let secondTarget = forwardStates.find(s => s.name === "SecondTarget");
+  let forwardTransitions = elements.filter(e => e.getClassName() === "UMLTransition");
+
+  assert.strictEqual(shared._parent, parallel.regions[1], "Forward-referenced source should use its explicit region");
+  assert.strictEqual(firstTarget._parent, parallel.regions[1], "Forward-referenced target should use its explicit region");
+  assert.strictEqual(forwardTransitions.length, 2);
+  assert.strictEqual(forwardTransitions[0].source, shared, "Earlier transition should retain the resolved source object");
+  assert.strictEqual(forwardTransitions[1].source, shared, "Later transition should use the same resolved source object");
+  assert.strictEqual(forwardTransitions[0].target, firstTarget);
+  assert.strictEqual(forwardTransitions[1].target, secondTarget);
+  forwardTransitions.forEach(transition => {
+    assert.strictEqual(transition._parent, parallel.regions[1], "Transition ownership should use final source ownership");
+  });
+}
+
+let resolvedDuplicateSetup = setupDiagram();
+let resolvedDuplicateBuilder = global.app.repository.getOperationBuilder;
+let resolvedDuplicateResult;
+try {
+  global.app.repository.getOperationBuilder = () => {
+    throw new Error("Operation builder requested for resolved duplicate alias");
+  };
+  resolvedDuplicateResult = stateParser.generateDiagram(resolvedDuplicateSetup.diag, `@startuml
+state Parallel {
+  Shared --> Target
+  state Shared
+  --
+  state Shared
+}
+@enduml`);
+} finally {
+  global.app.repository.getOperationBuilder = resolvedDuplicateBuilder;
+}
+if (resolvedDuplicateResult.success || !resolvedDuplicateResult.errors[0].includes("Ambiguous state alias 'Shared'")) {
+  hardeningFailures.push("Second explicit cross-region declaration was not rejected: " + resolvedDuplicateResult.errors[0]);
+}
+assert.deepStrictEqual(hardeningFailures, []);
 
 // 1. Simple diagram
 let setup1 = setupDiagram();
@@ -297,32 +447,98 @@ assert.strictEqual(elements.length, 0, "Tree should be clean after rollback");
 assert.ok(loggedErrors.some(msg => msg.includes("State generation failed")), "Expected stable generic error log");
 assert.ok(loggedErrors.every(msg => !msg.includes("Forced Failure Mid-Build")), "Unexpected exception details must not be logged");
 
-// 5. Targeted relocation rollback test
+// 5. Region-parented diagrams are rejected before mutation or operation building
 let setup5 = setupDiagram();
-setup5.diag._parent = setup5.rootRegion; // force relocation
+setup5.diag._parent = setup5.rootRegion;
 let reloGetBuilder = global.app.repository.getOperationBuilder;
-let discardCalled2 = false;
-let origConsoleErr2 = console.error;
 try {
-  console.error = () => {};
   global.app.repository.getOperationBuilder = function() {
-     let builder = reloGetBuilder();
-     let origRemove = builder.fieldRemove;
-     builder.fieldRemove = function(p, f, e) {
-        throw new Error("Relocation failed");
-     };
-     let origDiscard = builder.discard;
-     builder.discard = function() { discardCalled2 = true; origDiscard.call(builder); };
-     return builder;
+    throw new Error("Operation builder requested for region-parented diagram");
   };
   let res5 = stateParser.generateDiagram(setup5.diag, simplePuml);
   assert.strictEqual(res5.success, false);
-  assert.strictEqual(res5.errors[0], "Relocation failed");
-  assert.strictEqual(setup5.diag._parent, setup5.rootRegion, "Diagram parent should be restored");
-  assert.strictEqual(discardCalled2, true);
+  assert.strictEqual(res5.errors[0], "Statechart diagram cannot be parented by UMLRegion");
+  assert.strictEqual(setup5.diag._parent, setup5.rootRegion, "Rejected diagram parent must not be mutated");
 } finally {
-  console.error = origConsoleErr2;
   global.app.repository.getOperationBuilder = reloGetBuilder;
 }
+
+// 6. Non-region relocation failures restore both the parent pointer and containment membership
+function testRelocationRollback(failureStage) {
+  let oldParent = {
+    getClassName: () => "UMLModel",
+    ownedElements: []
+  };
+  let diag = new global.type.UMLStatechartDiagram();
+  diag._parent = oldParent;
+  oldParent.ownedElements.push(diag);
+
+  let getBuilder = global.app.repository.getOperationBuilder;
+  let doOperation = global.app.repository.doOperation;
+  let consoleError = console.error;
+  let newParent = null;
+  let operationCalled = false;
+  let result;
+  try {
+    console.error = () => {};
+    global.app.repository.getOperationBuilder = function() {
+      let builder = getBuilder();
+      let insert = builder.insert;
+      let fieldRemove = builder.fieldRemove;
+      let fieldInsert = builder.fieldInsert;
+
+      builder.insert = function(elem) {
+        if (elem.getClassName() === "UMLStateMachine") newParent = elem;
+        insert.call(builder, elem);
+      };
+      builder.fieldRemove = function(parent, field, elem) {
+        if (failureStage === "fieldRemove" && elem === diag) {
+          parent[field].splice(parent[field].indexOf(elem), 1);
+          throw new Error("Forced fieldRemove relocation failure");
+        }
+        fieldRemove.call(builder, parent, field, elem);
+      };
+      builder.fieldInsert = function(parent, field, elem) {
+        if (elem === diag) newParent = parent;
+        if (failureStage === "fieldInsert" && elem === diag) {
+          parent[field].push(elem);
+          throw new Error("Forced fieldInsert relocation failure");
+        }
+        fieldInsert.call(builder, parent, field, elem);
+      };
+      return builder;
+    };
+    global.app.repository.doOperation = function(cmd) {
+      operationCalled = true;
+      if (failureStage !== "doOperation") return doOperation(cmd);
+
+      let remove = cmd.find(op => op.action === "remove" && op.elem === diag);
+      let insert = cmd.find(op => op.action === "insert" && op.elem === diag);
+      remove.parent[remove.field].splice(remove.parent[remove.field].indexOf(diag), 1);
+      insert.parent[insert.field].push(diag);
+      throw new Error("Forced doOperation relocation failure");
+    };
+
+    result = stateParser.generateDiagram(diag, simplePuml);
+  } finally {
+    console.error = consoleError;
+    global.app.repository.getOperationBuilder = getBuilder;
+    global.app.repository.doOperation = doOperation;
+  }
+
+  assert.strictEqual(result.success, false, failureStage + " should fail");
+  assert.strictEqual(diag._parent, oldParent, failureStage + " must restore diagram._parent");
+  assert.strictEqual(oldParent.ownedElements.filter(elem => elem === diag).length, 1,
+    failureStage + " must restore old-parent membership exactly once");
+  assert.ok(newParent, failureStage + " should reach relocation to a state machine");
+  assert.strictEqual(newParent.ownedElements.includes(diag), false,
+    failureStage + " must remove partial new-parent membership");
+  assert.strictEqual(operationCalled, failureStage === "doOperation",
+    failureStage + " should have the expected operation execution state");
+}
+
+testRelocationRollback("fieldRemove");
+testRelocationRollback("fieldInsert");
+testRelocationRollback("doOperation");
 
 console.log("Success: All state parser tests passed successfully!");

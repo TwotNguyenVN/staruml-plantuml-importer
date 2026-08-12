@@ -23,6 +23,7 @@ const testFiles = [
   'run_source_checker_concurrency_test.js',
   'run_import_guard_integration_test.js',
   'run_import_warning_integration_test.js',
+  'run_missing_relation_warning_test.js',
   'run_regression_tests.js',
   'run_requirement_parser_unit_test.js',
   'run_requirement_test.js'

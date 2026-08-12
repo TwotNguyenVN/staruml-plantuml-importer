@@ -631,8 +631,16 @@ function generateDiagram(diagram, text) {
         if (c.hidden) return;
         var t = expElementsMap[c.from];
         var h = expElementsMap[c.to];
-        if (t && h) {
-           app.factory.createModelAndView({
+        if (!t || !h) {
+           var missingEndpoints = [];
+           if (!t) missingEndpoints.push(c.from);
+           if (!h) missingEndpoints.push(c.to);
+           warnings.push("Skipped activity relation " + c.from + " -> " + c.to + ": missing endpoint" +
+             (missingEndpoints.length === 1 ? " " : "s ") + missingEndpoints.join(", ") + ".");
+           console.warn("[activity-parser] Skipping a connection with a missing node view.");
+           return;
+        }
+        app.factory.createModelAndView({
               id: "UMLControlFlow",
               parent: activityModelExp,
               diagram: diagram,
@@ -641,8 +649,7 @@ function generateDiagram(diagram, text) {
               tailModel: t.model,
               headModel: h.model,
               viewInitializer: function(v) { v.lineStyle = 1; }
-           });
-        }
+        });
      });
 
      return;
@@ -872,6 +879,11 @@ function generateDiagram(diagram, text) {
     var headView = elementsMap[conn.to];
 
     if (!tailView || !headView) {
+      var missingEndpoints = [];
+      if (!tailView) missingEndpoints.push(conn.from);
+      if (!headView) missingEndpoints.push(conn.to);
+      warnings.push("Skipped activity relation " + conn.from + " -> " + conn.to + ": missing endpoint" +
+        (missingEndpoints.length === 1 ? " " : "s ") + missingEndpoints.join(", ") + ".");
       console.warn("[activity-parser] Skipping a connection with a missing node view.");
       return;
     }

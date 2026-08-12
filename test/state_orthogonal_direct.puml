@@ -1,0 +1,11 @@
+@startuml
+state Parallel {
+  [*] --> LeftIdle
+  LeftIdle --> LeftDone
+  LeftDone --> [*]
+  --
+  [*] --> RightIdle
+  RightIdle --> RightDone
+  RightDone --> [*]
+}
+@enduml

@@ -8,6 +8,9 @@
 
 🌍 **Ngôn ngữ:** [English](README.md) | [Tiếng Việt](README-VN.md)
 
+> **Trạng thái phát hành:** Mã nguồn và package phiên bản `2.3.0` chưa được phát hành; tag mới nhất đã
+> phát hành là `v2.2.0`.
+
 > Nhập các biểu đồ **Use Case, Class, Sequence, Activity, State, ER, Mindmap và Requirement** được viết
 > bằng cú pháp **PlantUML** trực tiếp vào StarUML, và tự động sinh chúng thành các **phần tử UML / SysML
 > gốc** kèm theo bố cục tự động, không chồng lấp.
@@ -339,7 +342,7 @@ npm run coverage
 ```
 
 `npm run check` chạy ESLint chỉ kiểm tra tính đúng đắn, kiểm tra cú pháp/chính sách nguồn có tính xác định,
-và toàn bộ test. `npm run coverage` áp dụng ngưỡng cố định 40% dòng/hàm và 30% nhánh. CI chạy cả hai lệnh,
+và toàn bộ test. `npm run coverage` áp dụng ngưỡng cố định 75% câu lệnh/dòng, 72% nhánh và 82% hàm. CI chạy cả hai lệnh,
 `git diff --check`, audit đầy đủ dependency (bao gồm công cụ phát triển được cài/chạy), và audit production
 mức high trên Node.js 20 và 22. Mỗi parser có fixture trong `test/`; bản chuẩn bị phát hành còn phải vượt qua
 [bảng kiểm smoke StarUML v7](docs/STARUML_V7_SMOKE_TEST.md). Bảng kiểm StarUML v7 trực tiếp chưa được chạy

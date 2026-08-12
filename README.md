@@ -8,6 +8,9 @@
 
 🌍 **Language:** [English](README.md) | [Tiếng Việt](README-VN.md)
 
+> **Release status:** Source and package version `2.3.0` are unreleased; the latest published tag is
+> `v2.2.0`.
+
 > Import **Use Case, Class, Sequence, Activity, State, ER, Mindmap, and Requirement** diagrams written in
 > **PlantUML** syntax directly into StarUML, and have them generated as **native UML / SysML elements**
 > with automatic, conflict-free layout.
@@ -338,7 +341,7 @@ npm run coverage
 ```
 
 `npm run check` runs correctness-only ESLint, deterministic syntax/source policy checks, and all tests.
-`npm run coverage` enforces fixed floors of 40% lines/functions and 30% branches. CI runs both commands,
+`npm run coverage` enforces fixed floors of 75% statements/lines, 72% branches, and 82% functions. CI runs both commands,
 `git diff --check`, a full dependency audit (including installed/executed development tools), and the
 production high-severity audit on Node.js 20 and 22. Each parser has a fixture under `test/`; release
 candidates must also pass the [StarUML v7 smoke checklist](docs/STARUML_V7_SMOKE_TEST.md). The live

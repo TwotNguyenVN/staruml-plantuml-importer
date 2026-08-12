@@ -3,8 +3,9 @@
 Run this checklist against the packaged release on each supported operating system before publishing.
 Record the StarUML version, operating system, release revision, and result for every run.
 
-**Current status (2026-08-11): not executed in this development environment; live StarUML behavior is
-unverified. A maintainer must replace this status with recorded run evidence before release.**
+**Current status (2026-08-12): source and package version `2.3.0` are unreleased; the latest published
+tag is `v2.2.0`. StarUML is available only on Windows in this environment, and this checklist has not
+been executed; live behavior remains unverified. A maintainer must record run evidence before release.**
 
 ## Environment
 

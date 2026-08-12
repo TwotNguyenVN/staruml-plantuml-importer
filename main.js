@@ -85,19 +85,62 @@ function detectDiagramType(code) {
 var isDialogOpen = false;
 var lastToggleTime = 0;
 
+function sanitizeDiagnostic(value, fallback) {
+  var diagnostic = typeof value === "string" ? value : fallback;
+  diagnostic = diagnostic
+    .replace(/-----BEGIN ([A-Z0-9 ]*PRIVATE KEY)-----[\s\S]*?-----END \1-----/gi, "[redacted]")
+    .replace(/-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*$/gi, "[redacted]")
+    .replace(/-----END [A-Z0-9 ]*PRIVATE KEY-----/gi, "[redacted]")
+    .replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
+    .replace(/\bauthorization\s*[:=]\s*(?:bearer|basic)\s+[^\s,;]+/gi, "Authorization=[redacted]")
+    .replace(/\b(access_token|refresh_token|client_secret)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^,;&]*)/gi, "$1=[redacted]")
+    .replace(/\b([A-Z][A-Z0-9_]*(?:ACCESS_KEY_ID|SECRET_ACCESS_KEY|API_KEY|CLIENT_SECRET|PRIVATE_KEY|ACCESS_TOKEN|AUTH_TOKEN|TOKEN|SECRET|PASSWORD))\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^,;&]*)/g, "$1=[redacted]")
+    .replace(/([a-z][a-z0-9+.-]*:\/\/)[^@\s/]+@/gi, "$1[redacted]@")
+    .replace(/\b[^:\s/@]+:[^@\s/]+@/g, "[redacted]@")
+    .replace(/\b(ghp_[A-Za-z0-9_]{10,}|github_pat_[A-Za-z0-9_]{10,})\b/g, "[redacted]")
+    .replace(/\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{2,}\.[A-Za-z0-9_-]{8,}\b/g, "[redacted]")
+    .replace(/\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g, "[redacted]")
+    .replace(/\b(password|passwd|pwd|token|secret|api[_-]?key|authorization)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^,;&]*)/gi, "$1=[redacted]")
+    .replace(/\b(password|passwd|pwd|token|secret|api[_-]?key|authorization)\b/gi, "[redacted]")
+    .replace(/\bfile:\/\/[\s\S]*$/gi, "[path]")
+    .replace(/\\\\[^\\\s,;]+\\[\s\S]*$/g, "[path]")
+    .replace(/\b[A-Za-z]:\\[\s\S]*$/g, "[path]")
+    .replace(/(^|[\s("'=])~[\\/][\s\S]*$/g, "$1[path]")
+    .replace(/(^|[\s("'=])\/(?!\/)[\s\S]*$/g, "$1[path]")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (diagnostic.length > 200) diagnostic = diagnostic.slice(0, 197) + "...";
+  return diagnostic || fallback;
+}
+
+function appendDiagnosticSection(message, label, items, maxItems, fallback, maxSectionLength) {
+  if (!Array.isArray(items) || items.length === 0) return message;
+  var shown = [];
+  var used = 0;
+  var candidateCount = Math.min(items.length, maxItems);
+  for (var i = 0; i < candidateCount && used < maxSectionLength; i++) {
+    var diagnostic = sanitizeDiagnostic(items[i], fallback);
+    var remaining = maxSectionLength - used;
+    if (diagnostic.length > remaining) {
+      if (remaining < 4) break;
+      diagnostic = diagnostic.slice(0, remaining - 3) + "...";
+    }
+    shown.push(diagnostic);
+    used += diagnostic.length + 1;
+  }
+  message += "\n" + label + ":\n" + shown.join("\n");
+  if (items.length > shown.length) {
+    message += "\n... and " + (items.length - shown.length) + " more " + label.toLowerCase().replace(/s$/, "") + "(s).";
+  }
+  return message;
+}
+
 function formatImportSuccessMessage(result) {
   var msg = "Diagram imported successfully!";
   if (result.createdCount !== undefined) {
     msg += " (Created " + result.createdCount + " elements)";
   }
-  if (result.warnings && result.warnings.length > 0) {
-    var shownWarnings = result.warnings.slice(0, 10);
-    msg += "\nWarnings:\n" + shownWarnings.join("\n");
-    if (result.warnings.length > shownWarnings.length) {
-      msg += "\n... and " + (result.warnings.length - shownWarnings.length) + " more warning(s).";
-    }
-  }
-  return msg;
+  return appendDiagnosticSection(msg, "Warnings", result.warnings, 10, "Import warning.", 1000);
 }
 
 function formatImportFailureMessage(result) {
@@ -110,6 +153,8 @@ function formatImportFailureMessage(result) {
       message += "\nRollback failed or may be incomplete. Residual elements: " + residualCount + ".";
     }
   }
+  if (result) message = appendDiagnosticSection(message, "Warnings", result.warnings, 10, "Import warning.", 600);
+  if (result) message = appendDiagnosticSection(message, "Errors", result.errors, 5, "Import error.", 600);
   return message;
 }
 

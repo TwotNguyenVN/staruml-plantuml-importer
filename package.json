@@ -26,7 +26,7 @@
     "lint": "eslint .",
     "check:source": "node scripts/check-source.js",
     "check": "npm run lint && npm run check:source && npm test",
-    "coverage": "c8 --all --include=main.js --include=manage.js --include=parsers/*.js --include=utils/*.js --reporter=text --reporter=lcov --check-coverage --lines=40 --functions=40 --branches=30 npm test"
+    "coverage": "c8 --all --include=main.js --include=manage.js --include=parsers/*.js --include=utils/*.js --reporter=text --reporter=lcov --check-coverage --statements=75 --lines=75 --branches=72 --functions=82 npm test"
   },
   "devDependencies": {
     "c8": "^10.1.3",

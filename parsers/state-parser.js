@@ -28,10 +28,18 @@ function generateDiagram(diagram, text) {
 
     var stack = [];
 
-    function getOrCreateStateInfo(alias, parentAlias) {
+    function assertAliasLocation(existing, alias, parentAlias, regionIndex) {
+      if (existing && (existing.parentAlias !== parentAlias || existing.regionIndex !== regionIndex)) {
+        throw new Error("Ambiguous state alias '" + alias + "' cannot be reparented across state regions");
+      }
+    }
+
+    function getOrCreateStateInfo(alias, parentAlias, regionIndex) {
       if (alias === "[*]") return null;
       var existing = parsedStates.find(function(s) { return s.alias === alias; });
-      if (existing) return existing;
+      if (existing) {
+        return existing;
+      }
 
       var newState = {
         type: "UMLState",
@@ -40,7 +48,8 @@ function generateDiagram(diagram, text) {
         stereotype: "",
         parentAlias: parentAlias,
         isComposite: false,
-        regionIndex: stack.length > 0 ? (stack[stack.length - 1].activeRegionIndex || 0) : 0
+        regionIndex: regionIndex,
+        provisional: true
       };
       parsedStates.push(newState);
       return newState;
@@ -84,11 +93,16 @@ function generateDiagram(diagram, text) {
         var existing = parsedStates.find(function(s) { return s.alias === alias; });
         var stateObj;
         if (existing) {
+          if (!existing.provisional) {
+            assertAliasLocation(existing, alias, parentAlias, regionIndex);
+          }
           existing.isComposite = true;
           existing.name = stateName;
           existing.stereotype = stereotype;
           existing.parentAlias = parentAlias;
           existing.regionIndex = regionIndex;
+          existing.provisional = false;
+          existing.regionsCounter = existing.regionsCounter || 1;
           stateObj = existing;
         } else {
           stateObj = {
@@ -112,10 +126,14 @@ function generateDiagram(diagram, text) {
 
         var existing = parsedStates.find(function(s) { return s.alias === alias; });
         if (existing) {
+          if (!existing.provisional) {
+            assertAliasLocation(existing, alias, parentAlias, regionIndex);
+          }
           existing.name = stateName;
           existing.stereotype = stereotype;
           existing.parentAlias = parentAlias;
           existing.regionIndex = regionIndex;
+          existing.provisional = false;
         } else {
           parsedStates.push({
             type: "UMLState", name: stateName, alias: alias, stereotype: stereotype,
@@ -133,7 +151,13 @@ function generateDiagram(diagram, text) {
         var regionIndex = stack.length > 0 ? (stack[stack.length - 1].activeRegionIndex || 0) : 0;
         var existing = parsedStates.find(function(s) { return s.alias === alias; });
         if (existing) {
+          if (!existing.provisional) {
+            assertAliasLocation(existing, alias, parentAlias, regionIndex);
+          }
           existing.name = existing.name + " (" + value + ")";
+          existing.parentAlias = parentAlias;
+          existing.regionIndex = regionIndex;
+          existing.provisional = false;
         } else {
           parsedStates.push({
             type: "UMLState", name: alias + " (" + value + ")", alias: alias, stereotype: "",
@@ -157,15 +181,26 @@ function generateDiagram(diagram, text) {
         }
         var currentParentAlias = stack.length > 0 ? stack[stack.length - 1].alias : null;
         var regionIndex = stack.length > 0 ? (stack[stack.length - 1].activeRegionIndex || 0) : 0;
-        getOrCreateStateInfo(leftStr, currentParentAlias);
-        getOrCreateStateInfo(rightStr, currentParentAlias);
+        var sourceState = getOrCreateStateInfo(leftStr, currentParentAlias, regionIndex);
+        var targetState = getOrCreateStateInfo(rightStr, currentParentAlias, regionIndex);
 
-        parsedTransitions.push({ from: leftStr, to: rightStr, label: label, parentAlias: currentParentAlias, regionIndex: regionIndex });
+        parsedTransitions.push({
+          from: leftStr,
+          to: rightStr,
+          label: label,
+          sourceState: sourceState,
+          targetState: targetState,
+          parentAlias: sourceState ? sourceState.parentAlias : currentParentAlias,
+          regionIndex: sourceState ? sourceState.regionIndex : regionIndex
+        });
       }
     }
 
     // 2. Initialize Models in StarUML
     var parentModel = diagram._parent || app.project.getProject();
+    if (parentModel.getClassName() === "UMLRegion") {
+      throw new Error("Statechart diagram cannot be parented by UMLRegion");
+    }
     var stateMachineModel = null;
     var rootRegion = null;
     var builder = app.repository.getOperationBuilder();
@@ -202,10 +237,29 @@ function generateDiagram(diagram, text) {
 
     var originalDiagramParent = diagram ? diagram._parent : null;
     var diagramParentChanged = false;
-    if (parentModel.getClassName() === "UMLRegion") {
-      rootRegion = parentModel;
-      stateMachineModel = rootRegion._parent;
-    } else if (parentModel.getClassName() === "UMLStateMachine") {
+    var diagramLocationSnapshot = null;
+
+    var restoreDiagramLocation = function() {
+      if (!diagramLocationSnapshot) return;
+
+      [
+        { parent: diagramLocationSnapshot.oldParent, index: diagramLocationSnapshot.oldIndex },
+        { parent: diagramLocationSnapshot.newParent, index: diagramLocationSnapshot.newIndex }
+      ].forEach(function(location) {
+        if (!location.parent || !Array.isArray(location.parent.ownedElements)) return;
+        for (var i = location.parent.ownedElements.length - 1; i >= 0; i--) {
+          if (location.parent.ownedElements[i] === diagram) {
+            location.parent.ownedElements.splice(i, 1);
+          }
+        }
+        if (location.index >= 0) {
+          location.parent.ownedElements.splice(Math.min(location.index, location.parent.ownedElements.length), 0, diagram);
+        }
+      });
+      diagram._parent = diagramLocationSnapshot.oldParent;
+    };
+
+    if (parentModel.getClassName() === "UMLStateMachine") {
       stateMachineModel = parentModel;
     } else {
       stateMachineModel = parentModel;
@@ -230,17 +284,18 @@ function generateDiagram(diagram, text) {
 
     if (diagram && diagram._parent !== stateMachineModel) {
         var oldParent = diagram._parent;
+        diagramLocationSnapshot = {
+            oldParent: oldParent,
+            oldIndex: oldParent && Array.isArray(oldParent.ownedElements) ? oldParent.ownedElements.indexOf(diagram) : -1,
+            newParent: stateMachineModel,
+            newIndex: Array.isArray(stateMachineModel.ownedElements) ? stateMachineModel.ownedElements.indexOf(diagram) : -1
+        };
         diagram._parent = stateMachineModel;
-        try {
-            if (oldParent) {
-                builder.fieldRemove(oldParent, "ownedElements", diagram);
-            }
-            builder.fieldInsert(stateMachineModel, "ownedElements", diagram);
-            diagramParentChanged = true;
-        } catch (reloErr) {
-            diagram._parent = originalDiagramParent;
-            throw reloErr;
+        if (oldParent) {
+            builder.fieldRemove(oldParent, "ownedElements", diagram);
         }
+        builder.fieldInsert(stateMachineModel, "ownedElements", diagram);
+        diagramParentChanged = true;
     }
 
     var childrenMap = {};
@@ -501,6 +556,7 @@ function generateDiagram(diagram, text) {
           if (!compView) {
               throw new Error("Missing decompositionCompartment on UMLStateView for composite state " + state.name);
           }
+          compView.model = model;
           compView.visible = true;
           for (var i = 0; i < count; i++) {
               var regModel = addModel("UMLRegion", model, "regions", function(reg) { reg.name = "Region" + (i+1); });
@@ -604,19 +660,21 @@ function generateDiagram(diagram, text) {
     }
 
     parsedTransitions.forEach(function (trans) {
+      var transitionParentAlias = trans.sourceState ? trans.sourceState.parentAlias : trans.parentAlias;
+      var transitionRegionIndex = trans.sourceState ? trans.sourceState.regionIndex : trans.regionIndex;
       var tailView = trans.from === "[*]" ? null : (elementsMap[trans.from] ? elementsMap[trans.from].view : null);
       var headView = trans.to === "[*]" ? null : (elementsMap[trans.to] ? elementsMap[trans.to].view : null);
 
-      if (trans.from === "[*]") tailView = createPseudostate(true, trans.parentAlias, headView, trans.regionIndex);
-      if (trans.to === "[*]") headView = createPseudostate(false, trans.parentAlias, tailView, trans.regionIndex);
+      if (trans.from === "[*]") tailView = createPseudostate(true, transitionParentAlias, headView, transitionRegionIndex);
+      if (trans.to === "[*]") headView = createPseudostate(false, transitionParentAlias, tailView, transitionRegionIndex);
 
       if (!tailView || !headView) return;
 
       var parentRegionModel = rootRegion;
-      if (trans.parentAlias && elementsMap[trans.parentAlias]) {
-         var pData = elementsMap[trans.parentAlias];
-         if (pData.regions && pData.regions.length > (trans.regionIndex || 0)) {
-            parentRegionModel = pData.regions[trans.regionIndex || 0];
+      if (transitionParentAlias && elementsMap[transitionParentAlias]) {
+         var pData = elementsMap[transitionParentAlias];
+         if (pData.regions && pData.regions.length > (transitionRegionIndex || 0)) {
+            parentRegionModel = pData.regions[transitionRegionIndex || 0];
          } else if (pData.regions && pData.regions.length > 0) {
             parentRegionModel = pData.regions[0];
          }
@@ -668,7 +726,9 @@ function generateDiagram(diagram, text) {
     }
     } catch (finalErr) {
         console.error("[state-parser] State generation failed.");
-        if (diagramParentChanged) {
+        if (diagramLocationSnapshot) {
+            restoreDiagramLocation();
+        } else if (diagramParentChanged) {
             diagram._parent = originalDiagramParent;
         }
         if (builder && typeof builder.discard === 'function') {

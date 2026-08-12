@@ -22,6 +22,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const readline = require('readline');
 
@@ -144,6 +145,28 @@ if (platform === 'darwin') {
 const SRC_DIR = __dirname;
 const EXTENSION_ID = 'twot.staruml-plantuml-importer';
 const extensionRoot = path.dirname(targetDir);
+const REQUIRED_RUNTIME_FILES = [
+    'PlantUML_Importer.png',
+    'main.js',
+    'package.json',
+    'menus/menu.json',
+    'keymaps/keymap.json',
+    'utils/dialog-helper.js',
+    'utils/parser-helper.js',
+    'utils/preview-helper.js',
+    'utils/input-guard.js',
+    'parsers/usecase-parser.js',
+    'parsers/class-parser.js',
+    'parsers/sequence-parser.js',
+    'parsers/activity-parser.js',
+    'parsers/state-parser.js',
+    'parsers/erd-parser.js',
+    'parsers/mindmap-parser.js',
+    'parsers/requirement-parser.js'
+];
+const INSTALL_LOCK_NAME = `.${EXTENSION_ID}.lock`;
+const INSTALL_LOCK_OWNER_FILE = 'owner.json';
+const DEFAULT_LOCK_STALE_AFTER_MS = 15 * 60 * 1000;
 
 function comparablePath(value) {
     const resolved = path.resolve(value);
@@ -210,8 +233,49 @@ function assertNoLinks(directory) {
     });
 }
 
-function safeDeleteExtension(extensionDir, userExtensionRoot) {
-    if (!fs.existsSync(extensionDir)) return false;
+function assertRegularTree(directory, canonicalRoot, description) {
+    const entries = fs.readdirSync(directory, { withFileTypes: true });
+    entries.forEach(entry => {
+        const entryPath = path.join(directory, entry.name);
+        const stats = fs.lstatSync(entryPath);
+        if (stats.isSymbolicLink() || (!stats.isDirectory() && !stats.isFile())) {
+            throw new Error(`${description} must contain only regular non-link files and directories.`);
+        }
+        const canonicalEntry = fs.realpathSync(entryPath);
+        const relativeEntry = path.relative(canonicalRoot, canonicalEntry);
+        if (!relativeEntry || relativeEntry === '..' || relativeEntry.startsWith(`..${path.sep}`) || path.isAbsolute(relativeEntry)) {
+            throw new Error(`${description} contains an entry outside its canonical root.`);
+        }
+        if (stats.isDirectory()) assertRegularTree(entryPath, canonicalRoot, description);
+    });
+}
+
+function assertRuntimeManifest(directory, description) {
+    if (!fs.existsSync(directory)) {
+        throw new Error(`${description} is missing; the complete runtime manifest is required.`);
+    }
+    assertCanonicalRoot(directory);
+    const rootStats = fs.lstatSync(directory);
+    if (!rootStats.isDirectory() || rootStats.isSymbolicLink()) {
+        throw new Error(`${description} must be a canonical non-link directory.`);
+    }
+    const canonicalRoot = fs.realpathSync(directory);
+
+    REQUIRED_RUNTIME_FILES.forEach(relativePath => {
+        const entry = path.join(directory, relativePath);
+        if (!fs.existsSync(entry)) throw new Error(`${description} runtime manifest is missing required file: ${relativePath}.`);
+        const stats = fs.lstatSync(entry);
+        if (!stats.isFile() || stats.isSymbolicLink()) {
+            throw new Error(`${description} runtime manifest file must be a regular non-link entry: ${relativePath}.`);
+        }
+        const relativeEntry = path.relative(canonicalRoot, fs.realpathSync(entry));
+        if (!relativeEntry || relativeEntry === '..' || relativeEntry.startsWith(`..${path.sep}`) || path.isAbsolute(relativeEntry)) {
+            throw new Error(`${description} contains a required file outside its canonical root.`);
+        }
+    });
+}
+
+function assertSafeExtensionTarget(extensionDir, userExtensionRoot) {
     assertCanonicalRoot(userExtensionRoot);
     assertExactExtensionTarget(extensionDir, userExtensionRoot);
     const rootStats = fs.lstatSync(userExtensionRoot);
@@ -229,24 +293,207 @@ function safeDeleteExtension(extensionDir, userExtensionRoot) {
         throw new Error('Refusing recursive deletion: canonical containment under the StarUML user-extension root failed.');
     }
     assertNoLinks(extensionDir);
+}
+
+function safeDeleteExtension(extensionDir, userExtensionRoot) {
+    if (!fs.existsSync(extensionDir)) return false;
+    assertSafeExtensionTarget(extensionDir, userExtensionRoot);
     fs.rmSync(extensionDir, { recursive: true, force: true });
     return true;
 }
 
-function copyRecursiveSync(src, dest) {
-    if (fs.existsSync(src)) {
-        const stats = fs.statSync(src);
-        if (stats.isDirectory()) {
-            if (!fs.existsSync(dest)) {
-                fs.mkdirSync(dest, { recursive: true });
-            }
-            fs.readdirSync(src).forEach(childItemName => {
-                copyRecursiveSync(path.join(src, childItemName), path.join(dest, childItemName));
-            });
-        } else {
-            fs.copyFileSync(src, dest);
-        }
+function safeDeleteInstallPath(candidate, invocationDir, userExtensionRoot) {
+    if (!fs.existsSync(candidate)) return;
+    assertCanonicalRoot(userExtensionRoot);
+    const invocationPrefix = `.${EXTENSION_ID}-install-`;
+    const validInvocation = path.dirname(invocationDir) === userExtensionRoot &&
+        path.basename(invocationDir).startsWith(invocationPrefix);
+    const validCandidate = candidate === invocationDir || candidate === path.join(invocationDir, 'staging');
+    if (!validInvocation || !validCandidate) {
+        throw new Error('Refusing to clean an unrecognized installer temporary path.');
     }
+    const candidateStats = fs.lstatSync(candidate);
+    if (!candidateStats.isDirectory() || candidateStats.isSymbolicLink()) {
+        throw new Error('Refusing to clean an invalid or linked installer temporary path.');
+    }
+    const canonicalRoot = fs.realpathSync(userExtensionRoot);
+    const canonicalCandidate = fs.realpathSync(candidate);
+    const relativeCandidate = path.relative(canonicalRoot, canonicalCandidate);
+    if (!relativeCandidate || relativeCandidate === '..' || relativeCandidate.startsWith(`..${path.sep}`) || path.isAbsolute(relativeCandidate)) {
+        throw new Error('Refusing to clean an installer temporary path outside the extension root.');
+    }
+    assertNoLinks(candidate);
+    fs.rmSync(candidate, { recursive: true, force: true });
+}
+
+function recoverAbandonedInstall(installTarget, installRoot) {
+    if (fs.existsSync(installTarget)) return;
+
+    const invocationPrefix = `.${EXTENSION_ID}-install-`;
+    const backups = [];
+    fs.readdirSync(installRoot, { withFileTypes: true }).forEach(entry => {
+        if (!entry.name.startsWith(invocationPrefix) || entry.name.length === invocationPrefix.length) return;
+        const invocationDir = path.join(installRoot, entry.name);
+        try {
+            const invocationStats = fs.lstatSync(invocationDir);
+            if (!invocationStats.isDirectory() || invocationStats.isSymbolicLink()) return;
+            assertCanonicalRoot(invocationDir);
+            assertRegularTree(invocationDir, fs.realpathSync(invocationDir), 'Installer recovery directory');
+            const backupDir = path.join(invocationDir, 'backup');
+            assertRuntimeManifest(backupDir, 'Installer recovery backup');
+            backups.push({ invocationDir, backupDir });
+        } catch (error) {
+            // Invalid or linked abandoned paths are ignored rather than followed.
+        }
+    });
+
+    if (backups.length > 1) {
+        throw new Error('Ambiguous installer recovery: multiple valid abandoned backups exist.');
+    }
+    if (backups.length === 1) {
+        fs.renameSync(backups[0].backupDir, installTarget);
+        safeDeleteInstallPath(backups[0].invocationDir, backups[0].invocationDir, installRoot);
+    }
+}
+
+function inspectInstallLock(lockDir, installRoot) {
+    const expectedLock = path.join(installRoot, INSTALL_LOCK_NAME);
+    if (comparablePath(lockDir) !== comparablePath(expectedLock)) {
+        throw new Error('Installer lock must be the fixed immediate child of the validated root.');
+    }
+    const lockStats = fs.lstatSync(lockDir);
+    if (!lockStats.isDirectory() || lockStats.isSymbolicLink()) {
+        throw new Error('Installer lock must be a regular non-link directory.');
+    }
+    const markerPath = path.join(lockDir, INSTALL_LOCK_OWNER_FILE);
+    let markerStats;
+    try {
+        markerStats = fs.lstatSync(markerPath);
+    } catch (error) {
+        if (error && error.code === 'ENOENT') return { lockStats, marker: null };
+        throw error;
+    }
+    if (!markerStats.isFile() || markerStats.isSymbolicLink()) {
+        throw new Error('Installer lock ownership marker must be a regular non-link file.');
+    }
+    const canonicalLock = fs.realpathSync(lockDir);
+    const relativeMarker = path.relative(canonicalLock, fs.realpathSync(markerPath));
+    if (!relativeMarker || relativeMarker === '..' || relativeMarker.startsWith(`..${path.sep}`) || path.isAbsolute(relativeMarker)) {
+        throw new Error('Installer lock ownership marker escapes its canonical lock root.');
+    }
+    let marker;
+    try {
+        marker = JSON.parse(fs.readFileSync(markerPath, 'utf8'));
+    } catch (error) {
+        return { lockStats, marker: null };
+    }
+    if (!marker || typeof marker.ownerId !== 'string' || !marker.ownerId ||
+        !Number.isInteger(marker.pid) || marker.pid <= 0 || !Number.isFinite(marker.createdAt)) {
+        return { lockStats, marker: null };
+    }
+    return { lockStats, marker };
+}
+
+function readInstallLock(lockDir, installRoot) {
+    const inspection = inspectInstallLock(lockDir, installRoot);
+    if (!inspection.marker) throw new Error('Installer lock ownership marker is invalid.');
+    return inspection.marker;
+}
+
+function removeOwnedInstallLock(lockDir, installRoot, ownerId) {
+    const marker = readInstallLock(lockDir, installRoot);
+    if (marker.ownerId !== ownerId) {
+        throw new Error('Installer lock ownership changed; refusing to remove another invocation lock.');
+    }
+    assertNoLinks(lockDir);
+    const entries = fs.readdirSync(lockDir);
+    if (entries.length !== 1 || entries[0] !== INSTALL_LOCK_OWNER_FILE) {
+        throw new Error('Installer lock contains unexpected entries; refusing ownership cleanup.');
+    }
+    fs.unlinkSync(path.join(lockDir, INSTALL_LOCK_OWNER_FILE));
+    fs.rmdirSync(lockDir);
+}
+
+function removeStaleInvalidInstallLock(lockDir, installRoot, now, staleAfterMs) {
+    const inspection = inspectInstallLock(lockDir, installRoot);
+    if (inspection.marker) {
+        throw new Error('Another installer invocation owns the active install lock.');
+    }
+    const age = now - inspection.lockStats.mtimeMs;
+    if (!Number.isFinite(inspection.lockStats.mtimeMs) || age < 0 || age <= staleAfterMs) {
+        throw new Error('Another installer invocation may be initializing the active install lock.');
+    }
+
+    assertNoLinks(lockDir);
+    const entries = fs.readdirSync(lockDir);
+    if (entries.length > 1 || (entries.length === 1 && entries[0] !== INSTALL_LOCK_OWNER_FILE)) {
+        throw new Error('Invalid installer lock contains unexpected entries; refusing recovery.');
+    }
+    if (entries.length === 1) fs.unlinkSync(path.join(lockDir, INSTALL_LOCK_OWNER_FILE));
+    fs.rmdirSync(lockDir);
+}
+
+function isProcessAlive(pid) {
+    try {
+        process.kill(pid, 0);
+        return true;
+    } catch (error) {
+        return !error || error.code !== 'ESRCH';
+    }
+}
+
+function acquireInstallLock(installRoot, lockOptions) {
+    const settings = lockOptions || {};
+    const now = typeof settings.now === 'function' ? settings.now : Date.now;
+    const checkProcessAlive = typeof settings.isProcessAlive === 'function'
+        ? settings.isProcessAlive
+        : isProcessAlive;
+    const staleAfterMs = settings.staleAfterMs === undefined
+        ? DEFAULT_LOCK_STALE_AFTER_MS
+        : settings.staleAfterMs;
+    const ownerId = settings.ownerId || `${process.pid}-${crypto.randomBytes(16).toString('hex')}`;
+    if (!Number.isFinite(staleAfterMs) || staleAfterMs < 0 || typeof ownerId !== 'string' || !ownerId) {
+        throw new Error('Installer lock configuration is invalid.');
+    }
+
+    const lockDir = path.join(installRoot, INSTALL_LOCK_NAME);
+    const createdAt = now();
+    if (!Number.isFinite(createdAt)) throw new Error('Installer lock clock returned an invalid timestamp.');
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+            fs.mkdirSync(lockDir);
+        } catch (error) {
+            if (!error || error.code !== 'EEXIST') throw error;
+            const inspection = inspectInstallLock(lockDir, installRoot);
+            if (!inspection.marker) {
+                removeStaleInvalidInstallLock(lockDir, installRoot, createdAt, staleAfterMs);
+                continue;
+            }
+            const ownerAlive = checkProcessAlive(inspection.marker.pid);
+            if (ownerAlive !== false) {
+                throw new Error('Another installer invocation owns the active install lock.');
+            }
+            removeOwnedInstallLock(lockDir, installRoot, inspection.marker.ownerId);
+            continue;
+        }
+        try {
+            fs.writeFileSync(
+                path.join(lockDir, INSTALL_LOCK_OWNER_FILE),
+                JSON.stringify({ ownerId, pid: process.pid, createdAt }),
+                { flag: 'wx' }
+            );
+        } catch (error) {
+            try {
+                fs.rmdirSync(lockDir);
+            } catch (cleanupError) {
+                error.message += ` Installer lock initialization cleanup failed. (${cleanupError.message})`;
+            }
+            throw error;
+        }
+        return { lockDir, ownerId };
+    }
+    throw new Error('Could not acquire the installer lock after stale-lock recovery.');
 }
 
 function install(options) {
@@ -264,32 +511,93 @@ function install(options) {
         fs.mkdirSync(installRoot, { recursive: true });
         assertCanonicalRoot(installRoot);
     }
-    if (fs.existsSync(installTarget)) {
-        safeDeleteExtension(installTarget, installRoot);
-    }
+    const installLock = acquireInstallLock(installRoot, options && options.lock);
+    let operationError;
 
-    const dirsToCopy = ['menus', 'utils', 'parsers', 'keymaps'];
-    const filesToCopy = ['PlantUML_Importer.png', 'main.js', 'package.json'];
+    try {
+        assertRuntimeManifest(installSource, 'Install source');
+        recoverAbandonedInstall(installTarget, installRoot);
 
-    dirsToCopy.forEach(dir => {
-        assertCanonicalRoot(installRoot);
-        copyRecursiveSync(path.join(installSource, dir), path.join(installTarget, dir));
-    });
+        const invocationDir = fs.mkdtempSync(path.join(installRoot, `.${EXTENSION_ID}-install-`));
+        const stagingDir = path.join(invocationDir, 'staging');
+        const backupDir = path.join(invocationDir, 'backup');
+        let backupCreated = false;
+        let preserveBackup = false;
+        let promoted = false;
+        let installError;
 
-    filesToCopy.forEach(file => {
-        if (fs.existsSync(path.join(installSource, file))) {
-            assertCanonicalRoot(installRoot);
-            if (!fs.existsSync(installTarget)) fs.mkdirSync(installTarget, { recursive: true });
-            fs.copyFileSync(path.join(installSource, file), path.join(installTarget, file));
+        try {
+            REQUIRED_RUNTIME_FILES.forEach(relativePath => {
+                assertCanonicalRoot(installRoot);
+                const destination = path.join(stagingDir, relativePath);
+                fs.mkdirSync(path.dirname(destination), { recursive: true });
+                fs.copyFileSync(path.join(installSource, relativePath), destination);
+            });
+
+            assertRuntimeManifest(stagingDir, 'Installer staging tree');
+            if (fs.existsSync(installTarget)) {
+                assertSafeExtensionTarget(installTarget, installRoot);
+                fs.renameSync(installTarget, backupDir);
+                backupCreated = true;
+            }
+
+            try {
+                fs.renameSync(stagingDir, installTarget);
+                promoted = true;
+            } catch (promotionError) {
+                if (backupCreated) {
+                    try {
+                        fs.renameSync(backupDir, installTarget);
+                        backupCreated = false;
+                    } catch (restoreError) {
+                        preserveBackup = true;
+                        promotionError.message += ` Restore failed; existing install preserved at ${backupDir}. (${restoreError.message})`;
+                    }
+                }
+                throw promotionError;
+            }
+        } catch (error) {
+            installError = error;
         }
-    });
 
-    console.log(`${COLORS.bgGreen}${COLORS.bright} CÀI ĐẶT THÀNH CÔNG! / INSTALLATION COMPLETE ${COLORS.reset}\n`);
-    console.log(`${COLORS.bright}Cách sử dụng:${COLORS.reset}`);
-    console.log(`  1. Mở phần mềm StarUML`);
-    console.log(`  2. Tạo sơ đồ (Model > Add Diagram > ...)`);
-    console.log(`  3. Vào menu Tools > PlantUML Importer > "Import ..."`);
-    console.log(`  4. Dán code PlantUML và chọn OK\n`);
+        try {
+            if (preserveBackup) {
+                safeDeleteInstallPath(stagingDir, invocationDir, installRoot);
+            } else {
+                safeDeleteInstallPath(invocationDir, invocationDir, installRoot);
+            }
+        } catch (cleanupError) {
+            if (promoted && !installError) {
+                console.warn(`${COLORS.yellow}[WARNING] Installation completed, but installer temporary cleanup failed. Recoverable artifacts may remain under the extension root.${COLORS.reset}`);
+            } else if (installError) {
+                installError.message += ` Installer temporary-path cleanup failed. (${cleanupError.message})`;
+            } else {
+                throw cleanupError;
+            }
+        }
+
+        if (installError) throw installError;
+
+        console.log(`${COLORS.bgGreen}${COLORS.bright} CÀI ĐẶT THÀNH CÔNG! / INSTALLATION COMPLETE ${COLORS.reset}\n`);
+        console.log(`${COLORS.bright}Cách sử dụng:${COLORS.reset}`);
+        console.log(`  1. Mở phần mềm StarUML`);
+        console.log(`  2. Tạo sơ đồ (Model > Add Diagram > ...)`);
+        console.log(`  3. Vào menu Tools > PlantUML Importer > "Import ..."`);
+        console.log(`  4. Dán code PlantUML và chọn OK\n`);
+    } catch (error) {
+        operationError = error;
+        throw error;
+    } finally {
+        try {
+            removeOwnedInstallLock(installLock.lockDir, installRoot, installLock.ownerId);
+        } catch (lockCleanupError) {
+            if (operationError) {
+                operationError.message += ` Installer lock cleanup failed. (${lockCleanupError.message})`;
+            } else {
+                console.warn(`${COLORS.yellow}[WARNING] Installation completed, but installer lock cleanup failed.${COLORS.reset}`);
+            }
+        }
+    }
 }
 
 function capture(run, args) {
