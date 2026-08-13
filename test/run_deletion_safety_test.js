@@ -414,11 +414,10 @@ if (powerShellProbe.error && powerShellProbe.error.code === "ENOENT") {
 } else if (process.platform !== "win32") {
   assert.ifError(powerShellProbe.error);
   assert.strictEqual(powerShellProbe.status, 0, "PowerShell capability probe must succeed: " + powerShellProbe.stderr);
-  const syntaxResult = spawnSync(powerShellCommand, [
-    "-NoProfile", "-NonInteractive", "-Command",
-    "$errors = $null; [void][System.Management.Automation.Language.Parser]::ParseFile($args[0], [ref]$null, [ref]$errors); if ($errors.Count) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }",
-    path.join(__dirname, "..", "scripts", "native-path-safety.ps1")
-  ], { encoding: "utf8" });
+  const syntaxCommand = "$errors = $null; [void][System.Management.Automation.Language.Parser]::ParseFile('" +
+    path.join(__dirname, "..", "scripts", "native-path-safety.ps1").replace(/'/g, "''") +
+    "', [ref]$null, [ref]$errors); if ($errors.Count) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }";
+  const syntaxResult = spawnSync(powerShellCommand, ["-NoProfile", "-NonInteractive", "-Command", syntaxCommand], { encoding: "utf8" });
   assert.ifError(syntaxResult.error);
   assert.strictEqual(syntaxResult.status, 0, "PowerShell helper syntax must parse under pwsh: " + syntaxResult.stderr);
   console.log("SKIP: PowerShell filesystem cases require Windows path and junction semantics; pwsh syntax capability was verified.");
