@@ -56,7 +56,7 @@
 | **Class Diagram** | ✅ Supported | Grid layout, full attributes / operations & associations |
 | **Sequence Diagram** | ✅ Supported | Chronological layout, message types, actor lifelines |
 | **Activity Diagram** | ✅ Supported | Partition swimlanes, action flows, and decisions |
-| **State Diagram** | 🚧 In Progress | Composite states / orthogonal regions can still fail StarUML's placement validation; not stable yet |
+| **State Diagram** | ✅ Supported | Composite states, orthogonal regions, nested states & transitions |
 | **ER Diagram** | ✅ Supported | Entities, columns (PK/FK/Nullable), crow's-foot cardinalities |
 | **Mindmap Diagram** | ✅ Supported | Radial layout, deep hierarchies, left/right direction support |
 | **Requirement Diagram** | ✅ Supported | SysML Requirements, elements, and all relationship types (satisfy / derive / verify / refine / copy / trace / contain) |
@@ -226,7 +226,7 @@ stop
 @enduml
 ```
 
-### State Diagram (🚧 In Progress — not stable yet)
+### State Diagram
 
 ```plantuml
 @startuml
@@ -302,7 +302,7 @@ parsing correctness.
 | **Class Diagram** | `UMLClassDiagram` | `parsers/class-parser.js` | [classdiagram.puml](test/classdiagram.puml) | Stable |
 | **Sequence Diagram** | `UMLSequenceDiagram` | `parsers/sequence-parser.js` | [sequence-diagram2.puml](test/sequence-diagram2.puml) | Stable |
 | **Activity Diagram** | `UMLActivityDiagram` | `parsers/activity-parser.js` | [Activity.puml](test/Activity.puml) | Stable |
-| **State Diagram** | `UMLStatechartDiagram` | `parsers/state-parser.js` | [Statechart_Diagram.puml](test/Statechart_Diagram.puml) | 🚧 In Progress |
+| **State Diagram** | `UMLStatechartDiagram` | `parsers/state-parser.js` | [Statechart_Diagram.puml](test/Statechart_Diagram.puml) | Stable |
 | **ER Diagram** | `ERDDiagram` | `parsers/erd-parser.js` | [ERD.puml](test/ERD.puml) | Stable |
 | **Mindmap Diagram** | `MindmapDiagram` (MMDiagram) | `parsers/mindmap-parser.js` | [mindmap.puml](test/mindmap.puml) | Stable |
 | **Requirement Diagram** | `SysMLRequirementDiagram` | `parsers/requirement-parser.js` | [requirement_sample.puml](test/requirement_sample.puml) | Stable |

@@ -56,7 +56,7 @@
 | **Class Diagram** (Biểu đồ lớp) | ✅ Đã hỗ trợ | Bố cục lưới, đầy đủ thuộc tính / phương thức & quan hệ |
 | **Sequence Diagram** (Biểu đồ tuần tự) | ✅ Đã hỗ trợ | Sắp xếp theo trình tự thời gian, loại thông điệp, lifelines |
 | **Activity Diagram** (Biểu đồ hoạt động) | ✅ Đã hỗ trợ | Phân chia swimlanes, luồng hành động và rẽ nhánh |
-| **State Diagram** (Biểu đồ trạng thái) | 🚧 Đang hoàn thiện | Composite state / orthogonal region vẫn có thể bị StarUML từ chối đặt phần tử, chưa ổn định |
+| **State Diagram** (Biểu đồ trạng thái) | ✅ Đã hỗ trợ | Composite state, orthogonal region, trạng thái lồng nhau & chuyển trạng thái |
 | **ER Diagram** (Biểu đồ ERD) | ✅ Đã hỗ trợ | Thực thể, cột (PK/FK/Nullable), quan hệ chân chim |
 | **Mindmap** (Sơ đồ tư duy) | ✅ Đã hỗ trợ | Bố cục hướng tâm, phân cấp sâu, hỗ trợ trái/phải |
 | **Requirement Diagram** (Biểu đồ yêu cầu) | ✅ Đã hỗ trợ | SysML Requirements, phần tử và mọi loại quan hệ (satisfy / derive / verify / refine / copy / trace / contain) |
@@ -228,7 +228,7 @@ stop
 @enduml
 ```
 
-### Biểu đồ State (Trạng thái) (🚧 Đang hoàn thiện — chưa ổn định)
+### Biểu đồ State (Trạng thái)
 
 ```plantuml
 @startuml
@@ -304,7 +304,7 @@ minh tính đúng đắn của logic phân tích cú pháp.
 | **Sơ đồ Class** | `UMLClassDiagram` | `parsers/class-parser.js` | [classdiagram.puml](test/classdiagram.puml) | Ổn định |
 | **Sơ đồ Sequence** | `UMLSequenceDiagram` | `parsers/sequence-parser.js` | [sequence-diagram2.puml](test/sequence-diagram2.puml) | Ổn định |
 | **Sơ đồ Activity** | `UMLActivityDiagram` | `parsers/activity-parser.js` | [Activity.puml](test/Activity.puml) | Ổn định |
-| **Sơ đồ State** | `UMLStatechartDiagram` | `parsers/state-parser.js` | [Statechart_Diagram.puml](test/Statechart_Diagram.puml) | 🚧 Đang phát triển |
+| **Sơ đồ State** | `UMLStatechartDiagram` | `parsers/state-parser.js` | [Statechart_Diagram.puml](test/Statechart_Diagram.puml) | Ổn định |
 | **Sơ đồ ERD** | `ERDDiagram` | `parsers/erd-parser.js` | [ERD.puml](test/ERD.puml) | Ổn định |
 | **Sơ đồ Mindmap** | `MindmapDiagram` (MMDiagram) | `parsers/mindmap-parser.js` | [mindmap.puml](test/mindmap.puml) | Ổn định |
 | **Sơ đồ Requirement** | `SysMLRequirementDiagram` | `parsers/requirement-parser.js` | [requirement_sample.puml](test/requirement_sample.puml) | Ổn định |
