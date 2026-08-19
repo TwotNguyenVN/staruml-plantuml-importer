@@ -38,16 +38,7 @@ jobs:
           if [[ ! "$before" =~ ^0+$ ]] && git cat-file -e "$before^{commit}" 2>/dev/null; then
             commits=$(git rev-list --reverse "$before..HEAD")
           else
-            # New branch, first push, or force-push: the previous tip is either unknown
-            # or now orphaned, so the pushed range cannot be derived. Check the tip only.
-            # Walking the whole history here would re-audit commits this push never
-            # touched and fail on pre-existing whitespace in old commits.
-            echo "Previous tip unavailable (new branch, first push, or force-push); checking HEAD only."
-            commits=$(git rev-parse HEAD)
-          fi
-          if [ -z "$commits" ]; then
-            echo "No commits to check."
-            exit 0
+            commits=$(git rev-list --reverse HEAD)
           fi
           while IFS= read -r commit; do
             git diff-tree --check --root --no-commit-id -m -r "$commit"
